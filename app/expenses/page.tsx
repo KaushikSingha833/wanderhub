@@ -315,6 +315,7 @@ export default function ExpensesPage() {
                             {chartData.map((entry, index) => <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />)}
                           </Pie>
                           <Tooltip 
+                            //formatter={(value: number) => `₹${value.toLocaleString()}`}
                             formatter={(value: any) => `₹${value ? value.toLocaleString() : 0}`}
                             contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
                           />
