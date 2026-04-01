@@ -1,4 +1,4 @@
-"use client";
+{/*"use client";
 import { useEffect } from "react";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
@@ -27,4 +27,4 @@ export default function ThemeListener() {
   }, []);
   
   return null; // This is invisible! It just runs the logic in the background.
-}
+}*/}

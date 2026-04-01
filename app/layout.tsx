@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import ThemeListener from "./ThemeListener"; // <-- 1. WE IMPORT THE LISTENER HERE
+//import ThemeListener from "./ThemeListener"; // <-- 1. WE IMPORT THE LISTENER HERE
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,7 +30,7 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
-        <ThemeListener /> {/* <-- 3. WE DROP THE LISTENER RIGHT INSIDE THE BODY */}
+        {/*<ThemeListener />*/} {/* <-- 3. WE DROP THE LISTENER RIGHT INSIDE THE BODY */}
         {children}
       </body>
     </html>
