@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, collection, addDoc, query, where, onSnapshot, deleteDoc } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase"; // Make sure path is correct!
-import { Building2, Plus, BedDouble, Trash2, IndianRupee, Loader2, AlertTriangle, LogOut } from "lucide-react";
+import { Building2, Plus, BedDouble, Trash2, IndianRupee, Loader2, AlertTriangle, LogOut, Image as ImageIcon } from "lucide-react";
 import { signOut } from "firebase/auth";
 
 interface Room {
@@ -29,6 +29,7 @@ export default function PartnerDashboard() {
   const [newRoomName, setNewRoomName] = useState("");
   const [newRoomPrice, setNewRoomPrice] = useState("");
   const [newRoomDesc, setNewRoomDesc] = useState("");
+  const [newRoomImage, setNewRoomImage] = useState("");
 
   // 1. THE SECURITY BOUNCER
   useEffect(() => {
@@ -98,6 +99,7 @@ export default function PartnerDashboard() {
         price: Number(newRoomPrice),
         description: newRoomDesc,
         city: userProfile.city, // <-- AUTOMATICALLY PULLS THE CITY FROM THEIR PROFILE!
+        imageUrl: newRoomImage.trim(),
         createdAt: new Date()
       });
 
@@ -105,6 +107,7 @@ export default function PartnerDashboard() {
       setNewRoomName("");
       setNewRoomPrice("");
       setNewRoomDesc("");
+      setNewRoomImage("");
     } catch (error) {
       console.error("Error adding room:", error);
       alert("Failed to add room");
@@ -158,7 +161,7 @@ export default function PartnerDashboard() {
           <div className="h-12 w-12 bg-indigo-600 rounded-xl flex items-center justify-center mb-4">
             <Building2 className="h-6 w-6 text-white" />
           </div>
-          <h2 className="text-lg font-black truncate">{userProfile.hotelName}</h2>
+          <h2 className="text-lg font-black truncate">{userProfile?.hotelName || "WanderHub Partner"}</h2>
           <p className="text-slate-400 text-sm font-medium">Partner Dashboard</p>
         </div>
         <div className="p-4 flex-1">
@@ -207,6 +210,14 @@ export default function PartnerDashboard() {
                   <div>
                     <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Description</label>
                     <textarea value={newRoomDesc} onChange={(e) => setNewRoomDesc(e.target.value)} placeholder="Sea view, complimentary breakfast..." rows={3} className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium resize-none" />
+                  </div>
+                  {/* ADD THIS NEW IMAGE URL INPUT */}
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Room Image URL</label>
+                    <div className="relative">
+                      <ImageIcon className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-400" />
+                      <input type="url" value={newRoomImage} onChange={(e) => setNewRoomImage(e.target.value)} placeholder="https://example.com/photo.jpg" className="w-full pl-11 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none font-medium text-slate-900" />
+                    </div>
                   </div>
                   <button type="submit" disabled={isAddingRoom} className="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl hover:bg-indigo-700 shadow-md transition-all disabled:opacity-50">
                     {isAddingRoom ? "Adding..." : "Publish Room"}
