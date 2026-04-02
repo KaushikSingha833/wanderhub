@@ -1,12 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-// NEW: Added addDoc to the import list!
 import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, addDoc } from "firebase/firestore"; 
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db } from "../lib/firebase"; 
-// NEW: Added Menu and X to the icons list for the mobile drawer!
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Printer, Clock, MapPin, Plane, Hotel, Utensils, Trash2, Map as MapIcon, CalendarPlus, ChevronDown, ChevronUp, AlignLeft, Navigation, BedDouble, Sparkles, Loader2, Menu, X } from "lucide-react";
+// NEW: Added Sun and CloudRain for the weather widget!
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Printer, Clock, MapPin, Plane, Hotel, Utensils, Trash2, Map as MapIcon, CalendarPlus, ChevronDown, ChevronUp, AlignLeft, Navigation, BedDouble, Sparkles, Loader2, Menu, X, Sun, CloudRain } from "lucide-react";
 
 interface Trip { id: string; title: string; }
 interface Activity {
@@ -35,15 +34,20 @@ export default function ItinerariesPage() {
   const [isTrackingLoading, setIsTrackingLoading] = useState(false);
   const [trackingData, setTrackingData] = useState<any>(null);
 
-  // --- NEW: AI GENERATOR STATE ---
+  // AI GENERATOR STATE
   const [showAiModal, setShowAiModal] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
 
-  // --- NEW: MOBILE MENU STATE ---
+  // MOBILE MENU STATE
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // --- THE REAL API FETCH FUNCTION ---
+  // --- NEW: WEATHER FORECAST STATE ---
+  const [weatherData, setWeatherData] = useState<any[]>([]);
+  const [isWeatherLoading, setIsWeatherLoading] = useState(false);
+  const [weatherError, setWeatherError] = useState("");
+
+  // THE REAL API FETCH FUNCTION
   const handleTrackStatus = async (activityTitle: string, type: string, trackingNum?: string) => {
     setIsTrackerOpen(true);
     setIsTrackingLoading(true);
@@ -106,18 +110,16 @@ export default function ItinerariesPage() {
     setIsTrackingLoading(false);
   };
 
-  // --- NEW: THE AI GENERATE FUNCTION ---
+  // THE AI GENERATE FUNCTION
   const handleGenerateItinerary = async () => {
     if (!aiPrompt.trim() || !selectedTripId) return;
     
     setIsAiLoading(true);
     try {
-      // Calculate tomorrow's date dynamically to give the AI a realistic starting point
       const tomorrow = new Date();
       tomorrow.setDate(tomorrow.getDate() + 1);
       const startDate = tomorrow.toISOString().split('T')[0];
 
-      // Ping our secure Next.js backend!
       const response = await fetch('/api/generate-itinerary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -127,7 +129,6 @@ export default function ItinerariesPage() {
       const data = await response.json();
 
       if (data.activities && data.activities.length > 0) {
-        // Loop through the AI's response and save each item into Firebase!
         for (const act of data.activities) {
           await addDoc(collection(db, "activities"), {
             tripId: selectedTripId,
@@ -188,6 +189,43 @@ export default function ItinerariesPage() {
     });
     return () => unsubscribe();
   }, [selectedTripId]);
+
+  // --- NEW: FETCH LIVE WEATHER ---
+  useEffect(() => {
+    if (!selectedTripId || trips.length === 0) return;
+    
+    const fetchWeather = async () => {
+      setIsWeatherLoading(true);
+      setWeatherError("");
+      setWeatherData([]);
+      
+      try {
+        const currentTrip = trips.find(t => t.id === selectedTripId);
+        if (!currentTrip || !currentTrip.title) return;
+
+        // Extract the last word of the title as the city (e.g., "Trip to Paris" -> "Paris")
+        // This helps the weather API find the correct location!
+        const words = currentTrip.title.trim().split(" ");
+        const presumedCity = words[words.length - 1];
+
+        const res = await fetch(`/api/weather?city=${presumedCity}`);
+        const data = await res.json();
+        
+        if (res.ok) {
+          setWeatherData(data);
+        } else {
+          setWeatherError(`Weather unavailable for "${presumedCity}"`);
+        }
+      } catch (err) {
+        console.error(err);
+        setWeatherError("Weather service disconnected.");
+      } finally {
+        setIsWeatherLoading(false);
+      }
+    };
+
+    fetchWeather();
+  }, [selectedTripId, trips]);
 
   // 3. Delete Activity Logic
   const handleDeleteActivity = async (activityId: string) => {
@@ -255,10 +293,8 @@ export default function ItinerariesPage() {
   if (isLoading) return <div className="h-screen flex items-center justify-center bg-slate-50"><div className="animate-spin h-8 w-8 border-4 border-indigo-600 border-t-transparent rounded-full"></div></div>;
 
   return (
-    // Added overflow-hidden here to lock the screen when mobile menu is open
     <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
       
-      {/* --- NEW: MOBILE BLUR OVERLAY --- */}
       {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-40 md:hidden transition-opacity"
@@ -266,7 +302,6 @@ export default function ItinerariesPage() {
         />
       )}
 
-      {/* --- UPDATED: RESPONSIVE SIDEBAR --- */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col transform transition-transform duration-300 ease-in-out print:hidden ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0`}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 shrink-0">
           <div className="flex items-center">
@@ -275,13 +310,11 @@ export default function ItinerariesPage() {
               WanderHub
             </span>
           </div>
-          {/* NEW: Mobile Close X Button */}
           <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-slate-600 rounded-lg bg-slate-50">
             <X className="h-5 w-5" />
           </button>
         </div>
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto">
-          {/* Added onClick to all links so the menu closes when a user clicks a page */}
           <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-medium transition-colors">
             <Map className="h-5 w-5 mr-3" /> Dashboard
           </Link>
@@ -300,11 +333,8 @@ export default function ItinerariesPage() {
         </nav>
       </aside>
 
-      {/* MAIN CONTENT */}
-      {/* Changed to flex-col h-screen to allow scrolling just this side */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         
-        {/* --- NEW: MOBILE TOP BAR --- */}
         <div className="md:hidden h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 z-10 print:hidden">
           <div className="flex items-center">
             <PlaneTakeoff className="h-6 w-6 text-indigo-600 mr-2" />
@@ -315,7 +345,6 @@ export default function ItinerariesPage() {
           </button>
         </div>
 
-        {/* --- UPDATED: RESPONSIVE HEADER --- */}
         <header className="h-auto md:h-16 py-4 md:py-0 bg-white border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between px-4 md:px-8 z-10 print:hidden shrink-0 gap-4">
           <h2 className="text-xl font-semibold text-slate-800 hidden md:block">Master Schedule</h2>
           
@@ -347,10 +376,50 @@ export default function ItinerariesPage() {
           </div>
         </header>
 
-        {/* SCROLLABLE AGENDA */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8 print:p-0 print:bg-white bg-slate-50">
           <div className="max-w-4xl mx-auto pb-20">
             
+            {/* --- NEW: WEATHER FORECAST WIDGET --- */}
+            {selectedTripId && !isWeatherLoading && weatherData.length > 0 && (
+              <div className="mb-8 bg-gradient-to-br from-sky-400 to-indigo-500 rounded-3xl p-6 md:p-8 text-white shadow-lg relative overflow-hidden print:hidden animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-white opacity-10 rounded-full blur-3xl"></div>
+                
+                <h3 className="text-lg font-black mb-4 flex items-center relative z-10"><Sun className="h-5 w-5 mr-2"/> 5-Day Forecast</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 md:gap-4 relative z-10">
+                  {weatherData.slice(0, 5).map((day: any, idx: number) => {
+                    const date = new Date(day.dt * 1000).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+                    const temp = Math.round(day.main.temp);
+                    const iconUrl = `https://openweathermap.org/img/wn/${day.weather[0].icon}@2x.png`;
+                    
+                    return (
+                      <div key={idx} className="bg-white/20 backdrop-blur-md rounded-2xl p-4 flex flex-col items-center text-center border border-white/20 hover:bg-white/30 transition-colors">
+                        <p className="text-xs font-bold uppercase tracking-wider text-sky-100">{date}</p>
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={iconUrl} alt="weather icon" className="h-12 w-12 my-1 drop-shadow-md" />
+                        <p className="text-2xl font-black">{temp}°C</p>
+                        <p className="text-xs font-medium text-sky-100 capitalize mt-1">{day.weather[0].description}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+            
+            {/* Loading/Error States for Weather */}
+            {selectedTripId && isWeatherLoading && (
+              <div className="mb-8 bg-white rounded-3xl p-6 border border-slate-200 shadow-sm flex items-center justify-center h-32 animate-pulse print:hidden">
+                <div className="flex items-center text-slate-400 font-medium">
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin text-indigo-500" /> Fetching live weather data...
+                </div>
+              </div>
+            )}
+            {selectedTripId && weatherError && !isWeatherLoading && (
+              <div className="mb-8 bg-slate-100 rounded-2xl p-4 border border-slate-200 text-slate-500 text-sm flex items-center justify-center print:hidden">
+                <CloudRain className="h-4 w-4 mr-2" /> {weatherError}
+              </div>
+            )}
+            {/* --- END WEATHER WIDGET --- */}
+
             {trips.length === 0 ? (
                <div className="text-center py-20">
                  <div className="h-16 w-16 bg-slate-100 rounded-full flex items-center justify-center text-slate-400 mx-auto mb-4"><Calendar className="h-8 w-8" /></div>
@@ -450,7 +519,7 @@ export default function ItinerariesPage() {
         </main>
       </div>
 
-      {/* --- AI GENERATOR MODAL (Changed z-index to 60) --- */}
+      {/* --- AI GENERATOR MODAL --- */}
       {showAiModal && (
         <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-sm z-[60]">
           <div className="bg-white rounded-3xl p-6 md:p-8 w-full max-w-lg shadow-2xl relative">
@@ -494,7 +563,7 @@ export default function ItinerariesPage() {
         </div>
       )}
 
-      {/* --- LIVE TRACKER MODAL (Changed z-index to 60) --- */}
+      {/* --- LIVE TRACKER MODAL --- */}
       {isTrackerOpen && (
         <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-sm z-[60]">
           <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl relative overflow-hidden">

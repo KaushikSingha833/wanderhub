@@ -185,7 +185,7 @@ export default function SettingsPage() {
                     
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 pb-6 border-b border-slate-100">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={user.photoURL || ""} alt="Profile" className="h-20 w-20 md:h-24 md:w-24 rounded-full border-4 border-slate-50 shadow-md" />
+                      <img src={user.photoURL || "https://ui-avatars.com/api/?name=Traveler&background=e0e7ff&color=4f46e5"} alt="Profile" className="h-20 w-20 md:h-24 md:w-24 rounded-full border-4 border-slate-50 shadow-md" />
                       <div>
                         <p className="text-sm font-bold text-slate-700 mb-1">Profile Picture</p>
                         <p className="text-xs md:text-sm text-slate-500 mb-3">Your photo is automatically synced with your Google account.</p>
