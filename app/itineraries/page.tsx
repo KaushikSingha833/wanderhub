@@ -289,46 +289,46 @@ export default function ItinerariesPage() {
     }
   };
 
-  if (isLoading) return <div className="h-screen flex items-center justify-center bg-slate-50"><div className="animate-spin h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full"></div></div>;
+  if (isLoading) return <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-[#030712] transition-colors"><div className="animate-spin h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full"></div></div>;
 
   return (
-    <div className="flex h-screen bg-slate-50 font-sans text-slate-900 overflow-hidden">
+    <div className="flex h-screen bg-[#f8fafc] dark:bg-[#030712] font-sans text-slate-900 dark:text-slate-100 overflow-hidden transition-colors duration-300 selection:bg-indigo-100 selection:text-indigo-900">
       
       {/* MOBILE MENU BLUR */}
       {isMobileMenuOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-40 md:hidden transition-opacity duration-300"
+          className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md z-40 md:hidden transition-opacity duration-300"
           onClick={() => setIsMobileMenuOpen(false)}
         />
       )}
 
       {/* SIDEBAR */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col transform transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] print:hidden ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0`}>
-        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 shrink-0">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-[#0f172a] border-r border-slate-200 dark:border-white/10 flex flex-col transform transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] print:hidden ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} md:relative md:translate-x-0`}>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-white/10 shrink-0">
           <div className="flex items-center">
-            <PlaneTakeoff className="h-6 w-6 text-indigo-600 mr-2" />
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">
+            <PlaneTakeoff className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-2" />
+            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-blue-500 dark:from-indigo-400 dark:to-blue-400">
               WanderHub
             </span>
           </div>
-          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors">
             <X className="h-5 w-5" />
           </button>
         </div>
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
-          <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-semibold transition-colors">
+          <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors">
             <Map className="h-5 w-5 mr-3" /> Dashboard
           </Link>
-          <Link href="/itineraries" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold shadow-sm transition-colors">
+          <Link href="/itineraries" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 rounded-xl font-bold shadow-sm transition-colors border border-transparent dark:border-indigo-500/20">
             <Calendar className="h-5 w-5 mr-3" /> Itineraries
           </Link>
-          <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-semibold transition-colors">
+          <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors">
             <CreditCard className="h-5 w-5 mr-3" /> Expenses
           </Link>
-          <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-semibold transition-colors">
+          <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors">
             <BedDouble className="h-5 w-5 mr-3" /> Book Hotels
           </Link>
-          <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-semibold transition-colors">
+          <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors">
             <Settings className="h-5 w-5 mr-3" /> Settings
           </Link>
         </nav>
@@ -338,30 +338,30 @@ export default function ItinerariesPage() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
         
         {/* MOBILE TOP BAR */}
-        <div className="md:hidden h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 shrink-0 z-30 print:hidden sticky top-0">
+        <div className="md:hidden h-16 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-md border-b border-slate-200 dark:border-white/10 flex items-center justify-between px-4 shrink-0 z-30 print:hidden sticky top-0 transition-colors">
           <div className="flex items-center">
-            <PlaneTakeoff className="h-6 w-6 text-indigo-600 mr-2" />
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">WanderHub</span>
+            <PlaneTakeoff className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-2" />
+            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-blue-500 dark:from-indigo-400 dark:to-blue-400">WanderHub</span>
           </div>
-          <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors">
+          <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors">
             <Menu className="h-6 w-6" />
           </button>
         </div>
 
         {/* DESKTOP/TABLET HEADER */}
-        <header className="h-auto md:h-20 py-4 md:py-0 bg-white/80 backdrop-blur-xl border-b border-slate-200 flex flex-col md:flex-row md:items-center justify-between px-6 md:px-10 z-20 print:hidden shrink-0 gap-4 sticky top-0 transition-all">
+        <header className="h-auto md:h-20 py-4 md:py-0 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between px-6 md:px-10 z-20 print:hidden shrink-0 gap-4 sticky top-0 transition-all">
           <div>
-            <h2 className="text-2xl font-black text-slate-900 hidden md:block tracking-tight">Master Schedule</h2>
-            <p className="text-sm font-medium text-slate-500 hidden md:block mt-0.5">Plan and track your group journey.</p>
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white hidden md:block tracking-tight">Master Schedule</h2>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 hidden md:block mt-0.5">Plan and track your group journey.</p>
           </div>
           
           <div className="flex flex-wrap items-center gap-3 md:gap-5 w-full md:w-auto justify-between md:justify-end">
             <div className="relative flex-1 md:flex-none group">
-              <MapIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition-colors pointer-events-none" />
+              <MapIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500 group-hover:text-indigo-500 transition-colors pointer-events-none" />
               <select 
                 value={selectedTripId} 
                 onChange={(e) => setSelectedTripId(e.target.value)}
-                className="w-full appearance-none border border-slate-200 hover:border-slate-300 rounded-xl pl-10 pr-10 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 bg-white font-bold text-slate-700 shadow-sm transition-all cursor-pointer max-w-[200px] md:max-w-[240px] truncate"
+                className="w-full appearance-none border border-slate-200 dark:border-white/10 hover:border-slate-300 dark:hover:border-white/20 rounded-xl pl-10 pr-10 py-2.5 text-sm outline-none focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 bg-white dark:bg-[#1e293b] font-bold text-slate-700 dark:text-slate-200 shadow-sm transition-all cursor-pointer max-w-[200px] md:max-w-[240px] truncate"
               >
                 {trips.length === 0 ? <option>No trips found</option> : trips.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
               </select>
@@ -372,35 +372,35 @@ export default function ItinerariesPage() {
               <button 
                 onClick={() => setShowAiModal(true)} 
                 disabled={trips.length === 0} 
-                className="flex items-center bg-slate-900 text-white px-4 md:px-5 py-2.5 md:py-2.5 rounded-xl font-bold hover:bg-indigo-600 hover:shadow-lg hover:shadow-indigo-500/20 transition-all disabled:opacity-50 disabled:hover:bg-slate-900 shadow-md text-sm group"
+                className="flex items-center bg-slate-900 dark:bg-indigo-600 text-white px-4 md:px-5 py-2.5 md:py-2.5 rounded-xl font-bold hover:bg-indigo-600 dark:hover:bg-indigo-500 hover:shadow-lg hover:shadow-indigo-500/20 dark:hover:shadow-indigo-900/30 transition-all disabled:opacity-50 disabled:hover:bg-slate-900 shadow-md text-sm group"
               >
-                <Sparkles className="h-4 w-4 md:mr-2 text-indigo-400 group-hover:text-white transition-colors" /> <span className="hidden md:inline">Magic Plan</span>
+                <Sparkles className="h-4 w-4 md:mr-2 text-indigo-400 dark:text-indigo-200 group-hover:text-white transition-colors" /> <span className="hidden md:inline">Magic Plan</span>
               </button>
 
-              <button onClick={handleExportCalendar} disabled={activities.length === 0} className="flex items-center bg-white border border-slate-200 text-slate-700 px-3.5 md:px-4 py-2.5 rounded-xl font-bold hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-50 text-sm shadow-sm group" title="Sync to Calendar">
-                <CalendarPlus className="h-4 w-4 group-hover:text-indigo-600 transition-colors md:mr-2" /> <span className="hidden lg:inline">Sync</span>
+              <button onClick={handleExportCalendar} disabled={activities.length === 0} className="flex items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 px-3.5 md:px-4 py-2.5 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-white/10 hover:border-slate-300 transition-all disabled:opacity-50 text-sm shadow-sm group" title="Sync to Calendar">
+                <CalendarPlus className="h-4 w-4 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors md:mr-2" /> <span className="hidden lg:inline">Sync</span>
               </button>
-              <button onClick={() => window.print()} disabled={activities.length === 0} className="flex items-center bg-white border border-slate-200 text-slate-700 px-3.5 md:px-4 py-2.5 rounded-xl font-bold hover:bg-slate-50 hover:border-slate-300 transition-all disabled:opacity-50 text-sm shadow-sm group" title="Print Itinerary">
-                <Printer className="h-4 w-4 group-hover:text-indigo-600 transition-colors md:mr-2" /> <span className="hidden lg:inline">Print</span>
+              <button onClick={() => window.print()} disabled={activities.length === 0} className="flex items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 px-3.5 md:px-4 py-2.5 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-white/10 hover:border-slate-300 transition-all disabled:opacity-50 text-sm shadow-sm group" title="Print Itinerary">
+                <Printer className="h-4 w-4 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors md:mr-2" /> <span className="hidden lg:inline">Print</span>
               </button>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-10 print:p-0 print:bg-white bg-[#f8fafc] custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-4 md:p-10 print:p-0 print:bg-white bg-[#f8fafc] dark:bg-transparent custom-scrollbar relative z-10">
           <div className="max-w-4xl mx-auto pb-24">
             
             {/* --- PRO WEATHER WIDGET --- */}
             {selectedTripId && !isWeatherLoading && weatherData.length > 0 && (
-              <div className="mb-10 relative overflow-hidden rounded-[2rem] p-8 print:hidden animate-in fade-in slide-in-from-top-8 duration-700 shadow-xl border border-indigo-500/10">
+              <div className="mb-10 relative overflow-hidden rounded-[2rem] p-8 print:hidden animate-in fade-in slide-in-from-top-8 duration-700 shadow-xl border border-indigo-500/10 dark:border-white/5">
                 {/* Dynamic Backgrounds */}
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-blue-600 to-sky-400"></div>
-                <div className="absolute top-[-50%] right-[-10%] w-[500px] h-[500px] bg-white/20 rounded-full blur-[80px]"></div>
-                <div className="absolute bottom-[-30%] left-[-10%] w-[300px] h-[300px] bg-indigo-900/30 rounded-full blur-[60px]"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-blue-600 to-sky-400 dark:from-indigo-950 dark:via-[#0f172a] dark:to-blue-900"></div>
+                <div className="absolute top-[-50%] right-[-10%] w-[500px] h-[500px] bg-white/20 dark:bg-white/5 rounded-full blur-[80px]"></div>
+                <div className="absolute bottom-[-30%] left-[-10%] w-[300px] h-[300px] bg-indigo-900/30 dark:bg-blue-500/10 rounded-full blur-[60px]"></div>
                 
                 {/* Content */}
                 <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-8 border-b border-white/20 pb-4">
+                  <div className="flex items-center justify-between mb-8 border-b border-white/20 dark:border-white/10 pb-4">
                     <h3 className="text-xl font-black text-white flex items-center tracking-tight">
                       <Sun className="h-6 w-6 mr-3 text-amber-300"/> Destination Forecast
                     </h3>
@@ -416,8 +416,8 @@ export default function ItinerariesPage() {
                       const iconUrl = `https://openweathermap.org/img/wn/${day.weather[0].icon}@4x.png`;
                       
                       return (
-                        <div key={idx} className="bg-black/10 backdrop-blur-xl rounded-2xl p-5 flex flex-col items-center text-center border border-white/10 hover:bg-black/20 hover:-translate-y-1 transition-all duration-300 shadow-inner group">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-sky-200 mb-0.5">{weekday}</p>
+                        <div key={idx} className="bg-black/10 dark:bg-white/5 backdrop-blur-xl rounded-2xl p-5 flex flex-col items-center text-center border border-white/10 dark:border-white/5 hover:bg-black/20 dark:hover:bg-white/10 hover:-translate-y-1 transition-all duration-300 shadow-inner group">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-sky-200 dark:text-sky-300 mb-0.5">{weekday}</p>
                           <p className="text-xs font-bold text-white/80 mb-2">{dateNum}</p>
                           
                           <div className="relative h-16 w-16 mb-2 group-hover:scale-110 transition-transform duration-500">
@@ -426,7 +426,7 @@ export default function ItinerariesPage() {
                           </div>
                           
                           <p className="text-3xl font-black text-white tracking-tighter drop-shadow-md">{temp}°</p>
-                          <p className="text-[11px] font-semibold text-sky-100 capitalize mt-2 bg-white/10 px-2.5 py-1 rounded-lg w-full truncate">{day.weather[0].description}</p>
+                          <p className="text-[11px] font-semibold text-sky-100 dark:text-sky-200 capitalize mt-2 bg-white/10 dark:bg-black/30 px-2.5 py-1 rounded-lg w-full truncate">{day.weather[0].description}</p>
                         </div>
                       );
                     })}
@@ -437,39 +437,39 @@ export default function ItinerariesPage() {
             
             {/* Loading/Error States for Weather */}
             {selectedTripId && isWeatherLoading && (
-              <div className="mb-10 bg-white rounded-[2rem] p-8 border border-slate-200 shadow-sm flex flex-col items-center justify-center h-48 animate-pulse print:hidden">
+              <div className="mb-10 bg-white dark:bg-[#0f172a] rounded-[2rem] p-8 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col items-center justify-center h-48 animate-pulse print:hidden">
                 <Loader2 className="h-8 w-8 mb-4 animate-spin text-indigo-400" /> 
-                <p className="text-slate-500 font-bold text-sm uppercase tracking-widest">Connecting to Weather Satellites...</p>
+                <p className="text-slate-500 dark:text-slate-400 font-bold text-sm uppercase tracking-widest">Connecting to Weather Satellites...</p>
               </div>
             )}
             {selectedTripId && weatherError && !isWeatherLoading && (
-              <div className="mb-10 bg-slate-100 rounded-[2rem] p-6 border border-slate-200 text-slate-500 font-medium flex items-center justify-center print:hidden shadow-inner">
-                <CloudRain className="h-5 w-5 mr-3 text-slate-400" /> {weatherError}
+              <div className="mb-10 bg-slate-100 dark:bg-[#1e293b] rounded-[2rem] p-6 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 font-medium flex items-center justify-center print:hidden shadow-inner">
+                <CloudRain className="h-5 w-5 mr-3 text-slate-400 dark:text-slate-500" /> {weatherError}
               </div>
             )}
             {/* --- END WEATHER WIDGET --- */}
 
             {trips.length === 0 ? (
                <div className="text-center py-24 md:py-32">
-                 <div className="h-24 w-24 bg-white rounded-[2rem] shadow-sm border border-slate-100 flex items-center justify-center mx-auto mb-6 rotate-3">
+                 <div className="h-24 w-24 bg-white dark:bg-[#1e293b] rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/10 flex items-center justify-center mx-auto mb-6 rotate-3">
                    <Calendar className="h-10 w-10 text-indigo-400" />
                  </div>
-                 <h3 className="text-3xl font-black text-slate-900 tracking-tight">No Trips Found</h3>
-                 <p className="text-slate-500 font-medium mt-3 text-lg">Head back to the dashboard to start planning.</p>
-                 <Link href="/" className="inline-flex mt-8 bg-slate-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-600 transition-colors shadow-lg shadow-slate-900/20">Go to Dashboard</Link>
+                 <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">No Trips Found</h3>
+                 <p className="text-slate-500 dark:text-slate-400 font-medium mt-3 text-lg">Head back to the dashboard to start planning.</p>
+                 <Link href="/" className="inline-flex mt-8 bg-slate-900 dark:bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors shadow-lg shadow-slate-900/20 dark:shadow-indigo-900/30">Go to Dashboard</Link>
                </div>
             ) : activities.length === 0 ? (
-               <div className="text-center py-20 md:py-28 bg-white rounded-[2.5rem] border border-slate-200 shadow-xl shadow-slate-200/50 print:hidden px-6 relative overflow-hidden">
-                 <div className="absolute top-0 right-0 w-64 h-64 bg-purple-50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
-                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-50 rounded-full blur-3xl translate-y-1/2 -translate-x-1/4"></div>
+               <div className="text-center py-20 md:py-28 bg-white dark:bg-[#0f172a] rounded-[2.5rem] border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-200/50 dark:shadow-none print:hidden px-6 relative overflow-hidden">
+                 <div className="absolute top-0 right-0 w-64 h-64 bg-purple-50 dark:bg-purple-900/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-50 dark:bg-indigo-900/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/4"></div>
                  
                  <div className="relative z-10">
-                   <div className="h-20 w-20 bg-gradient-to-br from-purple-100 to-indigo-100 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-inner border border-white">
-                     <Sparkles className="h-10 w-10 text-purple-600" />
+                   <div className="h-20 w-20 bg-gradient-to-br from-purple-100 to-indigo-100 dark:from-purple-900/50 dark:to-indigo-900/50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-inner border border-white dark:border-white/5">
+                     <Sparkles className="h-10 w-10 text-purple-600 dark:text-purple-400" />
                    </div>
-                   <h3 className="text-3xl font-black text-slate-900 tracking-tight">Your canvas is blank.</h3>
-                   <p className="text-slate-500 font-medium mt-3 mb-10 max-w-md mx-auto text-lg leading-relaxed">Let our AI engine build a complete, optimized itinerary for you in seconds.</p>
-                   <button onClick={() => setShowAiModal(true)} className="w-full md:w-auto bg-slate-900 text-white px-8 py-4 rounded-2xl font-black text-lg hover:bg-purple-600 hover:scale-105 transition-all shadow-xl shadow-slate-900/20 flex items-center justify-center mx-auto group">
+                   <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Your canvas is blank.</h3>
+                   <p className="text-slate-500 dark:text-slate-400 font-medium mt-3 mb-10 max-w-md mx-auto text-lg leading-relaxed">Let our AI engine build a complete, optimized itinerary for you in seconds.</p>
+                   <button onClick={() => setShowAiModal(true)} className="w-full md:w-auto bg-slate-900 dark:bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-lg hover:bg-purple-600 dark:hover:bg-indigo-500 hover:scale-105 transition-all shadow-xl shadow-slate-900/20 dark:shadow-indigo-900/30 flex items-center justify-center mx-auto group">
                      Generate Magic Schedule <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                    </button>
                  </div>
@@ -478,11 +478,11 @@ export default function ItinerariesPage() {
               <div className="space-y-12 md:space-y-16 relative">
                 
                 {/* Global timeline connecting line */}
-                <div className="absolute left-6 md:left-[3.25rem] top-24 bottom-10 w-0.5 bg-slate-200 print:hidden hidden md:block"></div>
+                <div className="absolute left-6 md:left-[3.25rem] top-24 bottom-10 w-0.5 bg-slate-200 dark:bg-slate-800 print:hidden hidden md:block"></div>
 
-                <div className="hidden print:block mb-10 pb-6 border-b-2 border-slate-900">
-                  <h1 className="text-4xl font-black text-slate-900">{trips.find(t => t.id === selectedTripId)?.title} - Master Itinerary</h1>
-                  <p className="text-slate-500 font-bold mt-2">Generated securely by WanderHub</p>
+                <div className="hidden print:block mb-10 pb-6 border-b-2 border-slate-900 dark:border-white/20">
+                  <h1 className="text-4xl font-black text-slate-900 dark:text-white">{trips.find(t => t.id === selectedTripId)?.title} - Master Itinerary</h1>
+                  <p className="text-slate-500 dark:text-slate-400 font-bold mt-2">Generated securely by WanderHub</p>
                 </div>
 
                 {sortedDates.map((date, index) => {
@@ -494,9 +494,9 @@ export default function ItinerariesPage() {
                     <div key={date} className="relative z-10">
                       
                       {/* Date Header */}
-                      <div className="sticky top-16 md:top-20 bg-[#f8fafc]/90 backdrop-blur-xl print:bg-transparent z-20 py-4 mb-6 flex flex-col md:flex-row md:items-center gap-1 md:gap-4 md:ml-2">
-                        <div className="bg-indigo-600 text-white px-4 py-1.5 rounded-full text-sm font-black tracking-widest uppercase shadow-md inline-block w-max">Day {index + 1}</div>
-                        <h3 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">{weekday}, <span className="text-slate-500">{dateNum}</span></h3>
+                      <div className="sticky top-16 md:top-20 bg-[#f8fafc]/90 dark:bg-[#030712]/90 backdrop-blur-xl print:bg-transparent z-20 py-4 mb-6 flex flex-col md:flex-row md:items-center gap-1 md:gap-4 md:ml-2">
+                        <div className="bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-1.5 rounded-full text-sm font-black tracking-widest uppercase shadow-md inline-block w-max">Day {index + 1}</div>
+                        <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">{weekday}, <span className="text-slate-500 dark:text-slate-400">{dateNum}</span></h3>
                       </div>
 
                       {/* Day's Activities */}
@@ -505,43 +505,43 @@ export default function ItinerariesPage() {
                           const isExpanded = expandedIds.includes(act.id);
                           
                           return (
-                            <div key={act.id} className="group relative bg-white border border-slate-200 rounded-[1.5rem] shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all duration-300 print:border-slate-300 print:shadow-none">
+                            <div key={act.id} className="group relative bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 rounded-[1.5rem] shadow-sm hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all duration-300 print:border-slate-300 print:shadow-none">
                               
                               {/* Horizontal connector line (desktop) */}
-                              <div className="absolute top-1/2 -translate-y-1/2 -left-12 w-12 h-0.5 bg-slate-200 hidden md:block group-hover:bg-indigo-200 transition-colors"></div>
+                              <div className="absolute top-1/2 -translate-y-1/2 -left-12 w-12 h-0.5 bg-slate-200 dark:bg-slate-800 hidden md:block group-hover:bg-indigo-200 dark:group-hover:bg-indigo-500/50 transition-colors"></div>
                               
                               {/* Icon Node (desktop) */}
-                              <div className="absolute top-1/2 -translate-y-1/2 -left-[3.75rem] w-4 h-4 rounded-full bg-white border-4 border-slate-300 hidden md:block group-hover:border-indigo-500 group-hover:scale-125 transition-all shadow-sm"></div>
+                              <div className="absolute top-1/2 -translate-y-1/2 -left-[3.75rem] w-4 h-4 rounded-full bg-white dark:bg-[#0f172a] border-4 border-slate-300 dark:border-slate-600 hidden md:block group-hover:border-indigo-500 dark:group-hover:border-indigo-400 group-hover:scale-125 transition-all shadow-sm"></div>
 
                               <div className="p-4 md:p-6 cursor-pointer" onClick={() => toggleExpand(act.id)}>
                                 <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
                                   
                                   {/* Time & Icon Block */}
-                                  <div className="flex items-center md:flex-col md:justify-center md:w-28 shrink-0 bg-slate-50 md:bg-transparent p-3 md:p-0 rounded-xl md:rounded-none border border-slate-100 md:border-none md:border-r md:border-slate-100 md:pr-6">
-                                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-white md:bg-slate-50 border border-slate-200 md:border-none flex items-center justify-center shadow-sm md:shadow-none mr-3 md:mr-0 md:mb-2 group-hover:scale-110 transition-transform">
+                                  <div className="flex items-center md:flex-col md:justify-center md:w-28 shrink-0 bg-slate-50 dark:bg-white/5 md:bg-transparent p-3 md:p-0 rounded-xl md:rounded-none border border-slate-100 dark:border-white/5 md:border-none md:border-r md:border-slate-100 dark:md:border-white/10 md:pr-6">
+                                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-white dark:bg-black/20 md:bg-slate-50 dark:md:bg-white/5 border border-slate-200 dark:border-white/5 md:border-none flex items-center justify-center shadow-sm md:shadow-none mr-3 md:mr-0 md:mb-2 group-hover:scale-110 transition-transform">
                                       {getIcon(act.type)}
                                     </div>
-                                    <span className="text-lg md:text-base font-black text-slate-900 tracking-tight">{act.time}</span>
+                                    <span className="text-lg md:text-base font-black text-slate-900 dark:text-white tracking-tight">{act.time}</span>
                                   </div>
 
                                   {/* Content Block */}
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2 mb-1.5">
-                                      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 bg-indigo-50 px-2.5 py-0.5 rounded-md">{act.type}</span>
-                                      {act.trackingNumber && <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 border border-slate-200 px-2 py-0.5 rounded-md flex items-center"><Hash className="h-3 w-3 mr-0.5"/> {act.trackingNumber}</span>}
+                                      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-0.5 rounded-md">{act.type}</span>
+                                      {act.trackingNumber && <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-white/10 px-2 py-0.5 rounded-md flex items-center"><Hash className="h-3 w-3 mr-0.5"/> {act.trackingNumber}</span>}
                                     </div>
-                                    <h4 className="text-xl md:text-2xl font-black text-slate-800 truncate tracking-tight">{act.title}</h4>
+                                    <h4 className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 truncate tracking-tight">{act.title}</h4>
                                     {act.location && !isExpanded && (
-                                      <p className="text-sm font-medium text-slate-500 mt-1 flex items-center truncate"><MapPin className="h-3.5 w-3.5 mr-1.5 shrink-0"/> {act.location}</p>
+                                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 flex items-center truncate"><MapPin className="h-3.5 w-3.5 mr-1.5 shrink-0"/> {act.location}</p>
                                     )}
                                   </div>
 
                                   {/* Actions Block */}
-                                  <div className="flex items-center justify-end gap-2 md:ml-4 border-t border-slate-100 md:border-none pt-3 md:pt-0 mt-2 md:mt-0">
-                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteActivity(act.id); }} className="p-2.5 text-slate-300 hover:text-white hover:bg-red-500 rounded-xl transition-all print:hidden opacity-100 md:opacity-0 group-hover:opacity-100" title="Delete Activity">
+                                  <div className="flex items-center justify-end gap-2 md:ml-4 border-t border-slate-100 dark:border-white/10 md:border-none pt-3 md:pt-0 mt-2 md:mt-0">
+                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteActivity(act.id); }} className="p-2.5 text-slate-300 hover:text-white dark:text-slate-600 dark:hover:text-white hover:bg-red-500 dark:hover:bg-red-500/80 rounded-xl transition-all print:hidden opacity-100 md:opacity-0 group-hover:opacity-100" title="Delete Activity">
                                       <Trash2 className="h-5 w-5" />
                                     </button>
-                                    <div className={`p-2 rounded-xl transition-colors ${isExpanded ? 'bg-indigo-50 text-indigo-600' : 'bg-slate-50 text-slate-400 group-hover:bg-slate-100'}`}>
+                                    <div className={`p-2 rounded-xl transition-colors ${isExpanded ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400' : 'bg-slate-50 dark:bg-white/5 text-slate-400 dark:text-slate-500 group-hover:bg-slate-100 dark:group-hover:bg-white/10'}`}>
                                       {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
                                     </div>
                                   </div>
@@ -550,16 +550,16 @@ export default function ItinerariesPage() {
                               
                               {/* EXPANDED DETAILS AREA */}
                               {isExpanded && (
-                                <div className="bg-slate-50/50 border-t border-slate-100 p-5 md:p-6 md:pl-[9.5rem] animate-in slide-in-from-top-4 fade-in duration-300 print:pl-4 print:bg-white rounded-b-[1.5rem]">
+                                <div className="bg-slate-50/50 dark:bg-white/5 border-t border-slate-100 dark:border-white/10 p-5 md:p-6 md:pl-[9.5rem] animate-in slide-in-from-top-4 fade-in duration-300 print:pl-4 print:bg-white rounded-b-[1.5rem]">
                                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                     
                                     {/* Info Left */}
                                     <div className="space-y-4">
                                       <div className="flex items-start gap-3">
-                                        <div className="h-8 w-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 shadow-sm"><MapPin className="h-4 w-4 text-slate-500" /></div>
+                                        <div className="h-8 w-8 rounded-lg bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 shadow-sm"><MapPin className="h-4 w-4 text-slate-500 dark:text-slate-400" /></div>
                                         <div className="flex-1 pt-1">
-                                          <p className="text-sm font-bold text-slate-900 mb-2">{act.location || "No address provided"}</p>
-                                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(act.location || act.title)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs font-black uppercase tracking-wider text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 px-4 py-2 rounded-lg transition-colors print:hidden shadow-sm border border-indigo-100 hover:border-transparent">
+                                          <p className="text-sm font-bold text-slate-900 dark:text-slate-200 mb-2">{act.location || "No address provided"}</p>
+                                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(act.location || act.title)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 hover:text-white dark:hover:text-white bg-indigo-50 dark:bg-indigo-500/20 hover:bg-indigo-600 dark:hover:bg-indigo-500 px-4 py-2 rounded-lg transition-colors print:hidden shadow-sm border border-indigo-100 dark:border-indigo-500/30 hover:border-transparent">
                                             <Navigation className="h-3 w-3 mr-2" /> Get Directions
                                           </a>
                                         </div>
@@ -569,16 +569,16 @@ export default function ItinerariesPage() {
                                     {/* Info Right */}
                                     <div className="space-y-4">
                                       <div className="flex items-start gap-3">
-                                        <div className="h-8 w-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 shadow-sm"><Info className="h-4 w-4 text-slate-500" /></div>
+                                        <div className="h-8 w-8 rounded-lg bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 shadow-sm"><Info className="h-4 w-4 text-slate-500 dark:text-slate-400" /></div>
                                         <div className="flex-1 pt-1">
-                                          <p className="text-sm font-medium text-slate-600 leading-relaxed italic border-l-2 border-indigo-200 pl-3 py-1 bg-white rounded-r-lg shadow-sm">"{act.notes || "No additional notes for this event."}"</p>
+                                          <p className="text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed italic border-l-2 border-indigo-200 dark:border-indigo-500 pl-3 py-1 bg-white dark:bg-[#1e293b] rounded-r-lg shadow-sm">"{act.notes || "No additional notes for this event."}"</p>
                                         </div>
                                       </div>
 
                                       {/* Tracking Button */}
                                       {(act.type === 'flight' || act.type === 'train') && (
                                         <div className="flex justify-end pt-2">
-                                          <button onClick={(e) => { e.stopPropagation(); handleTrackStatus(act.title, act.type, act.trackingNumber); }} className="inline-flex items-center text-sm font-black text-white bg-slate-900 hover:bg-sky-600 px-5 py-2.5 rounded-xl transition-all shadow-lg hover:shadow-sky-500/30 print:hidden w-full md:w-auto justify-center">
+                                          <button onClick={(e) => { e.stopPropagation(); handleTrackStatus(act.title, act.type, act.trackingNumber); }} className="inline-flex items-center text-sm font-black text-white bg-slate-900 dark:bg-sky-600 hover:bg-sky-600 dark:hover:bg-sky-500 px-5 py-2.5 rounded-xl transition-all shadow-lg hover:shadow-sky-500/30 print:hidden w-full md:w-auto justify-center">
                                             <PlaneTakeoff className="h-4 w-4 mr-2" /> Live Status Tracker
                                           </button>
                                         </div>
@@ -602,46 +602,46 @@ export default function ItinerariesPage() {
 
       {/* --- AI GENERATOR MODAL --- */}
       {showAiModal && (
-        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md z-[60]">
-          <div className="bg-white rounded-[2.5rem] p-8 md:p-10 w-full max-w-xl shadow-2xl relative animate-in zoom-in-95 duration-300 overflow-hidden">
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-8 md:p-10 w-full max-w-xl shadow-2xl relative animate-in zoom-in-95 duration-300 overflow-hidden border border-transparent dark:border-white/10">
             <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-purple-500 to-indigo-500"></div>
             
-            <button onClick={() => !isAiLoading && setShowAiModal(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 p-2.5 rounded-full transition-colors">✕</button>
+            <button onClick={() => !isAiLoading && setShowAiModal(false)} className="absolute top-6 right-6 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 p-2.5 rounded-full transition-colors">✕</button>
             
             <div className="flex items-center gap-4 mb-8">
-              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center shadow-inner border border-white">
-                <Sparkles className="h-7 w-7 text-purple-600" />
+              <div className="h-14 w-14 rounded-2xl bg-gradient-to-br from-purple-100 to-indigo-100 dark:from-purple-500/20 dark:to-indigo-500/20 flex items-center justify-center shadow-inner border border-white dark:border-white/10">
+                <Sparkles className="h-7 w-7 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">AI Trip Architect</h2>
-                <p className="text-slate-500 text-sm font-bold mt-1">Powered by Gemini Engine</p>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">AI Trip Architect</h2>
+                <p className="text-slate-500 dark:text-slate-400 text-sm font-bold mt-1">Powered by Gemini Engine</p>
               </div>
             </div>
 
             {isAiLoading ? (
-              <div className="py-16 flex flex-col items-center justify-center text-center bg-slate-50 rounded-[2rem] border border-slate-100">
+              <div className="py-16 flex flex-col items-center justify-center text-center bg-slate-50 dark:bg-[#1e293b]/50 rounded-[2rem] border border-slate-100 dark:border-white/5">
                 <div className="relative">
                   <div className="absolute inset-0 bg-purple-400 blur-xl opacity-50 rounded-full animate-pulse"></div>
-                  <Loader2 className="relative h-14 w-14 text-purple-600 animate-spin mb-6" />
+                  <Loader2 className="relative h-14 w-14 text-purple-600 dark:text-purple-400 animate-spin mb-6" />
                 </div>
-                <h3 className="text-xl font-black text-slate-800 tracking-tight">Designing your dream trip...</h3>
-                <p className="text-slate-500 mt-2 font-medium">Cross-referencing locations, opening hours, and travel times. This takes about 5-10 seconds.</p>
+                <h3 className="text-xl font-black text-slate-800 dark:text-slate-200 tracking-tight">Designing your dream trip...</h3>
+                <p className="text-slate-500 dark:text-slate-400 mt-2 font-medium">Cross-referencing locations, opening hours, and travel times. This takes about 5-10 seconds.</p>
               </div>
             ) : (
               <div className="space-y-6">
                 <div>
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">Describe your ideal journey</label>
+                  <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-3">Describe your ideal journey</label>
                   <textarea 
                     value={aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
                     placeholder="e.g. Build a 3-day romantic anniversary weekend in Paris. Include a visit to the Louvre, dinner at a Michelin star restaurant, and a sunset boat cruise..."
-                    className="w-full h-40 bg-slate-50 border border-slate-200 rounded-[1.5rem] p-5 text-slate-800 focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none resize-none font-medium text-base shadow-inner transition-all leading-relaxed"
+                    className="w-full h-40 bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-[1.5rem] p-5 text-slate-800 dark:text-white focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 outline-none resize-none font-medium text-base shadow-inner transition-all leading-relaxed placeholder-slate-400 dark:placeholder-slate-500"
                   />
                 </div>
                 <button 
                   onClick={handleGenerateItinerary}
                   disabled={!aiPrompt.trim()}
-                  className="w-full bg-slate-900 text-white py-4 md:py-5 rounded-2xl font-black text-lg hover:bg-purple-600 hover:-translate-y-1 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:bg-slate-900 shadow-xl shadow-slate-900/20 flex items-center justify-center group"
+                  className="w-full bg-slate-900 dark:bg-indigo-600 text-white py-4 md:py-5 rounded-2xl font-black text-lg hover:bg-purple-600 dark:hover:bg-indigo-500 hover:-translate-y-1 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:bg-slate-900 shadow-xl shadow-slate-900/20 dark:shadow-indigo-900/30 flex items-center justify-center group"
                 >
                   <Sparkles className="h-5 w-5 mr-2 group-hover:animate-pulse" /> Generate Magic Schedule
                 </button>
@@ -653,8 +653,8 @@ export default function ItinerariesPage() {
 
       {/* --- LIVE TRACKER MODAL --- */}
       {isTrackerOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 flex items-center justify-center p-4 backdrop-blur-md z-[60]">
-          <div className="bg-slate-900 rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl relative overflow-hidden border border-slate-700 animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[60]">
+          <div className="bg-slate-900 dark:bg-[#0f172a] rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl relative overflow-hidden border border-slate-700 dark:border-white/10 animate-in zoom-in-95 duration-300">
             {/* Radar Background */}
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border border-sky-500/20 rounded-full animate-ping"></div>

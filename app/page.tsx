@@ -207,7 +207,7 @@ export default function Home() {
     }
   };
 
-  if (isAuthLoading) return <div className="h-screen flex items-center justify-center bg-slate-50"><div className="animate-spin h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full"></div></div>;
+  if (isAuthLoading) return <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-[#030712]"><div className="animate-spin h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full"></div></div>;
 
   // ==========================================
   // UN-AUTHENTICATED FLOW (LANDING PAGE OR LOGIN)
@@ -555,78 +555,78 @@ export default function Home() {
   }
 
   // ==========================================
-  // AUTHENTICATED FLOW (EXISTING DASHBOARD)
+  // AUTHENTICATED FLOW (DASHBOARD WITH DARK MODE CLASSES)
   // ==========================================
   return (
-    <div className="flex h-screen bg-[#f8fafc] font-sans text-slate-900 overflow-hidden selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="flex h-screen bg-[#f8fafc] dark:bg-[#030712] font-sans text-slate-900 dark:text-slate-100 overflow-hidden transition-colors duration-300 selection:bg-indigo-100 selection:text-indigo-900">
       
       {/* MOBILE MENU BLUR */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-40 md:hidden transition-opacity duration-300" onClick={() => setIsMobileMenuOpen(false)} />
+        <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md z-40 md:hidden transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
       {/* SIDEBAR */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 flex flex-col transform transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] print:hidden ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0`}>
-        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 shrink-0">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-[#0f172a] border-r border-slate-200 dark:border-white/10 flex flex-col transform transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] print:hidden ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0`}>
+        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-white/10 shrink-0">
           <div className="flex items-center">
-            <PlaneTakeoff className="h-6 w-6 text-indigo-600 mr-2" />
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">WanderHub</span>
+            <PlaneTakeoff className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-2" />
+            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-blue-400">WanderHub</span>
           </div>
-          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-slate-600 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors"><X className="h-5 w-5" /></button>
+          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"><X className="h-5 w-5" /></button>
         </div>
         <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
-          <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold shadow-sm transition-colors"><Map className="h-5 w-5 mr-3" /> Dashboard</Link>
-          <Link href="/itineraries" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-semibold transition-colors"><Calendar className="h-5 w-5 mr-3" /> Itineraries</Link>
-          <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-semibold transition-colors"><CreditCard className="h-5 w-5 mr-3" /> Expenses</Link>
-          <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-semibold transition-colors"><BedDouble className="h-5 w-5 mr-3" /> Book Hotels</Link>
-          <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 hover:bg-slate-50 hover:text-slate-900 rounded-xl font-semibold transition-colors"><Settings className="h-5 w-5 mr-3" /> Settings</Link>
+          <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 rounded-xl font-bold shadow-sm transition-colors border border-transparent dark:border-indigo-500/20"><Map className="h-5 w-5 mr-3" /> Dashboard</Link>
+          <Link href="/itineraries" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><Calendar className="h-5 w-5 mr-3" /> Itineraries</Link>
+          <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><CreditCard className="h-5 w-5 mr-3" /> Expenses</Link>
+          <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><BedDouble className="h-5 w-5 mr-3" /> Book Hotels</Link>
+          <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><Settings className="h-5 w-5 mr-3" /> Settings</Link>
         </nav>
       </aside>
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
         
         {/* MOBILE TOP BAR */}
-        <div className="md:hidden h-16 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-4 shrink-0 z-30 sticky top-0">
+        <div className="md:hidden h-16 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-md border-b border-slate-200 dark:border-white/10 flex items-center justify-between px-4 shrink-0 z-30 sticky top-0 transition-colors">
           <div className="flex items-center">
-            <PlaneTakeoff className="h-6 w-6 text-indigo-600 mr-2" />
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600">WanderHub</span>
+            <PlaneTakeoff className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-2" />
+            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-blue-500 dark:from-indigo-400 dark:to-blue-400">WanderHub</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full border border-slate-200 bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold uppercase text-sm shadow-sm">
+            <div className="h-8 w-8 rounded-full border border-slate-200 dark:border-white/10 bg-indigo-50 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-300 font-bold uppercase text-sm shadow-sm">
               {user.displayName?.charAt(0) || "U"}
             </div>
-            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-slate-600 hover:bg-slate-100 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
+            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
           </div>
         </div>
 
         {/* DESKTOP HEADER */}
-        <header className="hidden md:flex h-20 bg-white/80 backdrop-blur-xl border-b border-slate-200 items-center justify-between px-10 z-20 shrink-0 sticky top-0 transition-all">
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Mission Control</h2>
+        <header className="hidden md:flex h-20 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/10 items-center justify-between px-10 z-20 shrink-0 sticky top-0 transition-all">
+          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Mission Control</h2>
           
           <div className="flex items-center gap-3">
-            <button onClick={() => setIsJoinModalOpen(true)} className="flex items-center bg-white border border-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm text-sm group">
-              <Users className="h-4 w-4 mr-2 group-hover:text-indigo-600 transition-colors" /> Join Trip
+            <button onClick={() => setIsJoinModalOpen(true)} className="flex items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-white/10 transition-all shadow-sm text-sm group">
+              <Users className="h-4 w-4 mr-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" /> Join Trip
             </button>
-            <button onClick={() => setIsModalOpen(true)} className="flex items-center bg-slate-900 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-indigo-600 transition-all shadow-md hover:shadow-indigo-500/20 text-sm group">
+            <button onClick={() => setIsModalOpen(true)} className="flex items-center bg-slate-900 dark:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-all shadow-md hover:shadow-indigo-500/20 text-sm group">
               <Plus className="h-4 w-4 mr-2" /> New Trip
             </button>
             
-            <div className="flex items-center gap-3 ml-5 pl-5 border-l border-slate-200">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 text-indigo-700 font-black flex items-center justify-center text-sm shadow-sm border border-indigo-200/50">
+            <div className="flex items-center gap-3 ml-5 pl-5 border-l border-slate-200 dark:border-white/10">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-500/20 dark:to-purple-500/20 text-indigo-700 dark:text-indigo-300 font-black flex items-center justify-center text-sm shadow-sm border border-indigo-200/50 dark:border-indigo-500/30">
                 {user.displayName?.charAt(0) || "U"}
               </div>
-              <button onClick={() => signOut(auth)} className="text-slate-400 hover:text-red-500 transition-colors bg-white hover:bg-red-50 border border-slate-200 hover:border-red-200 p-2.5 rounded-xl shadow-sm" title="Log Out">
+              <button onClick={() => signOut(auth)} className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors bg-white dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-500/10 border border-slate-200 dark:border-white/10 p-2.5 rounded-xl shadow-sm" title="Log Out">
                 <LogOut className="h-4 w-4" />
               </button>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar relative z-10">
           <div className="max-w-6xl mx-auto pb-24">
             
             {/* WELCOME BANNER */}
-            <div className="mb-10 mt-2 md:mt-0 bg-gradient-to-r from-indigo-900 via-slate-900 to-purple-900 rounded-[2rem] p-8 md:p-12 text-white shadow-xl relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-700">
+            <div className="mb-10 mt-2 md:mt-0 bg-gradient-to-r from-indigo-900 via-slate-900 to-purple-900 dark:from-indigo-950 dark:via-[#0f172a] dark:to-purple-950 rounded-[2rem] p-8 md:p-12 text-white shadow-xl relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-700">
               <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2"></div>
               <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/20 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2"></div>
               
@@ -638,78 +638,78 @@ export default function Home() {
 
             {/* QUICK STATS ROW */}
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 md:gap-6 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
-              <div className="bg-white p-6 rounded-[1.5rem] border border-slate-200 shadow-sm flex items-center gap-5 hover:shadow-md transition-all hover:-translate-y-1">
-                <div className="h-14 w-14 bg-sky-50 rounded-2xl flex items-center justify-center text-sky-600 shrink-0 border border-sky-100"><Globe className="h-7 w-7" /></div>
-                <div><p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Your Trips</p><p className="text-3xl font-black text-slate-900 tracking-tighter">{trips.length}</p></div>
+              <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[1.5rem] border border-slate-200 dark:border-white/10 shadow-sm flex items-center gap-5 hover:shadow-md transition-all hover:-translate-y-1">
+                <div className="h-14 w-14 bg-sky-50 dark:bg-sky-500/10 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 border border-sky-100 dark:border-sky-500/20"><Globe className="h-7 w-7" /></div>
+                <div><p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Your Trips</p><p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{trips.length}</p></div>
               </div>
               
-              <div className="bg-white p-6 rounded-[1.5rem] border border-slate-200 shadow-sm flex items-center gap-5 cursor-pointer hover:border-emerald-300 hover:shadow-emerald-500/10 transition-all hover:-translate-y-1 group" onClick={() => setIsJoinModalOpen(true)}>
-                <div className="h-14 w-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0 border border-emerald-100 group-hover:scale-110 transition-transform"><Users className="h-7 w-7" /></div>
-                <div><p className="text-lg font-black text-slate-900 tracking-tight">Join a trip</p><p className="text-xs font-semibold text-slate-500 mt-0.5">Have an invite code?</p></div>
+              <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[1.5rem] border border-slate-200 dark:border-white/10 shadow-sm flex items-center gap-5 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-500/50 hover:shadow-emerald-500/10 transition-all hover:-translate-y-1 group" onClick={() => setIsJoinModalOpen(true)}>
+                <div className="h-14 w-14 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 border border-emerald-100 dark:border-emerald-500/20 group-hover:scale-110 transition-transform"><Users className="h-7 w-7" /></div>
+                <div><p className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Join a trip</p><p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Have an invite code?</p></div>
               </div>
 
-              <div className="bg-white p-6 rounded-[1.5rem] border border-slate-200 shadow-sm flex items-center gap-5 cursor-pointer hover:border-indigo-300 hover:shadow-indigo-500/10 transition-all hover:-translate-y-1 group sm:col-span-2 md:col-span-1" onClick={() => setIsModalOpen(true)}>
-                <div className="h-14 w-14 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 shrink-0 border border-indigo-100 border-dashed group-hover:scale-110 transition-transform"><Plus className="h-7 w-7" /></div>
-                <div><p className="text-lg font-black text-slate-900 tracking-tight">Plan new trip</p><p className="text-xs font-semibold text-slate-500 mt-0.5">Draft an itinerary</p></div>
+              <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[1.5rem] border border-slate-200 dark:border-white/10 shadow-sm flex items-center gap-5 cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:shadow-indigo-500/10 transition-all hover:-translate-y-1 group sm:col-span-2 md:col-span-1" onClick={() => setIsModalOpen(true)}>
+                <div className="h-14 w-14 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 border border-indigo-100 dark:border-indigo-500/20 border-dashed group-hover:scale-110 transition-transform"><Plus className="h-7 w-7" /></div>
+                <div><p className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Plan new trip</p><p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Draft an itinerary</p></div>
               </div>
             </div>
 
             <div className="flex justify-between items-end mb-8 px-2 md:px-0">
-              <h2 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight">Your Destinations</h2>
+              <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Your Destinations</h2>
             </div>
             
             {/* TRIPS GRID */}
             {isLoading ? (
-              <div className="flex justify-center py-20"><div className="animate-spin h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full"></div></div>
+              <div className="flex justify-center py-20"><div className="animate-spin h-10 w-10 border-4 border-indigo-600 dark:border-indigo-400 border-t-transparent rounded-full"></div></div>
             ) : trips.length === 0 ? (
-              <div className="text-center py-24 bg-white rounded-[2rem] border border-dashed border-slate-300 shadow-sm animate-in zoom-in-95 duration-500">
-                <div className="h-20 w-20 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Map className="h-10 w-10 text-slate-300" />
+              <div className="text-center py-24 bg-white dark:bg-[#0f172a] rounded-[2rem] border border-dashed border-slate-300 dark:border-slate-700 shadow-sm animate-in zoom-in-95 duration-500">
+                <div className="h-20 w-20 bg-slate-50 dark:bg-[#1e293b] rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Map className="h-10 w-10 text-slate-300 dark:text-slate-500" />
                 </div>
-                <h3 className="text-2xl font-black text-slate-900 tracking-tight">No trips found</h3>
-                <p className="text-slate-500 font-medium mt-2 mb-8">Create or join a trip to get started.</p>
-                <button onClick={() => setIsModalOpen(true)} className="bg-slate-900 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg hover:bg-indigo-600 transition-colors">Start Planning</button>
+                <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">No trips found</h3>
+                <p className="text-slate-500 dark:text-slate-400 font-medium mt-2 mb-8">Create or join a trip to get started.</p>
+                <button onClick={() => setIsModalOpen(true)} className="bg-slate-900 dark:bg-indigo-600 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors">Start Planning</button>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
                 {trips.map((trip) => (
-                  <div key={trip.id} onClick={() => router.push(`/trips/${trip.id}`)} className="group bg-white rounded-[2rem] border border-slate-200 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-2 transition-all cursor-pointer flex flex-col relative">
+                  <div key={trip.id} onClick={() => router.push(`/trips/${trip.id}`)} className="group bg-white dark:bg-[#0f172a] rounded-[2rem] border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-2 transition-all cursor-pointer flex flex-col relative">
                     
                     {/* Floating Date Badge */}
-                    <div className="absolute top-4 left-4 z-20 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-black text-slate-900 flex items-center shadow-md border border-slate-200/50">
-                      <Calendar className="h-3.5 w-3.5 mr-1.5 text-indigo-600" />
+                    <div className="absolute top-4 left-4 z-20 bg-white/95 dark:bg-black/80 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-black text-slate-900 dark:text-white flex items-center shadow-md border border-slate-200/50 dark:border-white/10">
+                      <Calendar className="h-3.5 w-3.5 mr-1.5 text-indigo-600 dark:text-indigo-400" />
                       {new Date(trip.startDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}
                     </div>
 
-                    <div className="absolute top-4 right-4 z-20 bg-slate-900/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-[10px] font-black text-white uppercase tracking-widest shadow-md">
+                    <div className="absolute top-4 right-4 z-20 bg-slate-900/90 dark:bg-indigo-600/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-[10px] font-black text-white uppercase tracking-widest shadow-md">
                       Upcoming
                     </div>
 
-                    <div className="h-48 md:h-56 bg-slate-200 relative overflow-hidden shrink-0">
+                    <div className="h-48 md:h-56 bg-slate-200 dark:bg-slate-800 relative overflow-hidden shrink-0">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={getTripImage(trip.id)} alt={trip.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out" />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity"></div>
                       <h3 className="absolute bottom-5 left-6 right-6 text-2xl font-black text-white line-clamp-1 truncate drop-shadow-lg tracking-tight">{trip.title}</h3>
                     </div>
                     
-                    <div className="p-6 flex-1 flex flex-col justify-between bg-white relative z-10">
+                    <div className="p-6 flex-1 flex flex-col justify-between bg-white dark:bg-[#0f172a] relative z-10">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center text-slate-500 font-semibold text-sm bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-100">
-                           <Users className="h-4 w-4 mr-2 text-indigo-400" /> {trip.members?.length || 1} {trip.members?.length === 1 ? 'Traveler' : 'Travelers'}
+                        <div className="flex items-center text-slate-500 dark:text-slate-400 font-semibold text-sm bg-slate-50 dark:bg-white/5 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-white/5">
+                           <Users className="h-4 w-4 mr-2 text-indigo-400 dark:text-indigo-500" /> {trip.members?.length || 1} {trip.members?.length === 1 ? 'Traveler' : 'Travelers'}
                         </div>
                         
                         <div className="flex items-center gap-3">
                           {trip.adminId === user.uid && (
                             <button 
                               onClick={(e) => handleDeleteTrip(e, trip.id, trip.title)}
-                              className="p-2 text-slate-300 hover:text-white hover:bg-red-500 rounded-xl transition-all border border-transparent hover:border-red-600 shadow-sm opacity-0 group-hover:opacity-100"
+                              className="p-2 text-slate-300 dark:text-slate-500 hover:text-white hover:bg-red-500 dark:hover:bg-red-500/80 rounded-xl transition-all border border-transparent hover:border-red-600 dark:hover:border-red-500/50 shadow-sm opacity-0 group-hover:opacity-100"
                               title="Delete Trip"
                             >
                               <Trash2 className="h-4 w-4" />
                             </button>
                           )}
                           
-                          <div className="h-10 w-10 bg-indigo-50 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 group-hover:text-white text-indigo-600 transition-colors shadow-sm">
+                          <div className="h-10 w-10 bg-indigo-50 dark:bg-indigo-500/20 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 dark:group-hover:bg-indigo-500 group-hover:text-white text-indigo-600 dark:text-indigo-400 transition-colors shadow-sm">
                             <ArrowRight className="h-5 w-5" />
                           </div>
                         </div>
@@ -725,38 +725,38 @@ export default function Home() {
 
       {/* CREATE TRIP MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-[2.5rem] p-8 md:p-10 w-full max-w-lg shadow-2xl relative animate-in zoom-in-95 duration-300">
-            <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 p-2.5 rounded-full transition-colors">✕</button>
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-8 md:p-10 w-full max-w-lg shadow-2xl relative animate-in zoom-in-95 duration-300 border border-slate-200 dark:border-white/10">
+            <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="absolute top-6 right-6 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 p-2.5 rounded-full transition-colors">✕</button>
             
             <div className="flex items-center mb-8">
-              <div className="h-14 w-14 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mr-4">
+              <div className="h-14 w-14 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mr-4 border border-indigo-200 dark:border-indigo-500/30">
                 <PlaneTakeoff className="h-7 w-7" />
               </div>
               <div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">Plan New Trip</h2>
-                <p className="text-sm font-medium text-slate-500 mt-0.5">Where are we going?</p>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Plan New Trip</h2>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">Where are we going?</p>
               </div>
             </div>
 
             <form onSubmit={handleCreateTrip} className="flex flex-col gap-6">
               <div>
-                <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Destination / Title</label>
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Summer in Tokyo" className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl p-4 outline-none font-bold text-slate-900 transition-all placeholder-slate-300 text-lg" required />
+                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Destination / Title</label>
+                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Summer in Tokyo" className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl p-4 outline-none font-bold text-slate-900 dark:text-white transition-all placeholder-slate-300 dark:placeholder-slate-600 text-lg" required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Start Date</label>
-                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl p-4 outline-none font-bold text-slate-900 transition-all cursor-pointer" required />
+                  <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Start Date</label>
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl p-4 outline-none font-bold text-slate-900 dark:text-white transition-all cursor-pointer dark:[color-scheme:dark]" required />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">End Date</label>
-                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-50 border border-slate-200 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl p-4 outline-none font-bold text-slate-900 transition-all cursor-pointer" required />
+                  <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">End Date</label>
+                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl p-4 outline-none font-bold text-slate-900 dark:text-white transition-all cursor-pointer dark:[color-scheme:dark]" required />
                 </div>
               </div>
-              <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-slate-100">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-4 text-slate-600 hover:bg-slate-100 rounded-2xl font-bold transition-colors w-full sm:w-auto">Cancel</button>
-                <button type="submit" disabled={isSubmitting} className="px-8 py-4 text-white bg-slate-900 hover:bg-indigo-600 rounded-2xl shadow-xl hover:shadow-indigo-500/30 font-black transition-all w-full sm:w-auto disabled:opacity-70 flex justify-center items-center">
+              <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-slate-100 dark:border-white/10">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-4 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-2xl font-bold transition-colors w-full sm:w-auto">Cancel</button>
+                <button type="submit" disabled={isSubmitting} className="px-8 py-4 text-white bg-slate-900 dark:bg-indigo-600 hover:bg-indigo-600 dark:hover:bg-indigo-500 rounded-2xl shadow-xl hover:shadow-indigo-500/30 dark:shadow-indigo-900/30 font-black transition-all w-full sm:w-auto disabled:opacity-70 flex justify-center items-center">
                   {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Create Trip"}
                 </button>
               </div>
@@ -767,12 +767,12 @@ export default function Home() {
 
       {/* JOIN TRIP MODAL */}
       {isJoinModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white rounded-[2.5rem] p-8 md:p-12 w-full max-w-sm shadow-2xl relative text-center animate-in zoom-in-95 duration-300">
-            <button onClick={() => !isSubmitting && setIsJoinModalOpen(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-900 bg-slate-50 hover:bg-slate-100 p-2.5 rounded-full transition-colors">✕</button>
-            <div className="h-20 w-20 bg-emerald-50 border border-emerald-100 rounded-[2rem] flex items-center justify-center text-emerald-500 mx-auto mb-6 shadow-sm rotate-3"><Users className="h-10 w-10" /></div>
-            <h2 className="text-3xl font-black text-slate-900 mb-3 tracking-tight">Join a Trip</h2>
-            <p className="text-slate-500 font-medium mb-8">Enter the 6-character code shared by your friend to sync up.</p>
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-8 md:p-12 w-full max-w-sm shadow-2xl relative text-center animate-in zoom-in-95 duration-300 border border-slate-200 dark:border-white/10">
+            <button onClick={() => !isSubmitting && setIsJoinModalOpen(false)} className="absolute top-6 right-6 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 p-2.5 rounded-full transition-colors">✕</button>
+            <div className="h-20 w-20 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-[2rem] flex items-center justify-center text-emerald-500 dark:text-emerald-400 mx-auto mb-6 shadow-sm rotate-3"><Users className="h-10 w-10" /></div>
+            <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-3 tracking-tight">Join a Trip</h2>
+            <p className="text-slate-500 dark:text-slate-400 font-medium mb-8">Enter the 6-character code shared by your friend to sync up.</p>
             <form onSubmit={handleJoinTrip} className="flex flex-col gap-6">
               <div>
                 <input 
@@ -781,11 +781,11 @@ export default function Home() {
                   onChange={(e) => setJoinCode(e.target.value.toUpperCase())} 
                   placeholder="e.g., X7B9K2" 
                   maxLength={6}
-                  className="w-full bg-slate-50 border border-slate-200 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 rounded-2xl p-5 text-center text-4xl font-black tracking-[0.3em] uppercase outline-none transition-all placeholder-slate-300" 
+                  className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/20 rounded-2xl p-5 text-center text-4xl font-black tracking-[0.3em] uppercase outline-none transition-all placeholder-slate-300 dark:placeholder-slate-600 text-slate-900 dark:text-white" 
                   required 
                 />
               </div>
-              <button type="submit" disabled={isSubmitting} className="w-full bg-slate-900 hover:bg-emerald-500 text-white py-5 rounded-2xl shadow-xl hover:shadow-emerald-500/30 font-black transition-all text-lg disabled:opacity-70 flex justify-center items-center">
+              <button type="submit" disabled={isSubmitting} className="w-full bg-slate-900 dark:bg-emerald-600 hover:bg-emerald-500 dark:hover:bg-emerald-500 text-white py-5 rounded-2xl shadow-xl hover:shadow-emerald-500/30 dark:shadow-emerald-900/30 font-black transition-all text-lg disabled:opacity-70 flex justify-center items-center">
                 {isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : "Join Adventure"}
               </button>
             </form>

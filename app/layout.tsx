@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-//import ThemeListener from "./ThemeListener"; // <-- 1. WE IMPORT THE LISTENER HERE
+import ThemeListener from "./ThemeListener"; // <-- UNCOMMENTED!
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,7 +13,6 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-// <-- 2. UPDATED YOUR SEO METADATA TO LOOK PROFESSIONAL
 export const metadata: Metadata = {
   title: "WanderHub | Group Travel Planner",
   description: "Collaborative itineraries, hotel bookings, and expense splitting.",
@@ -28,9 +27,14 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning 
     >
-      <body className="min-h-full flex flex-col bg-slate-50 dark:bg-slate-950 transition-colors duration-300">
-        {/*<ThemeListener />*/} {/* <-- 3. WE DROP THE LISTENER RIGHT INSIDE THE BODY */}
+      {/* suppressHydrationWarning stops Next.js from complaining about the dark class being added dynamically */}
+      <body className="min-h-full flex flex-col bg-slate-50 dark:bg-[#030712] transition-colors duration-300">
+        
+        {/* THIS NOW RUNS ON EVERY SINGLE PAGE */}
+        <ThemeListener /> 
+        
         {children}
       </body>
     </html>
