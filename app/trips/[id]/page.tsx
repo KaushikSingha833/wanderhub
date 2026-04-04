@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import { doc, getDoc, collection, addDoc, onSnapshot, query, where, orderBy, updateDoc, arrayRemove, deleteField, deleteDoc } from "firebase/firestore"; 
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db } from "../../lib/firebase"; 
-import { ArrowLeft, Calendar, Plus, Plane, Hotel, Utensils, Map as MapIcon, Clock, Crown, UserMinus, LogOut, Users, CheckSquare, Square, Trash2, BaggageClaim, MapPin, FileText, Hash, X } from "lucide-react";
+import { ArrowLeft, Calendar, Plus, Plane, Hotel, Utensils, Map as MapIcon, Clock, Crown, UserMinus, LogOut, Users, CheckSquare, Square, Trash2, BaggageClaim, MapPin, FileText, Hash, X, Edit2 } from "lucide-react";
 
 interface Trip {
   id: string; title: string; startDate: string; endDate: string; inviteCode?: string;
@@ -42,9 +42,11 @@ export default function TripDetails() {
   const [packingItems, setPackingItems] = useState<PackingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Modal State
+  // Modal & Activity State
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingActivityId, setEditingActivityId] = useState<string | null>(null); // <-- NEW: Tracks if we are editing
+  
   const [actTitle, setActTitle] = useState(""); const [actType, setActType] = useState("activity");
   const [actDate, setActDate] = useState(""); const [actTime, setActTime] = useState("");
   const [actLocation, setActLocation] = useState(""); 
@@ -102,16 +104,60 @@ export default function TripDetails() {
   };
 
   // --- ACTIVITY LOGIC ---
-  const handleAddActivity = async (e: React.FormEvent) => {
+  
+  // NEW: Open Modal for ADDING
+  const openAddModal = () => {
+    setEditingActivityId(null);
+    setActTitle(""); setActType("activity"); setActDate(""); setActTime("");
+    setActLocation(""); setActNotes(""); setActTrackingNum("");
+    setIsActivityModalOpen(true);
+  };
+
+  // NEW: Open Modal for EDITING
+  const openEditModal = (act: Activity) => {
+    setEditingActivityId(act.id);
+    setActTitle(act.title); setActType(act.type); setActDate(act.date); setActTime(act.time);
+    setActLocation(act.location || ""); setActNotes(act.notes || ""); setActTrackingNum(act.trackingNumber || "");
+    setIsActivityModalOpen(true);
+  };
+
+  // NEW: Handles BOTH Add and Update
+  const handleSubmitActivity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!actTitle || !actDate || !actTime) return;
     setIsSubmitting(true);
     try {
-      await addDoc(collection(db, "activities"), { tripId, title: actTitle, type: actType, date: actDate, time: actTime, location: actLocation, notes: actNotes, trackingNumber: actTrackingNum, createdAt: new Date() });
+      if (editingActivityId) {
+        // UPDATE EXISTING
+        await updateDoc(doc(db, "activities", editingActivityId), { 
+          title: actTitle, type: actType, date: actDate, time: actTime, 
+          location: actLocation, notes: actNotes, trackingNumber: actTrackingNum 
+        });
+      } else {
+        // ADD NEW
+        await addDoc(collection(db, "activities"), { 
+          tripId, title: actTitle, type: actType, date: actDate, time: actTime, 
+          location: actLocation, notes: actNotes, trackingNumber: actTrackingNum, createdAt: new Date() 
+        });
+      }
       setActTitle(""); setActLocation(""); setActNotes(""); setActTrackingNum("");
       setIsActivityModalOpen(false);
-    } catch (error) { console.error("Error adding activity:", error); } 
+      setEditingActivityId(null); // Reset state
+    } catch (error) { console.error("Error saving activity:", error); } 
     finally { setIsSubmitting(false); }
+  };
+
+  // NEW: Delete Activity
+  const handleDeleteActivity = async (id: string) => {
+    if (confirm("Are you sure you want to delete this activity?")) {
+      try { await deleteDoc(doc(db, "activities", id)); }
+      catch (error) { console.error("Error deleting activity:", error); }
+    }
+  };
+
+  const closeActivityModal = () => {
+    setIsActivityModalOpen(false);
+    setEditingActivityId(null);
   };
 
   // --- PACKING LIST LOGIC ---
@@ -200,7 +246,7 @@ export default function TripDetails() {
               <h2 className="text-2xl font-black text-slate-900 dark:text-white">Itinerary</h2>
               <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mt-1">Your detailed day-by-day plan.</p>
             </div>
-            <button onClick={() => setIsActivityModalOpen(true)} className="flex items-center bg-indigo-600 dark:bg-indigo-500 text-white px-5 py-3 rounded-2xl font-bold hover:bg-indigo-700 dark:hover:bg-indigo-600 hover:shadow-lg hover:-translate-y-0.5 transition-all shadow-indigo-600/20 dark:shadow-none">
+            <button onClick={openAddModal} className="flex items-center bg-indigo-600 dark:bg-indigo-500 text-white px-5 py-3 rounded-2xl font-bold hover:bg-indigo-700 dark:hover:bg-indigo-600 hover:shadow-lg hover:-translate-y-0.5 transition-all shadow-indigo-600/20 dark:shadow-none">
               <Plus className="h-5 w-5 mr-2" /> Add Event
             </button>
           </div>
@@ -228,8 +274,19 @@ export default function TripDetails() {
                     </div>
                     
                     {/* Activity Card */}
-                    <div className="flex-1 bg-white dark:bg-[#1e293b]/50 p-6 rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-xl hover:border-indigo-100 dark:hover:border-indigo-500/30 transition-all duration-300 group-hover:-translate-y-1">
-                      <div className="flex flex-wrap justify-between items-start gap-4 mb-3">
+                    <div className="flex-1 relative bg-white dark:bg-[#1e293b]/50 p-6 rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-xl hover:border-indigo-100 dark:hover:border-indigo-500/30 transition-all duration-300 group-hover:-translate-y-1">
+                      
+                      {/* --- NEW: EDIT & DELETE BUTTONS ON HOVER --- */}
+                      <div className="absolute top-4 right-4 flex opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 dark:bg-[#1e293b]/80 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-slate-100 dark:border-white/10">
+                        <button onClick={() => openEditModal(act)} className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" title="Edit Activity">
+                          <Edit2 className="h-4 w-4" />
+                        </button>
+                        <button onClick={() => handleDeleteActivity(act.id)} className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors" title="Delete Activity">
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+
+                      <div className="flex flex-wrap justify-between items-start gap-4 mb-3 pr-16">
                         <div className="flex items-center gap-3">
                           <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1 rounded-full">{act.type}</span>
                           <span className="text-sm font-bold text-slate-400 dark:text-slate-500 flex items-center"><Calendar className="h-3.5 w-3.5 mr-1.5" /> {act.date}</span>
@@ -356,25 +413,29 @@ export default function TripDetails() {
         </div>
       </div>
 
-      {/* ACTIVITY MODAL */}
+      {/* ACTIVITY MODAL (SHARED FOR ADD & EDIT) */}
       {isActivityModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-8 md:p-10 w-full max-w-lg shadow-2xl relative transform transition-all border border-transparent dark:border-white/10">
-            <button onClick={() => !isSubmitting && setIsActivityModalOpen(false)} className="absolute top-6 right-6 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 p-2.5 rounded-full transition-colors">
+            <button onClick={() => !isSubmitting && closeActivityModal()} className="absolute top-6 right-6 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 p-2.5 rounded-full transition-colors">
               <X className="h-5 w-5" />
             </button>
             
             <div className="flex items-center mb-8">
               <div className="h-12 w-12 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mr-4 border border-transparent dark:border-indigo-500/30">
-                <Plus className="h-6 w-6" />
+                {editingActivityId ? <Edit2 className="h-6 w-6" /> : <Plus className="h-6 w-6" />}
               </div>
               <div>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white">Add to Itinerary</h2>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">Create a new schedule block.</p>
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white">
+                  {editingActivityId ? "Edit Activity" : "Add to Itinerary"}
+                </h2>
+                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                  {editingActivityId ? "Update your schedule details." : "Create a new schedule block."}
+                </p>
               </div>
             </div>
 
-            <form onSubmit={handleAddActivity} className="flex flex-col gap-5">
+            <form onSubmit={handleSubmitActivity} className="flex flex-col gap-5">
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="col-span-2">
@@ -422,9 +483,9 @@ export default function TripDetails() {
               </div>
 
               <div className="flex justify-end gap-3 mt-4 pt-6 border-t border-slate-100 dark:border-white/10">
-                <button type="button" onClick={() => setIsActivityModalOpen(false)} className="px-6 py-3.5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-2xl font-bold transition-colors w-full sm:w-auto">Cancel</button>
+                <button type="button" onClick={closeActivityModal} className="px-6 py-3.5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-2xl font-bold transition-colors w-full sm:w-auto">Cancel</button>
                 <button type="submit" disabled={isSubmitting} className="px-8 py-3.5 text-white bg-slate-900 dark:bg-indigo-600 hover:bg-indigo-600 dark:hover:bg-indigo-500 rounded-2xl shadow-xl hover:shadow-indigo-500/30 dark:shadow-indigo-900/30 font-black transition-all w-full sm:w-auto disabled:opacity-70 flex justify-center items-center">
-                  {isSubmitting ? <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Add Event"}
+                  {isSubmitting ? <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : (editingActivityId ? "Save Changes" : "Add Event")}
                 </button>
               </div>
             </form>

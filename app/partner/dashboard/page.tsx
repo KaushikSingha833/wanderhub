@@ -2,10 +2,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, collection, addDoc, query, where, onSnapshot, deleteDoc, updateDoc, orderBy } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, query, where, onSnapshot, deleteDoc, updateDoc, orderBy, deleteField } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase"; 
 import { useCurrency } from "../../lib/useCurrency"; // <-- CURRENCY ENGINE
-import { Building2, Plus, BedDouble, Trash2, IndianRupee, Loader2, AlertTriangle, LogOut, Image as ImageIcon, CheckCircle2, TrendingUp, ShieldCheck, MapPin, AlignLeft, Tags, Inbox, Check, XCircle, Clock, Users } from "lucide-react";
+import { Building2, Plus, BedDouble, Trash2, IndianRupee, Loader2, AlertTriangle, LogOut, Image as ImageIcon, CheckCircle2, TrendingUp, ShieldCheck, MapPin, AlignLeft, Tags, Inbox, Check, XCircle, Clock, Users, ArrowRightCircle, Settings, Wallet, Smartphone } from "lucide-react";
 import { signOut } from "firebase/auth";
 
 interface Room {
@@ -32,6 +32,14 @@ interface Booking {
   totalPriceBase: number;
   status: "Pending" | "Approved" | "Declined";
   createdAt: any;
+  // --- NEW: TRANSACTION ID ---
+  transactionId?: string;
+  // --- NEW: EXTENSION ENGINE ---
+  extensionRequest?: {
+    requestedCheckOut: string;
+    extraPriceBase: number;
+    status: "Pending" | "Declined";
+  };
 }
 
 export default function PartnerDashboard() {
@@ -54,6 +62,10 @@ export default function PartnerDashboard() {
   const [newRoomPrice, setNewRoomPrice] = useState("");
   const [newRoomDesc, setNewRoomDesc] = useState("");
   const [newRoomImage, setNewRoomImage] = useState("");
+
+  // --- NEW: PAYMENT SETTINGS STATE ---
+  const [upiId, setUpiId] = useState("");
+  const [isSavingUpi, setIsSavingUpi] = useState(false);
 
   const { symbol, convert } = useCurrency();
 
@@ -79,6 +91,12 @@ export default function PartnerDashboard() {
           }
 
           setUserProfile(profile);
+
+          // Pre-fill UPI ID if they already saved it
+          if (profile.upiId) {
+            setUpiId(profile.upiId);
+          }
+
         } else {
           router.push("/");
         }
@@ -177,6 +195,50 @@ export default function PartnerDashboard() {
     }
   };
 
+  // --- NEW: EXTENSION HANDLERS ---
+  const handleApproveExtension = async (booking: Booking) => {
+    if (!booking.extensionRequest) return;
+    try {
+      await updateDoc(doc(db, "bookings", booking.id), {
+        checkOut: booking.extensionRequest.requestedCheckOut,
+        totalPriceBase: booking.totalPriceBase + booking.extensionRequest.extraPriceBase,
+        extensionRequest: deleteField() // Deletes the request object completely
+      });
+    } catch (error) {
+      console.error("Error approving extension:", error);
+      alert("Failed to approve extension.");
+    }
+  };
+
+  const handleDeclineExtension = async (bookingId: string) => {
+    try {
+      await updateDoc(doc(db, "bookings", bookingId), {
+        "extensionRequest.status": "Declined"
+      });
+    } catch (error) {
+      console.error("Error declining extension:", error);
+    }
+  };
+
+  // --- NEW: SAVE UPI ID ---
+  const handleSaveUpi = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userProfile) return;
+    setIsSavingUpi(true);
+    try {
+      await updateDoc(doc(db, "users", userProfile.uid), {
+        upiId: upiId.trim()
+      });
+      setUserProfile({ ...userProfile, upiId: upiId.trim() });
+      alert("Payment Settings updated successfully! You can now receive direct UPI payments.");
+    } catch (error) {
+      console.error("Error saving UPI:", error);
+      alert("Failed to save UPI settings.");
+    } finally {
+      setIsSavingUpi(false);
+    }
+  };
+
   const handleLogout = () => {
     signOut(auth);
     router.push("/");
@@ -222,7 +284,8 @@ export default function PartnerDashboard() {
     );
   }
 
-  const pendingBookingsCount = bookings.filter(b => b.status === "Pending").length;
+  // --- UPDATED: Count pending bookings AND pending extension requests ---
+  const pendingBookingsCount = bookings.filter(b => b.status === "Pending" || (b.extensionRequest && b.extensionRequest.status === "Pending")).length;
 
   // APPROVED DASHBOARD STATE
   return (
@@ -268,6 +331,14 @@ export default function PartnerDashboard() {
             )}
           </button>
 
+          {/* --- NEW: PAYMENT SETTINGS BUTTON --- */}
+          <button 
+            onClick={() => setActiveTab("settings")}
+            className={`w-full ${activeTab === "settings" ? "bg-white/10 text-white shadow-inner border border-white/5" : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"} px-4 py-3.5 rounded-2xl font-bold flex items-center cursor-pointer backdrop-blur-sm transition-all`}
+          >
+            <Settings className={`h-5 w-5 mr-3 ${activeTab === "settings" ? "text-indigo-400" : ""}`} /> Payment Settings
+          </button>
+
         </div>
 
         <div className="p-6 border-t border-white/10 relative z-10">
@@ -288,10 +359,14 @@ export default function PartnerDashboard() {
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
             <div>
               <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
-                {activeTab === "inventory" ? "Manage Inventory" : "Booking Requests"}
+                {activeTab === "inventory" && "Manage Inventory"}
+                {activeTab === "inbox" && "Booking Requests"}
+                {activeTab === "settings" && "Payment Configuration"}
               </h1>
               <p className="text-slate-500 font-medium mt-2 text-lg">
-                {activeTab === "inventory" ? "Add and update rooms to push live to WanderHub." : "Review and approve incoming reservations."}
+                {activeTab === "inventory" && "Add and update rooms to push live to WanderHub."}
+                {activeTab === "inbox" && "Review and approve incoming reservations."}
+                {activeTab === "settings" && "Set up direct payment methods for your hotel."}
               </p>
             </div>
             <div className="flex items-center gap-2 bg-indigo-50 border border-indigo-100 px-4 py-2.5 rounded-xl">
@@ -323,6 +398,7 @@ export default function PartnerDashboard() {
 
                 <div className="bg-gradient-to-br from-indigo-900 to-slate-900 p-6 rounded-[2rem] shadow-lg flex flex-col justify-center text-white relative overflow-hidden group">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/30 rounded-full blur-[40px] group-hover:bg-indigo-400/40 transition-colors"></div>
+                  <div className="absolute inset-0 opacity-10 mix-blend-soft-light bg-slate-500/10 pointer-events-none"></div>
                   <div className="relative z-10">
                     <p className="text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-1">WanderHub Platform Fee</p>
                     <h3 className="text-4xl font-black tracking-tighter">0%</h3>
@@ -450,7 +526,7 @@ export default function PartnerDashboard() {
                 </div>
               </div>
             </>
-          ) : (
+          ) : activeTab === "inbox" ? (
             // --- INBOX TAB CONTENT ---
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-slate-200 min-h-[500px]">
@@ -475,8 +551,22 @@ export default function PartnerDashboard() {
                       const isApproved = booking.status === "Approved";
                       const isDeclined = booking.status === "Declined";
 
+                      // --- LIVE STATUS ENGINE ---
+                      const today = new Date(); today.setHours(0,0,0,0);
+                      const checkInDate = new Date(booking.checkIn); checkInDate.setHours(0,0,0,0);
+                      const checkOutDate = new Date(booking.checkOut); checkOutDate.setHours(0,0,0,0);
+                      
+                      let liveStatus = "";
+                      let liveColor = "";
+                      
+                      if (isApproved) {
+                        if (today < checkInDate) { liveStatus = "Upcoming Arrival"; liveColor = "text-sky-600 bg-sky-50 border-sky-200"; }
+                        else if (today >= checkInDate && today < checkOutDate) { liveStatus = "Currently Occupied"; liveColor = "text-emerald-600 bg-emerald-50 border-emerald-200"; }
+                        else if (today >= checkOutDate) { liveStatus = "Checked-Out"; liveColor = "text-slate-500 bg-slate-100 border-slate-200"; }
+                      }
+
                       return (
-                        <div key={booking.id} className={`bg-white rounded-3xl border ${isPending ? 'border-amber-200 shadow-amber-500/10 shadow-md' : 'border-slate-200 shadow-sm'} overflow-hidden flex flex-col transition-all group`}>
+                        <div key={booking.id} className={`bg-white rounded-3xl border ${isPending ? 'border-amber-200 shadow-amber-500/10 shadow-md' : 'border-slate-200 shadow-sm'} overflow-hidden flex flex-col transition-all group relative`}>
                           <div className={`px-6 py-4 flex justify-between items-center ${isPending ? 'bg-amber-50' : 'bg-slate-50'} border-b border-slate-100`}>
                             <div className="flex items-center gap-3">
                               <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center text-slate-400 font-black shadow-sm border border-slate-100">
@@ -488,13 +578,58 @@ export default function PartnerDashboard() {
                               </div>
                             </div>
                             
-                            <div className="text-right">
-                              <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-0.5">Status</p>
+                            <div className="text-right flex flex-col items-end gap-2">
                               {isPending && <span className="inline-flex items-center text-amber-600 bg-amber-100 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest"><Clock className="h-3 w-3 mr-1.5"/> Pending</span>}
                               {isApproved && <span className="inline-flex items-center text-emerald-600 bg-emerald-100 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest"><CheckCircle2 className="h-3 w-3 mr-1.5"/> Approved</span>}
                               {isDeclined && <span className="inline-flex items-center text-red-600 bg-red-100 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest"><XCircle className="h-3 w-3 mr-1.5"/> Declined</span>}
+                              
+                              {/* LIVE OCCUPANCY BADGE */}
+                              {isApproved && liveStatus && (
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest border ${liveColor}`}>
+                                  {liveStatus}
+                                </span>
+                              )}
                             </div>
                           </div>
+
+                          {/* --- NEW: SHOW UTR ID TO HOTEL OWNER --- */}
+                          {booking.transactionId && booking.transactionId !== "Pending" && booking.transactionId !== "Pay at Hotel" && (
+                            <div className="bg-slate-50 border-b border-slate-100 p-4 px-6 flex items-center gap-3">
+                              <div className="h-8 w-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shrink-0"><Smartphone className="h-4 w-4" /></div>
+                              <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">UPI Payment Received</p>
+                                <p className="text-sm font-bold text-slate-900 flex items-center">
+                                  UTR: <span className="font-mono text-emerald-600 ml-1 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 tracking-wider">{booking.transactionId}</span>
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                          {booking.transactionId === "Pay at Hotel" && (
+                            <div className="bg-slate-50 border-b border-slate-100 p-4 px-6 flex items-center gap-3">
+                              <div className="h-8 w-8 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center shrink-0"><Clock className="h-4 w-4" /></div>
+                              <div>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">Payment Method</p>
+                                <p className="text-sm font-bold text-slate-900">Pay at Hotel</p>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* --- EXTENSION REQUEST BANNER (ONLY SHOWS IF PENDING) --- */}
+                          {booking.extensionRequest && booking.extensionRequest.status === "Pending" && (
+                            <div className="bg-indigo-50 border-b border-indigo-100 p-4 px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                              <div className="flex items-center gap-3">
+                                <div className="h-8 w-8 bg-indigo-500/20 text-indigo-600 rounded-full flex items-center justify-center shrink-0"><ArrowRightCircle className="h-4 w-4" /></div>
+                                <div>
+                                  <p className="text-sm font-bold text-indigo-900">Extension Request: Stay until {new Date(booking.extensionRequest.requestedCheckOut).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}</p>
+                                  <p className="text-xs font-medium text-indigo-600">Additional Revenue: {symbol}{convert(booking.extensionRequest.extraPriceBase).toLocaleString(undefined, {maximumFractionDigits: 0})}</p>
+                                </div>
+                              </div>
+                              <div className="flex gap-2 w-full sm:w-auto">
+                                <button onClick={() => handleDeclineExtension(booking.id)} className="flex-1 sm:flex-none px-4 py-2 bg-white text-red-600 border border-red-200 hover:bg-red-50 rounded-lg text-xs font-black transition-colors">Decline</button>
+                                <button onClick={() => handleApproveExtension(booking)} className="flex-1 sm:flex-none px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-500 rounded-lg text-xs font-black transition-colors shadow-sm">Approve Extension</button>
+                              </div>
+                            </div>
+                          )}
 
                           <div className="p-6 flex flex-col md:flex-row justify-between gap-6 items-center">
                             <div className="flex-1 w-full grid grid-cols-2 md:grid-cols-4 gap-6">
@@ -535,7 +670,54 @@ export default function PartnerDashboard() {
                 )}
               </div>
             </div>
-          )}
+          ) : activeTab === "settings" ? (
+            // --- NEW: PAYMENT SETTINGS TAB ---
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto mt-4">
+              <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-slate-200">
+                <div className="flex items-center mb-8">
+                  <div className="h-14 w-14 bg-indigo-100 rounded-2xl flex items-center justify-center mr-5">
+                    <Wallet className="h-7 w-7 text-indigo-600" />
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight">Direct Payments</h3>
+                    <p className="text-sm font-medium text-slate-500 mt-1">Configure your UPI ID to receive zero-fee transfers.</p>
+                  </div>
+                </div>
+
+                <div className="bg-emerald-50 border border-emerald-100 rounded-2xl p-5 mb-8">
+                  <h4 className="text-sm font-bold text-emerald-900 mb-1 flex items-center">
+                    <ShieldCheck className="h-4 w-4 mr-1.5 text-emerald-600" /> Zero Transaction Fees
+                  </h4>
+                  <p className="text-xs font-medium text-emerald-700 leading-relaxed">
+                    By saving your Business UPI ID here, WanderHub will automatically generate deep-links for your customers. Payments will go directly to your bank account with 0% commission.
+                  </p>
+                </div>
+
+                <form onSubmit={handleSaveUpi} className="space-y-6">
+                  <div>
+                    <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-2 ml-1">Your Business UPI ID</label>
+                    <input 
+                      type="text" 
+                      value={upiId} 
+                      onChange={(e) => setUpiId(e.target.value.toLowerCase())} 
+                      placeholder="e.g., hotelname@okaxis" 
+                      required 
+                      className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none font-bold text-slate-900 transition-all placeholder-slate-400 text-lg" 
+                    />
+                    <p className="text-[10px] font-medium text-slate-500 mt-2 ml-2">Make sure this is linked to your business account.</p>
+                  </div>
+
+                  <button 
+                    type="submit" 
+                    disabled={isSavingUpi} 
+                    className="w-full bg-slate-900 text-white font-black py-4 rounded-2xl shadow-xl hover:shadow-slate-900/30 hover:bg-slate-800 transition-all disabled:opacity-50 flex justify-center items-center"
+                  >
+                    {isSavingUpi ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save Payment Settings"}
+                  </button>
+                </form>
+              </div>
+            </div>
+          ) : null}
 
         </div>
       </main>

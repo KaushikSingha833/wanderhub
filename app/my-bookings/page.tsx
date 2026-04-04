@@ -6,7 +6,7 @@ import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase"; 
 import { useCurrency } from "../lib/useCurrency"; 
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, BedDouble, Menu, X, Clock, CheckCircle2, XCircle, Trash2, MapPin, Users, Shield, Loader2, ArrowLeft, History, Search } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, BedDouble, Menu, X, Clock, CheckCircle2, XCircle, Trash2, MapPin, Users, Shield, Loader2, ArrowLeft, History, Search, PlusSquare } from "lucide-react";
 
 interface Booking {
   id: string;
@@ -21,6 +21,12 @@ interface Booking {
   totalPriceBase: number;
   status: "Pending" | "Approved" | "Declined" | "Cancelled";
   createdAt: any;
+  // --- NEW: EXTENSION ENGINE ---
+  extensionRequest?: {
+    requestedCheckOut: string;
+    extraPriceBase: number;
+    status: "Pending" | "Declined";
+  };
 }
 
 export default function MyBookingsPage() {
@@ -29,6 +35,11 @@ export default function MyBookingsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // --- NEW: EXTENSION MODAL STATE ---
+  const [extendBooking, setExtendBooking] = useState<Booking | null>(null);
+  const [newCheckOut, setNewCheckOut] = useState("");
+  const [isExtending, setIsExtending] = useState(false);
 
   const { symbol, convert } = useCurrency();
 
@@ -76,6 +87,53 @@ export default function MyBookingsPage() {
     } catch (error) {
       console.error("Error deleting booking:", error);
       alert("Failed to delete booking history.");
+    }
+  };
+
+  // --- NEW: SMART EXTENSION LOGIC ---
+  const calculateNights = (start: string, end: string) => {
+    if (!start || !end) return 1;
+    const d1 = new Date(start); d1.setHours(0,0,0,0);
+    const d2 = new Date(end); d2.setHours(0,0,0,0);
+    const diffDays = Math.ceil((d2.getTime() - d1.getTime()) / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 1;
+  };
+
+  const handleRequestExtension = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!extendBooking || !newCheckOut) return;
+
+    const dCurrent = new Date(extendBooking.checkOut); dCurrent.setHours(0,0,0,0);
+    const dNew = new Date(newCheckOut); dNew.setHours(0,0,0,0);
+    
+    if (dNew <= dCurrent) {
+      alert("New check-out date must be after your current check-out date.");
+      return;
+    }
+
+    setIsExtending(true);
+    
+    // Calculate how much they owe for the extra days based on their original booking rate
+    const currentNights = calculateNights(extendBooking.checkIn, extendBooking.checkOut);
+    const pricePerNightBase = extendBooking.totalPriceBase / currentNights;
+    const extraNights = calculateNights(extendBooking.checkOut, newCheckOut);
+    const extraPriceBase = pricePerNightBase * extraNights;
+
+    try {
+      await updateDoc(doc(db, "bookings", extendBooking.id), {
+        extensionRequest: {
+          requestedCheckOut: newCheckOut,
+          extraPriceBase: extraPriceBase,
+          status: "Pending"
+        }
+      });
+      setExtendBooking(null);
+      setNewCheckOut("");
+    } catch (error) {
+      console.error("Error requesting extension:", error);
+      alert("Failed to request extension.");
+    } finally {
+      setIsExtending(false);
     }
   };
 
@@ -157,6 +215,7 @@ export default function MyBookingsPage() {
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
                   const checkoutDate = new Date(booking.checkOut);
+                  checkoutDate.setHours(0, 0, 0, 0);
                   const isPastCheckout = checkoutDate < today;
 
                   // Evaluate current state based on DB status AND the current date
@@ -187,16 +246,30 @@ export default function MyBookingsPage() {
                           </div>
                         </div>
 
-                        <div className="flex items-center shrink-0">
-                          {isPending && <span className="inline-flex items-center text-amber-600 bg-amber-100 dark:bg-amber-500/20 dark:text-amber-400 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><Clock className="h-3.5 w-3.5 mr-1.5"/> Pending Approval</span>}
-                          {isApproved && <span className="inline-flex items-center text-emerald-600 bg-emerald-100 dark:bg-emerald-500/20 dark:text-emerald-400 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><CheckCircle2 className="h-3.5 w-3.5 mr-1.5"/> Confirmed</span>}
+                        <div className="flex flex-col items-end gap-2 shrink-0">
+                          <div>
+                            {isPending && <span className="inline-flex items-center text-amber-600 bg-amber-100 dark:bg-amber-500/20 dark:text-amber-400 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><Clock className="h-3.5 w-3.5 mr-1.5"/> Pending Approval</span>}
+                            {isApproved && <span className="inline-flex items-center text-emerald-600 bg-emerald-100 dark:bg-emerald-500/20 dark:text-emerald-400 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><CheckCircle2 className="h-3.5 w-3.5 mr-1.5"/> Confirmed</span>}
+                            
+                            {/* --- DYNAMIC BADGES --- */}
+                            {isCompleted && <span className="inline-flex items-center text-slate-600 bg-slate-200 dark:bg-white/10 dark:text-slate-300 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><History className="h-3.5 w-3.5 mr-1.5"/> Completed Trip</span>}
+                            {isExpired && <span className="inline-flex items-center text-slate-500 bg-slate-100 dark:bg-black/40 dark:text-slate-400 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><Clock className="h-3.5 w-3.5 mr-1.5"/> Request Expired</span>}
+                            
+                            {isDeclined && <span className="inline-flex items-center text-red-600 bg-red-100 dark:bg-red-500/20 dark:text-red-400 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><XCircle className="h-3.5 w-3.5 mr-1.5"/> Declined by Hotel</span>}
+                            {isCancelled && <span className="inline-flex items-center text-slate-600 bg-slate-200 dark:bg-white/10 dark:text-slate-300 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><XCircle className="h-3.5 w-3.5 mr-1.5"/> Cancelled by You</span>}
+                          </div>
                           
-                          {/* --- NEW DYNAMIC BADGES --- */}
-                          {isCompleted && <span className="inline-flex items-center text-slate-600 bg-slate-200 dark:bg-white/10 dark:text-slate-300 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><History className="h-3.5 w-3.5 mr-1.5"/> Completed Trip</span>}
-                          {isExpired && <span className="inline-flex items-center text-slate-500 bg-slate-100 dark:bg-black/40 dark:text-slate-400 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><Clock className="h-3.5 w-3.5 mr-1.5"/> Request Expired</span>}
-                          
-                          {isDeclined && <span className="inline-flex items-center text-red-600 bg-red-100 dark:bg-red-500/20 dark:text-red-400 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><XCircle className="h-3.5 w-3.5 mr-1.5"/> Declined by Hotel</span>}
-                          {isCancelled && <span className="inline-flex items-center text-slate-600 bg-slate-200 dark:bg-white/10 dark:text-slate-300 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><XCircle className="h-3.5 w-3.5 mr-1.5"/> Cancelled by You</span>}
+                          {/* SHOW EXTENSION REQUEST STATUS IF THEY MADE ONE */}
+                          {booking.extensionRequest && booking.extensionRequest.status === "Pending" && (
+                            <span className="inline-flex items-center text-indigo-600 bg-indigo-100 dark:bg-indigo-500/20 dark:text-indigo-400 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest shadow-sm">
+                              <PlusSquare className="h-3 w-3 mr-1" /> Extension Pending
+                            </span>
+                          )}
+                          {booking.extensionRequest && booking.extensionRequest.status === "Declined" && (
+                            <span className="inline-flex items-center text-red-600 bg-red-100 dark:bg-red-500/20 dark:text-red-400 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest shadow-sm">
+                              <XCircle className="h-3 w-3 mr-1" /> Extension Declined
+                            </span>
+                          )}
                         </div>
                       </div>
 
@@ -225,11 +298,26 @@ export default function MyBookingsPage() {
                       {/* Action Bar */}
                       <div className="px-6 md:px-8 py-4 bg-slate-50/50 dark:bg-[#1e293b]/30 border-t border-slate-100 dark:border-white/5 flex justify-end gap-3">
                         {/* Users can only cancel if the trip hasn't ended yet */}
-                        {(isPending || isApproved) && (
+                        {isPending && (
                           <button onClick={() => handleCancelBooking(booking.id)} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 px-4 py-2 rounded-lg text-xs font-black transition-colors border border-transparent hover:border-red-100 dark:hover:border-red-500/20">
-                            Cancel Booking
+                            Cancel Request
                           </button>
                         )}
+                        
+                        {isApproved && (
+                          <>
+                            {/* ONLY SHOW EXTEND BUTTON IF THEY DON'T HAVE A PENDING REQUEST ALREADY */}
+                            {!booking.extensionRequest || booking.extensionRequest.status === "Declined" ? (
+                              <button onClick={() => setExtendBooking(booking)} className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 px-4 py-2 rounded-lg text-xs font-black transition-colors shadow-sm flex items-center border border-transparent hover:border-indigo-200 dark:hover:border-indigo-500/30">
+                                <PlusSquare className="h-3.5 w-3.5 mr-1.5" /> Extend Stay
+                              </button>
+                            ) : null}
+                            <button onClick={() => handleCancelBooking(booking.id)} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 px-4 py-2 rounded-lg text-xs font-black transition-colors border border-transparent hover:border-red-100 dark:hover:border-red-500/20">
+                              Cancel Booking
+                            </button>
+                          </>
+                        )}
+                        
                         {/* Users can remove past/dead bookings to clean up their view */}
                         {(isInactive) && (
                           <button onClick={() => handleDeleteHistory(booking.id)} className="text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white px-4 py-2 rounded-lg text-xs font-black transition-colors flex items-center">
@@ -247,6 +335,59 @@ export default function MyBookingsPage() {
           </div>
         </main>
       </div>
+
+      {/* EXTEND STAY MODAL */}
+      {extendBooking && (
+        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-8 md:p-10 w-full max-w-lg shadow-2xl relative border border-transparent dark:border-white/10 animate-in zoom-in-95 duration-300">
+            <button onClick={() => !isExtending && setExtendBooking(null)} className="absolute top-6 right-6 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 p-2 rounded-full transition-colors"><X className="h-5 w-5" /></button>
+            
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Extend Your Stay</h2>
+            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-6">Request more days at {extendBooking.hotelName}.</p>
+
+            <div className="bg-indigo-50 dark:bg-indigo-500/10 p-5 rounded-2xl border border-indigo-100 dark:border-indigo-500/20 mb-6 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-widest text-indigo-500 mb-1">Current Check-Out</p>
+                <p className="font-black text-slate-900 dark:text-white">{new Date(extendBooking.checkOut).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}</p>
+              </div>
+              <ArrowLeft className="h-5 w-5 text-indigo-300 rotate-180" />
+            </div>
+
+            <form onSubmit={handleRequestExtension} className="space-y-5">
+              <div>
+                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">New Check-Out Date</label>
+                <input 
+                  type="date" 
+                  value={newCheckOut} 
+                  min={extendBooking.checkOut} // Prevents picking dates in the past
+                  onChange={(e)=>setNewCheckOut(e.target.value)} 
+                  className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-xl p-4 outline-none font-bold text-slate-900 dark:text-white cursor-pointer dark:[color-scheme:dark]" 
+                  required 
+                />
+              </div>
+
+              {/* LIVE PRICING PREVIEW */}
+              {newCheckOut && new Date(newCheckOut) > new Date(extendBooking.checkOut) && (
+                <div className="bg-slate-100 dark:bg-white/5 rounded-xl p-5 mt-4 flex justify-between items-center border border-slate-200 dark:border-white/5">
+                  <div>
+                    <p className="text-[10px] font-black text-slate-500 dark:text-slate-400 uppercase tracking-widest">Extra Cost</p>
+                    <p className="text-xs font-bold text-emerald-500 mt-1">
+                      +{calculateNights(extendBooking.checkOut, newCheckOut)} night(s)
+                    </p>
+                  </div>
+                  <p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">
+                    {symbol}{(convert(extendBooking.totalPriceBase / calculateNights(extendBooking.checkIn, extendBooking.checkOut)) * calculateNights(extendBooking.checkOut, newCheckOut)).toLocaleString(undefined, {maximumFractionDigits: 0})}
+                  </p>
+                </div>
+              )}
+
+              <button type="submit" disabled={isExtending} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black text-lg hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/20 disabled:opacity-70 flex justify-center items-center mt-4">
+                {isExtending ? <Loader2 className="h-6 w-6 animate-spin" /> : "Send Request to Hotel"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
