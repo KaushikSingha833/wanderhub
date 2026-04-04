@@ -5,7 +5,8 @@ import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, collection, addDoc, query, where, onSnapshot, deleteDoc, updateDoc, orderBy, deleteField } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase"; 
 import { useCurrency } from "../../lib/useCurrency"; // <-- CURRENCY ENGINE
-import { Building2, Plus, BedDouble, Trash2, IndianRupee, Loader2, AlertTriangle, LogOut, Image as ImageIcon, CheckCircle2, TrendingUp, ShieldCheck, MapPin, AlignLeft, Tags, Inbox, Check, XCircle, Clock, Users, ArrowRightCircle, Settings, Wallet, Smartphone } from "lucide-react";
+// --- NEW IMPORT: Added Pencil for the Edit button ---
+import { Building2, Plus, BedDouble, Trash2, IndianRupee, Loader2, AlertTriangle, LogOut, Image as ImageIcon, CheckCircle2, TrendingUp, ShieldCheck, MapPin, AlignLeft, Tags, Inbox, Check, XCircle, Clock, Users, ArrowRightCircle, Settings, Wallet, Smartphone, Pencil } from "lucide-react";
 import { signOut } from "firebase/auth";
 
 interface Room {
@@ -14,9 +15,9 @@ interface Room {
   price: number;
   description: string;
   imageUrl?: string;
+  imageUrls?: string[];
 }
 
-// --- NEW BOOKING INTERFACE ---
 interface Booking {
   id: string;
   hotelName: string;
@@ -32,9 +33,7 @@ interface Booking {
   totalPriceBase: number;
   status: "Pending" | "Approved" | "Declined";
   createdAt: any;
-  // --- NEW: TRANSACTION ID ---
   transactionId?: string;
-  // --- NEW: EXTENSION ENGINE ---
   extensionRequest?: {
     requestedCheckOut: string;
     extraPriceBase: number;
@@ -48,11 +47,13 @@ export default function PartnerDashboard() {
   // Auth & Security State
   const [userProfile, setUserProfile] = useState<any>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
-  const [activeTab, setActiveTab] = useState("inventory"); // "inventory" or "inbox"
+  const [activeTab, setActiveTab] = useState("inventory"); 
 
   // Room Inventory State
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isAddingRoom, setIsAddingRoom] = useState(false);
+  // --- NEW: EDIT STATE ---
+  const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   
   // Booking Inbox State
   const [bookings, setBookings] = useState<Booking[]>([]);
@@ -61,9 +62,9 @@ export default function PartnerDashboard() {
   const [newRoomName, setNewRoomName] = useState("");
   const [newRoomPrice, setNewRoomPrice] = useState("");
   const [newRoomDesc, setNewRoomDesc] = useState("");
-  const [newRoomImage, setNewRoomImage] = useState("");
+  const [newRoomImages, setNewRoomImages] = useState<string[]>([""]);
 
-  // --- NEW: PAYMENT SETTINGS STATE ---
+  // Payment Settings State
   const [upiId, setUpiId] = useState("");
   const [isSavingUpi, setIsSavingUpi] = useState(false);
 
@@ -73,30 +74,24 @@ export default function PartnerDashboard() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (!user) {
-        router.push("/"); // Not logged in? Kick them out.
+        router.push("/");
         return;
       }
 
       try {
-        // Fetch their profile from Firestore to check their role and status
         const docRef = doc(db, "users", user.uid);
         const docSnap = await getDoc(docRef);
 
         if (docSnap.exists()) {
           const profile = docSnap.data();
-          
           if (profile.role !== "hotel_partner") {
-            router.push("/"); // Just a traveler? Kick them out.
+            router.push("/"); 
             return;
           }
-
           setUserProfile(profile);
-
-          // Pre-fill UPI ID if they already saved it
           if (profile.upiId) {
             setUpiId(profile.upiId);
           }
-
         } else {
           router.push("/");
         }
@@ -114,7 +109,6 @@ export default function PartnerDashboard() {
   useEffect(() => {
     if (!userProfile || userProfile.verificationStatus !== "approved") return;
 
-    // Listen to the 'rooms' collection
     const qRooms = query(collection(db, "rooms"), where("hotelOwnerId", "==", userProfile.uid));
     const unsubscribeRooms = onSnapshot(qRooms, (snapshot) => {
       const roomData = snapshot.docs.map(doc => ({
@@ -124,7 +118,6 @@ export default function PartnerDashboard() {
       setRooms(roomData);
     });
 
-    // Listen to the 'bookings' collection
     const qBookings = query(
       collection(db, "bookings"), 
       where("partnerId", "==", userProfile.uid)
@@ -134,8 +127,6 @@ export default function PartnerDashboard() {
         id: doc.id,
         ...doc.data()
       })) as Booking[];
-      
-      // Sort manually since we have an inequality filter (where)
       bookingData.sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
       setBookings(bookingData);
     });
@@ -146,31 +137,66 @@ export default function PartnerDashboard() {
     };
   }, [userProfile]);
 
-  // 3. ADD A NEW ROOM
-  const handleAddRoom = async (e: React.FormEvent) => {
+  // --- NEW: EDIT HELPERS ---
+  const handleEditClick = (room: Room) => {
+    setEditingRoomId(room.id);
+    setNewRoomName(room.name);
+    setNewRoomPrice(room.price.toString());
+    setNewRoomDesc(room.description || "");
+    // Load images array, fallback to single image, fallback to empty
+    setNewRoomImages(room.imageUrls && room.imageUrls.length > 0 ? room.imageUrls : (room.imageUrl ? [room.imageUrl] : [""]));
+    
+    // Smooth scroll to the top form
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingRoomId(null);
+    setNewRoomName("");
+    setNewRoomPrice("");
+    setNewRoomDesc("");
+    setNewRoomImages([""]);
+  };
+
+  // 3. SAVE A ROOM (Handles both Add and Update)
+  const handleSaveRoom = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newRoomName || !newRoomPrice || !userProfile) return;
     
+    const validImages = newRoomImages.filter(url => url.trim() !== "");
+
     setIsAddingRoom(true);
     try {
-      await addDoc(collection(db, "rooms"), {
-        hotelOwnerId: userProfile.uid,
-        hotelName: userProfile.hotelName,
-        name: newRoomName,
-        price: Number(newRoomPrice), // Kept base price
-        description: newRoomDesc,
-        city: userProfile.city, 
-        imageUrl: newRoomImage.trim(),
-        createdAt: new Date()
-      });
+      if (editingRoomId) {
+        // --- UPDATE EXISTING ROOM ---
+        await updateDoc(doc(db, "rooms", editingRoomId), {
+          name: newRoomName,
+          price: Number(newRoomPrice),
+          description: newRoomDesc,
+          imageUrl: validImages[0] || "", 
+          imageUrls: validImages, 
+        });
+        // alert("Room updated successfully!"); // Optional: Uncomment to show an alert
+      } else {
+        // --- ADD NEW ROOM ---
+        await addDoc(collection(db, "rooms"), {
+          hotelOwnerId: userProfile.uid,
+          hotelName: userProfile.hotelName,
+          name: newRoomName,
+          price: Number(newRoomPrice), 
+          description: newRoomDesc,
+          city: userProfile.city, 
+          imageUrl: validImages[0] || "", 
+          imageUrls: validImages, 
+          createdAt: new Date()
+        });
+      }
 
-      setNewRoomName("");
-      setNewRoomPrice("");
-      setNewRoomDesc("");
-      setNewRoomImage("");
+      // Reset Form after success
+      handleCancelEdit();
     } catch (error) {
-      console.error("Error adding room:", error);
-      alert("Failed to add room");
+      console.error("Error saving room:", error);
+      alert("Failed to save room");
     } finally {
       setIsAddingRoom(false);
     }
@@ -179,11 +205,15 @@ export default function PartnerDashboard() {
   // 4. DELETE A ROOM
   const handleDeleteRoom = async (roomId: string) => {
     if (confirm("Remove this room from your inventory?")) {
+      // If they delete the room they are currently editing, cancel the edit
+      if (editingRoomId === roomId) {
+        handleCancelEdit();
+      }
       await deleteDoc(doc(db, "rooms", roomId));
     }
   };
 
-  // --- NEW: UPDATE BOOKING STATUS ---
+  // UPDATE BOOKING STATUS
   const handleUpdateBooking = async (bookingId: string, newStatus: "Approved" | "Declined") => {
     try {
       await updateDoc(doc(db, "bookings", bookingId), {
@@ -195,14 +225,14 @@ export default function PartnerDashboard() {
     }
   };
 
-  // --- NEW: EXTENSION HANDLERS ---
+  // EXTENSION HANDLERS
   const handleApproveExtension = async (booking: Booking) => {
     if (!booking.extensionRequest) return;
     try {
       await updateDoc(doc(db, "bookings", booking.id), {
         checkOut: booking.extensionRequest.requestedCheckOut,
         totalPriceBase: booking.totalPriceBase + booking.extensionRequest.extraPriceBase,
-        extensionRequest: deleteField() // Deletes the request object completely
+        extensionRequest: deleteField() 
       });
     } catch (error) {
       console.error("Error approving extension:", error);
@@ -220,7 +250,7 @@ export default function PartnerDashboard() {
     }
   };
 
-  // --- NEW: SAVE UPI ID ---
+  // SAVE UPI ID
   const handleSaveUpi = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userProfile) return;
@@ -257,7 +287,6 @@ export default function PartnerDashboard() {
     );
   }
 
-  // PENDING STATE (They signed up, but you haven't approved them in /admin yet)
   if (userProfile?.verificationStatus === "pending") {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 relative overflow-hidden font-sans">
@@ -284,16 +313,13 @@ export default function PartnerDashboard() {
     );
   }
 
-  // --- UPDATED: Count pending bookings AND pending extension requests ---
   const pendingBookingsCount = bookings.filter(b => b.status === "Pending" || (b.extensionRequest && b.extensionRequest.status === "Pending")).length;
 
-  // APPROVED DASHBOARD STATE
   return (
     <div className="min-h-screen bg-[#f8fafc] flex flex-col md:flex-row font-sans selection:bg-indigo-100">
       
       {/* SIDEBAR */}
       <aside className="w-full md:w-72 bg-[#0f172a] text-white shrink-0 flex flex-col relative overflow-hidden transition-all print:hidden">
-        {/* Decorative Sidebar Gradient */}
         <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-[60px] pointer-events-none"></div>
         
         <div className="p-8 border-b border-white/10 relative z-10">
@@ -331,7 +357,6 @@ export default function PartnerDashboard() {
             )}
           </button>
 
-          {/* --- NEW: PAYMENT SETTINGS BUTTON --- */}
           <button 
             onClick={() => setActiveTab("settings")}
             className={`w-full ${activeTab === "settings" ? "bg-white/10 text-white shadow-inner border border-white/5" : "text-slate-400 hover:text-white hover:bg-white/5 border border-transparent"} px-4 py-3.5 rounded-2xl font-bold flex items-center cursor-pointer backdrop-blur-sm transition-all`}
@@ -350,12 +375,10 @@ export default function PartnerDashboard() {
 
       {/* MAIN CONTENT */}
       <main className="flex-1 overflow-y-auto relative">
-        {/* Main Content Background Decor */}
         <div className="absolute top-[-10%] right-[-5%] w-[600px] h-[600px] bg-indigo-500/5 rounded-full blur-[100px] pointer-events-none"></div>
 
         <div className="p-6 md:p-10 lg:p-12 max-w-7xl mx-auto relative z-10">
           
-          {/* HEADER ROW */}
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-10">
             <div>
               <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
@@ -377,7 +400,6 @@ export default function PartnerDashboard() {
 
           {activeTab === "inventory" ? (
             <>
-              {/* METRICS ROW (INVENTORY) */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6 mb-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="bg-white p-6 rounded-[2rem] border border-slate-200 shadow-sm flex flex-col justify-center transition-all hover:shadow-md">
                   <div className="flex items-center justify-between mb-4">
@@ -408,20 +430,25 @@ export default function PartnerDashboard() {
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
-                {/* LEFT: ADD ROOM FORM (Sticky) */}
+                {/* LEFT: ADD / EDIT ROOM FORM (Sticky) */}
                 <div className="xl:col-span-1">
-                  <div className="bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-100 sticky top-10">
+                  <div className={`bg-white p-8 rounded-[2.5rem] shadow-xl shadow-slate-200/50 border transition-all sticky top-10 ${editingRoomId ? 'border-indigo-400 shadow-indigo-100 ring-4 ring-indigo-50' : 'border-slate-100'}`}>
                     <div className="flex items-center mb-8">
-                      <div className="h-12 w-12 bg-indigo-100 rounded-2xl flex items-center justify-center mr-4">
-                        <Plus className="h-6 w-6 text-indigo-600" />
+                      <div className={`h-12 w-12 rounded-2xl flex items-center justify-center mr-4 transition-colors ${editingRoomId ? 'bg-indigo-600 text-white' : 'bg-indigo-100 text-indigo-600'}`}>
+                        {editingRoomId ? <Pencil className="h-5 w-5" /> : <Plus className="h-6 w-6" />}
                       </div>
                       <div>
-                        <h3 className="text-xl font-black text-slate-900 tracking-tight">Add Room</h3>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5">Publish Inventory</p>
+                        <h3 className="text-xl font-black text-slate-900 tracking-tight">
+                          {editingRoomId ? "Edit Room" : "Add Room"}
+                        </h3>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-0.5">
+                          {editingRoomId ? "Update Listing" : "Publish Inventory"}
+                        </p>
                       </div>
                     </div>
 
-                    <form onSubmit={handleAddRoom} className="space-y-5">
+                    {/* --- UPDATED SUBMIT HANDLER --- */}
+                    <form onSubmit={handleSaveRoom} className="space-y-5">
                       <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Room Type / Name</label>
                         <div className="relative">
@@ -447,21 +474,74 @@ export default function PartnerDashboard() {
                       </div>
                       
                       <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Image URL</label>
-                        <div className="relative">
-                          <ImageIcon className="absolute left-4 top-4 h-5 w-5 text-slate-400" />
-                          <input type="url" value={newRoomImage} onChange={(e) => setNewRoomImage(e.target.value)} placeholder="https://example.com/photo.jpg" className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none font-medium text-slate-700 transition-all placeholder-slate-400" />
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Room Images (URLs)</label>
+                        <div className="space-y-3">
+                          {newRoomImages.map((imgUrl, index) => (
+                            <div key={index} className="flex items-center gap-2">
+                              <div className="relative flex-1">
+                                <ImageIcon className="absolute left-4 top-4 h-5 w-5 text-slate-400" />
+                                <input 
+                                  type="url" 
+                                  value={imgUrl} 
+                                  onChange={(e) => {
+                                    const updatedImages = [...newRoomImages];
+                                    updatedImages[index] = e.target.value;
+                                    setNewRoomImages(updatedImages);
+                                  }} 
+                                  placeholder={index === 0 ? "Main Photo URL (Required)" : "Additional Photo URL"} 
+                                  required={index === 0}
+                                  className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none font-medium text-slate-700 transition-all placeholder-slate-400" 
+                                />
+                              </div>
+                              {index > 0 && (
+                                <button 
+                                  type="button" 
+                                  onClick={() => {
+                                    const updatedImages = newRoomImages.filter((_, i) => i !== index);
+                                    setNewRoomImages(updatedImages);
+                                  }}
+                                  className="p-4 bg-red-50 text-red-500 hover:bg-red-500 hover:text-white border border-red-100 rounded-2xl transition-colors"
+                                >
+                                  <Trash2 className="h-5 w-5" />
+                                </button>
+                              )}
+                            </div>
+                          ))}
                         </div>
-                        <p className="text-[10px] font-medium text-slate-500 mt-2 ml-2 italic">Paste a public link to a photo of the room.</p>
+                        
+                        <button 
+                          type="button" 
+                          onClick={() => setNewRoomImages([...newRoomImages, ""])}
+                          className="mt-3 text-xs font-bold text-indigo-600 hover:text-indigo-800 flex items-center ml-1 transition-colors"
+                        >
+                          <Plus className="h-4 w-4 mr-1" /> Add Another Photo
+                        </button>
                       </div>
                       
-                      <button type="submit" disabled={isAddingRoom} className="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-black py-4 md:py-5 rounded-2xl shadow-xl shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 mt-4 flex items-center justify-center text-lg group">
-                        {isAddingRoom ? <Loader2 className="h-6 w-6 animate-spin" /> : (
-                          <>
-                            <Plus className="h-5 w-5 mr-2" /> Publish Live
-                          </>
+                      {/* --- UPDATED BUTTON LAYOUT FOR CANCEL/SAVE --- */}
+                      <div className="flex gap-3 mt-4">
+                        {editingRoomId && (
+                          <button 
+                            type="button" 
+                            onClick={handleCancelEdit} 
+                            className="w-1/3 bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900 font-black py-4 md:py-5 rounded-2xl transition-all flex items-center justify-center text-sm"
+                          >
+                            Cancel
+                          </button>
                         )}
-                      </button>
+                        <button 
+                          type="submit" 
+                          disabled={isAddingRoom} 
+                          className={`${editingRoomId ? 'w-2/3' : 'w-full'} bg-gradient-to-r from-indigo-600 to-indigo-700 text-white font-black py-4 md:py-5 rounded-2xl shadow-xl shadow-indigo-600/20 hover:shadow-indigo-600/40 hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 flex items-center justify-center text-lg group`}
+                        >
+                          {isAddingRoom ? <Loader2 className="h-6 w-6 animate-spin" /> : (
+                            <>
+                              {editingRoomId ? <Check className="h-5 w-5 mr-2" /> : <Plus className="h-5 w-5 mr-2" />}
+                              {editingRoomId ? "Save Changes" : "Publish Live"}
+                            </>
+                          )}
+                        </button>
+                      </div>
                     </form>
                   </div>
                 </div>
@@ -485,20 +565,23 @@ export default function PartnerDashboard() {
                     ) : (
                       <div className="space-y-5 animate-in fade-in duration-500">
                         {rooms.map(room => (
-                          <div key={room.id} className="flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 bg-white rounded-3xl border border-slate-200 shadow-sm hover:shadow-xl hover:border-indigo-300 transition-all group overflow-hidden relative">
+                          <div key={room.id} className={`flex flex-col sm:flex-row sm:items-center justify-between p-4 sm:p-5 bg-white rounded-3xl border shadow-sm transition-all group overflow-hidden relative ${editingRoomId === room.id ? 'border-indigo-400 ring-2 ring-indigo-50 shadow-indigo-100/50' : 'border-slate-200 hover:shadow-xl hover:border-indigo-300'}`}>
                             
                             <div className="flex flex-col sm:flex-row sm:items-center gap-5 mb-5 sm:mb-0">
-                              {/* Image Thumbnail */}
                               <div className="h-32 sm:h-20 w-full sm:w-24 bg-slate-100 rounded-2xl shrink-0 overflow-hidden relative border border-slate-200">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                 <img 
-                                  src={room.imageUrl || "https://images.unsplash.com/photo-1542314831-c6a4d1409a54?w=800&q=80"} 
+                                  src={(room.imageUrls && room.imageUrls.length > 0) ? room.imageUrls[0] : (room.imageUrl || "https://images.unsplash.com/photo-1542314831-c6a4d1409a54?w=800&q=80")} 
                                   alt={room.name} 
                                   className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
                                 />
+                                {room.imageUrls && room.imageUrls.length > 1 && (
+                                  <div className="absolute bottom-1 right-1 bg-black/70 backdrop-blur-md text-white text-[10px] font-black px-2 py-1 rounded-lg">
+                                    +{room.imageUrls.length - 1}
+                                  </div>
+                                )}
                               </div>
                               
-                              {/* Text Content */}
                               <div>
                                 <h4 className="font-black text-slate-900 text-lg md:text-xl tracking-tight mb-1">{room.name}</h4>
                                 <p className="text-sm font-medium text-slate-500 max-w-md line-clamp-2 leading-relaxed">{room.description || "No description provided."}</p>
@@ -513,9 +596,16 @@ export default function PartnerDashboard() {
                                   {symbol}{convert(room.price).toLocaleString(undefined, {maximumFractionDigits: 0})}
                                 </div>
                               </div>
-                              <button onClick={() => handleDeleteRoom(room.id)} className="p-3.5 bg-slate-50 border border-slate-100 text-slate-400 hover:text-white hover:bg-red-500 hover:border-red-600 rounded-xl transition-all shadow-sm group-hover:shadow-md" title="Delete Room">
-                                <Trash2 className="h-5 w-5" />
-                              </button>
+                              
+                              {/* --- NEW: ACTION BUTTONS GROUP --- */}
+                              <div className="flex items-center gap-2">
+                                <button onClick={() => handleEditClick(room)} className={`p-3.5 border rounded-xl transition-all shadow-sm ${editingRoomId === room.id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 text-slate-500 border-slate-100 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200'}`} title="Edit Room">
+                                  <Pencil className="h-5 w-5" />
+                                </button>
+                                <button onClick={() => handleDeleteRoom(room.id)} className="p-3.5 bg-slate-50 border border-slate-100 text-slate-400 hover:text-white hover:bg-red-500 hover:border-red-600 rounded-xl transition-all shadow-sm group-hover:shadow-md" title="Delete Room">
+                                  <Trash2 className="h-5 w-5" />
+                                </button>
+                              </div>
                             </div>
 
                           </div>
@@ -551,7 +641,6 @@ export default function PartnerDashboard() {
                       const isApproved = booking.status === "Approved";
                       const isDeclined = booking.status === "Declined";
 
-                      // --- LIVE STATUS ENGINE ---
                       const today = new Date(); today.setHours(0,0,0,0);
                       const checkInDate = new Date(booking.checkIn); checkInDate.setHours(0,0,0,0);
                       const checkOutDate = new Date(booking.checkOut); checkOutDate.setHours(0,0,0,0);
@@ -583,7 +672,6 @@ export default function PartnerDashboard() {
                               {isApproved && <span className="inline-flex items-center text-emerald-600 bg-emerald-100 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest"><CheckCircle2 className="h-3 w-3 mr-1.5"/> Approved</span>}
                               {isDeclined && <span className="inline-flex items-center text-red-600 bg-red-100 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest"><XCircle className="h-3 w-3 mr-1.5"/> Declined</span>}
                               
-                              {/* LIVE OCCUPANCY BADGE */}
                               {isApproved && liveStatus && (
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-black uppercase tracking-widest border ${liveColor}`}>
                                   {liveStatus}
@@ -592,7 +680,6 @@ export default function PartnerDashboard() {
                             </div>
                           </div>
 
-                          {/* --- NEW: SHOW UTR ID TO HOTEL OWNER --- */}
                           {booking.transactionId && booking.transactionId !== "Pending" && booking.transactionId !== "Pay at Hotel" && (
                             <div className="bg-slate-50 border-b border-slate-100 p-4 px-6 flex items-center gap-3">
                               <div className="h-8 w-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shrink-0"><Smartphone className="h-4 w-4" /></div>
@@ -614,7 +701,6 @@ export default function PartnerDashboard() {
                             </div>
                           )}
 
-                          {/* --- EXTENSION REQUEST BANNER (ONLY SHOWS IF PENDING) --- */}
                           {booking.extensionRequest && booking.extensionRequest.status === "Pending" && (
                             <div className="bg-indigo-50 border-b border-indigo-100 p-4 px-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                               <div className="flex items-center gap-3">
@@ -647,7 +733,6 @@ export default function PartnerDashboard() {
                               </div>
                               <div>
                                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Est. Revenue</p>
-                                {/* CONVERTS THE BASE PRICE SAVED IN THE DATABASE TO THE OWNER'S PREFERRED CURRENCY */}
                                 <p className="font-black text-xl text-slate-900 tracking-tighter text-emerald-600">
                                   {symbol}{convert(booking.totalPriceBase).toLocaleString(undefined, {maximumFractionDigits: 0})}
                                 </p>
@@ -671,7 +756,6 @@ export default function PartnerDashboard() {
               </div>
             </div>
           ) : activeTab === "settings" ? (
-            // --- NEW: PAYMENT SETTINGS TAB ---
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-2xl mx-auto mt-4">
               <div className="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-sm border border-slate-200">
                 <div className="flex items-center mb-8">
