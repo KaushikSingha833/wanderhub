@@ -7,6 +7,7 @@ import { auth, db } from "../lib/firebase";
 import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, MapPin, Plane, BedDouble, Loader2, Menu, X, ArrowRightLeft, Search, CheckCircle2, AlertCircle, User as UserIcon, Ticket, Briefcase, Users, Tag, Download, Map as MapIcon, Clock, Hash } from "lucide-react";
 import { toPng } from "html-to-image";
 import jsPDF from "jspdf";
+import TravelLoader from "../components/TravelLoader";
 
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
@@ -450,12 +451,17 @@ export default function FlightsPage() {
                       </div>
                     </form>
 
-                    {/* LOADING STATE */}
+                    {/* LOADING STATE: FLIGHT SEARCH */}
                     {isFlightLoading && (
-                      <div className="mt-10 py-10 text-center animate-in fade-in duration-300 bg-slate-50 dark:bg-white/5 rounded-3xl border border-dashed border-slate-200 dark:border-white/10">
-                         <Plane className="h-10 w-10 text-indigo-500 mx-auto mb-4 animate-bounce" />
-                         <h4 className="text-lg font-black text-slate-900 dark:text-white">Scanning Global Airlines...</h4>
-                         <p className="text-sm font-bold text-slate-500 mt-1 uppercase tracking-widest">Connecting to Duffel Sandbox</p>
+                      <div className="mt-10 py-12 animate-in fade-in duration-500 bg-white/40 dark:bg-[#1e293b]/40 backdrop-blur-2xl rounded-3xl border border-slate-200 dark:border-white/10 shadow-2xl">
+                        <TravelLoader 
+                          messages={[
+                            "Scanning Global Airlines...", 
+                            "Connecting to Duffel Sandbox...", 
+                            "Checking real-time seat capacity...", 
+                            "Finding the best routes..."
+                          ]} 
+                        />
                       </div>
                     )}
 
@@ -640,13 +646,16 @@ export default function FlightsPage() {
             {/* ========================================================= */}
             {bookingStep === "PROCESSING" && (
               <div className="absolute inset-0 z-50 flex items-center justify-center bg-[#f8fafc]/90 dark:bg-[#030712]/90 backdrop-blur-md animate-in fade-in duration-300 rounded-[3rem]">
-                <div className="text-center">
-                  <div className="h-24 w-24 bg-white dark:bg-[#1e293b] rounded-3xl shadow-2xl flex items-center justify-center mx-auto mb-8 border border-slate-100 dark:border-white/10">
-                    <Loader2 className="h-10 w-10 text-indigo-600 animate-spin" />
-                  </div>
-                  <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-3">Connecting to GDS...</h2>
-                  <p className="text-indigo-600 dark:text-indigo-400 font-black uppercase tracking-widest text-sm animate-pulse">Syncing to Master Itinerary...</p>
-                </div>
+                <TravelLoader 
+                  isLanding={true}
+                  messages={[
+                    "Clearing departure with ATC...", 
+                    "Securing your preferred cabin class...", 
+                    "Generating Airline PNR...", 
+                    `Reserving baggage for ${passengers} traveler${passengers > 1 ? 's' : ''}...`,
+                    "Syncing to Master Itinerary..."
+                  ]} 
+                />
               </div>
             )}
 
