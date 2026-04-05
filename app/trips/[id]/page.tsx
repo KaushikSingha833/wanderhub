@@ -9,6 +9,8 @@ import { ArrowLeft, Calendar, Plus, Plane, Hotel, Utensils, Map as MapIcon, Cloc
 interface Trip {
   id: string; title: string; startDate: string; endDate: string; inviteCode?: string;
   adminId?: string; members?: string[]; memberNames?: Record<string, string>;
+  // --- NEW: Added imageUrl so this page knows to look for it ---
+  imageUrl?: string; 
 }
 interface Activity { 
   id: string; title: string; type: string; date: string; time: string; 
@@ -45,7 +47,7 @@ export default function TripDetails() {
   // Modal & Activity State
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [editingActivityId, setEditingActivityId] = useState<string | null>(null); // <-- NEW: Tracks if we are editing
+  const [editingActivityId, setEditingActivityId] = useState<string | null>(null); 
   
   const [actTitle, setActTitle] = useState(""); const [actType, setActType] = useState("activity");
   const [actDate, setActDate] = useState(""); const [actTime, setActTime] = useState("");
@@ -62,13 +64,16 @@ export default function TripDetails() {
     return () => unsubscribe();
   }, []);
 
-  // 2. Fetch Data
+  // 2. Fetch Data (UPGRADED: Trip is now real-time!)
   useEffect(() => {
     if (!tripId) return;
-    const fetchTrip = async () => {
-      const docSnap = await getDoc(doc(db, "trips", tripId));
-      if (docSnap.exists()) setTrip({ id: docSnap.id, ...(docSnap.data() as Omit<Trip, 'id'>) });
-    };
+
+    // Real-time trip listener
+    const unsubTrip = onSnapshot(doc(db, "trips", tripId), (docSnap) => {
+      if (docSnap.exists()) {
+        setTrip({ id: docSnap.id, ...(docSnap.data() as Omit<Trip, 'id'>) });
+      }
+    });
 
     // Fetch Activities
     const qActivities = query(collection(db, "activities"), where("tripId", "==", tripId), orderBy("date", "asc"), orderBy("time", "asc"));
@@ -83,9 +88,25 @@ export default function TripDetails() {
       setPackingItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as PackingItem));
     });
 
-    fetchTrip();
-    return () => { unsubActivities(); unsubPacking(); };
+    return () => { unsubTrip(); unsubActivities(); unsubPacking(); };
   }, [tripId]);
+
+  // --- NEW: THE SELF-HEALING NAME SYNC ---
+  // This uses your exact idea: It grabs the guaranteed real Google name and pushes it into the trip!
+  useEffect(() => {
+    if (!trip || !user || !trip.members?.includes(user.uid)) return;
+
+    const savedName = trip.memberNames?.[user.uid];
+    // This is the same logic your homepage uses for "Welcome back!"
+    const realAuthName = user.displayName || user.email?.split('@')[0] || "Traveler";
+
+    // If their real name isn't saved in the trip properly, auto-fix it
+    if (!savedName || savedName !== realAuthName) {
+      updateDoc(doc(db, "trips", tripId), {
+        [`memberNames.${user.uid}`]: realAuthName
+      }).catch(err => console.error("Error auto-syncing name:", err));
+    }
+  }, [trip, user, tripId]);
 
   // --- MEMBER LOGIC ---
   const handleRemoveMember = async (memberUid: string, memberName: string) => {
@@ -99,13 +120,11 @@ export default function TripDetails() {
         [`memberNames.${memberUid}`]: deleteField()
       });
       if (isSelf) router.push("/");
-      else setTrip(prev => prev ? { ...prev, members: prev.members?.filter(id => id !== memberUid) } : null);
     } catch (error) { console.error("Error removing member:", error); }
   };
 
   // --- ACTIVITY LOGIC ---
   
-  // NEW: Open Modal for ADDING
   const openAddModal = () => {
     setEditingActivityId(null);
     setActTitle(""); setActType("activity"); setActDate(""); setActTime("");
@@ -113,7 +132,6 @@ export default function TripDetails() {
     setIsActivityModalOpen(true);
   };
 
-  // NEW: Open Modal for EDITING
   const openEditModal = (act: Activity) => {
     setEditingActivityId(act.id);
     setActTitle(act.title); setActType(act.type); setActDate(act.date); setActTime(act.time);
@@ -121,20 +139,17 @@ export default function TripDetails() {
     setIsActivityModalOpen(true);
   };
 
-  // NEW: Handles BOTH Add and Update
   const handleSubmitActivity = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!actTitle || !actDate || !actTime) return;
     setIsSubmitting(true);
     try {
       if (editingActivityId) {
-        // UPDATE EXISTING
         await updateDoc(doc(db, "activities", editingActivityId), { 
           title: actTitle, type: actType, date: actDate, time: actTime, 
           location: actLocation, notes: actNotes, trackingNumber: actTrackingNum 
         });
       } else {
-        // ADD NEW
         await addDoc(collection(db, "activities"), { 
           tripId, title: actTitle, type: actType, date: actDate, time: actTime, 
           location: actLocation, notes: actNotes, trackingNumber: actTrackingNum, createdAt: new Date() 
@@ -142,12 +157,11 @@ export default function TripDetails() {
       }
       setActTitle(""); setActLocation(""); setActNotes(""); setActTrackingNum("");
       setIsActivityModalOpen(false);
-      setEditingActivityId(null); // Reset state
+      setEditingActivityId(null); 
     } catch (error) { console.error("Error saving activity:", error); } 
     finally { setIsSubmitting(false); }
   };
 
-  // NEW: Delete Activity
   const handleDeleteActivity = async (id: string) => {
     if (confirm("Are you sure you want to delete this activity?")) {
       try { await deleteDoc(doc(db, "activities", id)); }
@@ -193,7 +207,9 @@ export default function TripDetails() {
   if (!trip) return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#030712] transition-colors"><div className="text-center"><MapIcon className="h-16 w-16 mx-auto text-slate-300 dark:text-slate-600 mb-4"/><h2 className="text-2xl font-bold text-slate-700 dark:text-slate-300">Trip not found</h2><button onClick={() => router.push('/')} className="mt-4 text-indigo-600 dark:text-indigo-400 font-bold hover:underline">Return Home</button></div></div>;
 
   const isAdmin = user.uid === trip.adminId;
-  const tripImageUrl = getTripImage(trip.id);
+  
+  // --- FIXED: Now prefers the Unsplash image (trip.imageUrl) and only falls back if it doesn't exist ---
+  const tripImageUrl = trip.imageUrl || getTripImage(trip.id);
 
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-[#030712] font-sans text-slate-900 dark:text-slate-100 pb-24 selection:bg-indigo-100 selection:text-indigo-900 transition-colors duration-300">
@@ -219,7 +235,6 @@ export default function TripDetails() {
                 <Calendar className="h-3.5 w-3.5" /> 
                 {new Date(trip.startDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} — {new Date(trip.endDate).toLocaleDateString('en-US', {month: 'short', day: 'numeric', year: 'numeric'})}
               </div>
-              {/* FIXED: text-white is now permanent so it stays white in both light and dark mode */}
               <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight drop-shadow-lg">{trip.title}</h1>
             </div>
             
@@ -261,22 +276,16 @@ export default function TripDetails() {
             </div>
           ) : (
             <div className="bg-white dark:bg-[#0f172a] rounded-[2rem] border border-slate-100 dark:border-white/10 shadow-sm p-6 md:p-10 relative transition-colors">
-              {/* Vertical connecting line */}
               <div className="absolute left-11 md:left-14 top-10 bottom-10 w-0.5 bg-gradient-to-b from-indigo-100 dark:from-indigo-500/20 via-slate-200 dark:via-slate-800 to-transparent"></div>
               
               <div className="space-y-8">
                 {activities.map((act) => (
                   <div key={act.id} className="relative flex items-start gap-6 group">
-                    
-                    {/* Icon Node */}
                     <div className="relative z-10 flex items-center justify-center w-12 h-12 rounded-2xl border-4 border-white dark:border-[#0f172a] bg-slate-50 dark:bg-[#1e293b] shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300 shrink-0">
                       {getIcon(act.type)}
                     </div>
-                    
-                    {/* Activity Card */}
                     <div className="flex-1 relative bg-white dark:bg-[#1e293b]/50 p-6 rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-xl hover:border-indigo-100 dark:hover:border-indigo-500/30 transition-all duration-300 group-hover:-translate-y-1">
                       
-                      {/* --- NEW: EDIT & DELETE BUTTONS ON HOVER --- */}
                       <div className="absolute top-4 right-4 flex opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 dark:bg-[#1e293b]/80 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-slate-100 dark:border-white/10">
                         <button onClick={() => openEditModal(act)} className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" title="Edit Activity">
                           <Edit2 className="h-4 w-4" />
@@ -298,7 +307,6 @@ export default function TripDetails() {
                       
                       <h3 className="font-black text-xl text-slate-900 dark:text-white mb-4">{act.title}</h3>
                       
-                      {/* Rich Details Area */}
                       {(act.location || act.trackingNumber || act.notes) && (
                         <div className="bg-slate-50 dark:bg-black/20 rounded-2xl p-4 space-y-3 border border-slate-100 dark:border-white/5">
                           {act.trackingNumber && (
@@ -336,6 +344,8 @@ export default function TripDetails() {
               {trip.members?.map((memberUid) => {
                 const isThisMemberAdmin = memberUid === trip.adminId;
                 const isMe = memberUid === user.uid;
+                
+                // Uses the auto-synced name from the database!
                 const memberName = trip.memberNames?.[memberUid] || "Unknown Traveler";
 
                 return (
@@ -413,7 +423,7 @@ export default function TripDetails() {
         </div>
       </div>
 
-      {/* ACTIVITY MODAL (SHARED FOR ADD & EDIT) */}
+      {/* ACTIVITY MODAL */}
       {isActivityModalOpen && (
         <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-8 md:p-10 w-full max-w-lg shadow-2xl relative transform transition-all border border-transparent dark:border-white/10">

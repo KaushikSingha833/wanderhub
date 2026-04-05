@@ -119,10 +119,18 @@ export default function ItinerariesPage() {
       tomorrow.setDate(tomorrow.getDate() + 1);
       const startDate = tomorrow.toISOString().split('T')[0];
 
+      // --- FIXED: Grab the trip's destination title so the AI knows where you are going ---
+      const currentTrip = trips.find(t => t.id === selectedTripId);
+      const destination = currentTrip ? currentTrip.title : "";
+      
+      // We safely wrap your prompt with the destination context
+      const contextualPrompt = `Destination: ${destination}. Request: ${aiPrompt}`;
+
       const response = await fetch('/api/generate-itinerary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: aiPrompt, startDate: startDate })
+        // --- FIXED: Send the new contextualPrompt instead of just the raw aiPrompt ---
+        body: JSON.stringify({ prompt: contextualPrompt, startDate: startDate })
       });
       
       const data = await response.json();

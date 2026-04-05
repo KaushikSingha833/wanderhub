@@ -2,10 +2,10 @@
 import { useState, useEffect, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { collection, query, where, getDocs, addDoc, doc, getDoc, orderBy, serverTimestamp } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, doc, getDoc, orderBy, serverTimestamp, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase"; 
 import { useCurrency } from "../../lib/useCurrency"; 
-import { MapPin, Star, Wifi, Coffee, BedDouble, Users, Calendar, ArrowLeft, CheckCircle2, Shield, Loader2, Sparkles, X, Tv, Wind, Smartphone, ChevronLeft, ChevronRight, Image as ImageIcon, MessageSquare } from "lucide-react";
+import { MapPin, Star, Wifi, Coffee, BedDouble, Users, Calendar, ArrowLeft, CheckCircle2, Shield, Loader2, Sparkles, X, Tv, Wind, Smartphone, ChevronLeft, ChevronRight, Image as ImageIcon, MessageSquare, ThumbsUp, ThumbsDown } from "lucide-react";
 
 interface Room {
   id: string;
@@ -21,7 +21,15 @@ interface Room {
   amenities?: string[];
 }
 
-// --- NEW: REVIEW INTERFACE ---
+// --- NEW: REPLY INTERFACE ---
+interface ReviewReply {
+  id: string;
+  userId: string;
+  userName: string;
+  text: string;
+  createdAt: number;
+}
+
 interface Review {
   id: string;
   hotelName: string;
@@ -30,6 +38,10 @@ interface Review {
   rating: number;
   comment: string;
   createdAt: any;
+  upvotedBy?: string[];
+  downvotedBy?: string[];
+  // --- NEW: Replies Array ---
+  replies?: ReviewReply[];
 }
 
 // --- WE WRAP THE MAIN LOGIC IN A SEPARATE COMPONENT TO SATISFY NEXT.JS SUSPENSE ---
@@ -51,12 +63,17 @@ function PartnerHotelContent() {
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // --- NEW: REVIEW STATES ---
+  // Review States
   const [reviews, setReviews] = useState<Review[]>([]);
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   
+  // --- NEW: Reply States ---
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState("");
+  const [isSubmittingReply, setIsSubmittingReply] = useState(false);
+
   // Booking Modal State
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [isBookingLoading, setIsBookingLoading] = useState(false);
@@ -76,12 +93,10 @@ function PartnerHotelContent() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      // Removed the forced push('/') here so non-logged in users can still read reviews
     });
     return () => unsubscribe();
   }, [router]);
 
-  // --- UPDATED: FETCH ROOMS AND REVIEWS ---
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -117,12 +132,10 @@ function PartnerHotelContent() {
     if (decodedHotelName) fetchData();
   }, [decodedHotelName]);
 
-  // Calculate Average Rating
   const averageRating = reviews.length > 0 
     ? (reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviews.length).toFixed(1) 
     : "New";
 
-  // Calculate Total Days for pricing
   const calculateNights = () => {
     if (!checkIn || !checkOut) return 1;
     const start = new Date(checkIn);
@@ -135,7 +148,6 @@ function PartnerHotelContent() {
   const nights = calculateNights();
   const totalPriceInBase = selectedRoom ? selectedRoom.price * nights : 0;
 
-  // --- NEW: SUBMIT REVIEW ENGINE ---
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) {
@@ -152,12 +164,14 @@ function PartnerHotelContent() {
         userName: user.displayName || "WanderHub Traveler",
         rating: newRating,
         comment: newComment.trim(),
-        createdAt: serverTimestamp()
+        createdAt: serverTimestamp(),
+        upvotedBy: [],
+        downvotedBy: [],
+        replies: [] // Initialize empty replies array
       };
 
       const docRef = await addDoc(collection(db, "hotelReviews"), reviewData);
       
-      // Update local state instantly so they don't have to refresh
       setReviews([{ ...reviewData, id: docRef.id, createdAt: { toMillis: () => Date.now() } } as any, ...reviews]);
       setNewComment("");
       setNewRating(5);
@@ -169,8 +183,103 @@ function PartnerHotelContent() {
     }
   };
 
+  // --- NEW: SUBMIT NESTED REPLY ---
+  const handleSubmitReply = async (e: React.FormEvent, reviewId: string) => {
+    e.preventDefault();
+    if (!user) {
+      alert("You must be logged in to reply.");
+      return;
+    }
+    if (!replyText.trim()) return;
 
-  // INITIATE UPI CHECKOUT
+    setIsSubmittingReply(true);
+
+    const newReply: ReviewReply = {
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 7), // Simple unique ID
+      userId: user.uid,
+      userName: user.displayName || "WanderHub Traveler",
+      text: replyText.trim(),
+      createdAt: Date.now()
+    };
+
+    try {
+      const reviewRef = doc(db, "hotelReviews", reviewId);
+      
+      // Push the reply into the Firebase array
+      await updateDoc(reviewRef, {
+        replies: arrayUnion(newReply)
+      });
+
+      // Optimistically update the UI so it feels instant
+      setReviews(prev => prev.map(r => {
+        if (r.id === reviewId) {
+          return { ...r, replies: [...(r.replies || []), newReply] };
+        }
+        return r;
+      }));
+
+      setReplyText("");
+      setReplyingTo(null);
+    } catch (error) {
+      console.error("Error posting reply:", error);
+      alert("Failed to post reply.");
+    } finally {
+      setIsSubmittingReply(false);
+    }
+  };
+
+  const handleVote = async (reviewId: string, type: 'upvote' | 'downvote') => {
+    if (!user) {
+      alert("You must be logged in to vote.");
+      return;
+    }
+
+    const review = reviews.find(r => r.id === reviewId);
+    if (!review) return;
+
+    const hasUpvoted = review.upvotedBy?.includes(user.uid);
+    const hasDownvoted = review.downvotedBy?.includes(user.uid);
+
+    let newUpvotedBy = [...(review.upvotedBy || [])];
+    let newDownvotedBy = [...(review.downvotedBy || [])];
+
+    const reviewRef = doc(db, "hotelReviews", reviewId);
+
+    try {
+      if (type === 'upvote') {
+        if (hasUpvoted) {
+          newUpvotedBy = newUpvotedBy.filter(id => id !== user.uid);
+          await updateDoc(reviewRef, { upvotedBy: arrayRemove(user.uid) });
+        } else {
+          newUpvotedBy.push(user.uid);
+          newDownvotedBy = newDownvotedBy.filter(id => id !== user.uid);
+          await updateDoc(reviewRef, {
+            upvotedBy: arrayUnion(user.uid),
+            downvotedBy: arrayRemove(user.uid)
+          });
+        }
+      } else {
+        if (hasDownvoted) {
+          newDownvotedBy = newDownvotedBy.filter(id => id !== user.uid);
+          await updateDoc(reviewRef, { downvotedBy: arrayRemove(user.uid) });
+        } else {
+          newDownvotedBy.push(user.uid);
+          newUpvotedBy = newUpvotedBy.filter(id => id !== user.uid);
+          await updateDoc(reviewRef, {
+            downvotedBy: arrayUnion(user.uid),
+            upvotedBy: arrayRemove(user.uid)
+          });
+        }
+      }
+
+      setReviews(prev => prev.map(r => 
+        r.id === reviewId ? { ...r, upvotedBy: newUpvotedBy, downvotedBy: newDownvotedBy } : r
+      ));
+    } catch (error) {
+      console.error("Error updating vote:", error);
+    }
+  };
+
   const handleInitiatePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) { alert("Please log in to book."); router.push('/'); return; }
@@ -207,7 +316,6 @@ function PartnerHotelContent() {
     await processFinalBooking(utrNumber);
   };
 
-  // The actual database saving function
   const processFinalBooking = async (transactionId: string) => {
     if (!user || !selectedRoom) return;
     setIsBookingLoading(true);
@@ -246,7 +354,6 @@ function PartnerHotelContent() {
     }
   };
 
-  // SLIDER NAVIGATION HELPERS
   const handleNextPhoto = () => {
     if (!viewingPhotosFor || !viewingPhotosFor.imageUrls) return;
     setCurrentPhotoIndex((prev) => prev === viewingPhotosFor.imageUrls!.length - 1 ? 0 : prev + 1);
@@ -255,7 +362,6 @@ function PartnerHotelContent() {
     if (!viewingPhotosFor || !viewingPhotosFor.imageUrls) return;
     setCurrentPhotoIndex((prev) => prev === 0 ? viewingPhotosFor.imageUrls!.length - 1 : prev - 1);
   };
-
 
   if (isLoading) return <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-[#030712]"><Loader2 className="h-10 w-10 animate-spin text-indigo-600" /></div>;
 
@@ -282,7 +388,6 @@ function PartnerHotelContent() {
             <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 dark:bg-black/30 backdrop-blur-md border border-white/20 text-white text-xs font-bold shadow-sm uppercase tracking-widest">
               <Sparkles className="h-3.5 w-3.5 text-amber-300" /> Exclusive Partner
             </div>
-            {/* --- NEW: LIVE AVERAGE RATING BANNER --- */}
             <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 text-slate-900 text-xs font-black shadow-lg">
               <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> 
               {averageRating} <span className="font-medium text-slate-500 ml-1">({reviews.length} Reviews)</span>
@@ -366,7 +471,7 @@ function PartnerHotelContent() {
           )}
         </div>
 
-        {/* --- NEW: PUBLIC REVIEWS & RATINGS SECTION --- */}
+        {/* PUBLIC REVIEWS & RATINGS SECTION */}
         <div className="border-t border-slate-200 dark:border-white/10 pt-16">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center">
@@ -437,29 +542,106 @@ function PartnerHotelContent() {
                 </div>
               ) : (
                 <div className="space-y-6">
-                  {reviews.map((review) => (
-                    <div key={review.id} className="bg-white dark:bg-[#0f172a] p-6 md:p-8 rounded-[2rem] border border-slate-200 dark:border-white/10 shadow-sm">
-                      <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center gap-4">
-                          <div className="h-12 w-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-black text-lg shadow-inner">
-                            {review.userName.charAt(0).toUpperCase()}
+                  {reviews.map((review) => {
+                    const upvotes = review.upvotedBy?.length || 0;
+                    const downvotes = review.downvotedBy?.length || 0;
+                    const hasUpvoted = user && review.upvotedBy?.includes(user.uid);
+                    const hasDownvoted = user && review.downvotedBy?.includes(user.uid);
+
+                    return (
+                      <div key={review.id} className="bg-white dark:bg-[#0f172a] p-6 md:p-8 rounded-[2rem] border border-slate-200 dark:border-white/10 shadow-sm flex flex-col">
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="flex items-center gap-4">
+                            <div className="h-12 w-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-black text-lg shadow-inner">
+                              {review.userName.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-black text-slate-900 dark:text-white">{review.userName}</p>
+                              <p className="text-xs font-bold text-slate-400">
+                                {review.createdAt?.toMillis ? new Date(review.createdAt.toMillis()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : "Just now"}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-black text-slate-900 dark:text-white">{review.userName}</p>
-                            <p className="text-xs font-bold text-slate-400">
-                              {review.createdAt?.toMillis ? new Date(review.createdAt.toMillis()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : "Just now"}
-                            </p>
+                          <div className="flex gap-0.5 bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-100 dark:border-amber-500/20">
+                            {[...Array(5)].map((_, i) => (
+                              <Star key={i} className={`h-4 w-4 ${i < review.rating ? 'fill-amber-400 text-amber-400' : 'fill-transparent text-amber-200 dark:text-amber-900'}`} />
+                            ))}
                           </div>
                         </div>
-                        <div className="flex gap-0.5 bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-100 dark:border-amber-500/20">
-                          {[...Array(5)].map((_, i) => (
-                            <Star key={i} className={`h-4 w-4 ${i < review.rating ? 'fill-amber-400 text-amber-400' : 'fill-transparent text-amber-200 dark:text-amber-900'}`} />
-                          ))}
+                        <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-medium pl-16 flex-1">{review.comment}</p>
+                        
+                        {/* --- ACTION BAR (VOTES & REPLY TOGGLE) --- */}
+                        <div className="ml-16 mt-4 flex items-center gap-6 pt-4 border-t border-slate-100 dark:border-white/5">
+                          <div className="flex items-center gap-4">
+                            <button 
+                              onClick={() => handleVote(review.id, 'upvote')}
+                              className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${hasUpvoted ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                            >
+                              <ThumbsUp className={`h-4 w-4 ${hasUpvoted ? 'fill-current' : ''}`} />
+                              {upvotes > 0 && upvotes}
+                            </button>
+                            <button 
+                              onClick={() => handleVote(review.id, 'downvote')}
+                              className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${hasDownvoted ? 'text-red-600 dark:text-red-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                            >
+                              <ThumbsDown className={`h-4 w-4 ${hasDownvoted ? 'fill-current' : ''}`} />
+                              {downvotes > 0 && downvotes}
+                            </button>
+                          </div>
+                          
+                          {/* NEW: Reply Toggle Button */}
+                          <button 
+                            onClick={() => setReplyingTo(replyingTo === review.id ? null : review.id)}
+                            className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${replyingTo === review.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                          >
+                            <MessageSquare className="h-4 w-4" /> Reply
+                          </button>
                         </div>
+
+                        {/* --- NEW: REPLY INPUT BOX --- */}
+                        {replyingTo === review.id && (
+                          <div className="ml-16 mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
+                            <form onSubmit={(e) => handleSubmitReply(e, review.id)} className="flex gap-3">
+                              <input 
+                                type="text" 
+                                value={replyText}
+                                onChange={(e) => setReplyText(e.target.value)}
+                                placeholder="Write a reply..."
+                                className="flex-1 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:text-white font-medium"
+                                required
+                              />
+                              <button type="submit" disabled={isSubmittingReply} className="bg-slate-900 dark:bg-indigo-600 text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 dark:hover:bg-indigo-500 transition-colors disabled:opacity-50 flex items-center justify-center">
+                                {isSubmittingReply ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post"}
+                              </button>
+                            </form>
+                          </div>
+                        )}
+
+                        {/* --- NEW: NESTED REPLIES DISPLAY --- */}
+                        {review.replies && review.replies.length > 0 && (
+                          <div className="ml-16 mt-5 space-y-3">
+                            {review.replies.map(reply => (
+                              <div key={reply.id} className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-white/5">
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="h-6 w-6 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-500/20 dark:to-purple-500/20 rounded-md flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-black text-[10px] border border-indigo-200/50 dark:border-indigo-500/30">
+                                      {reply.userName.charAt(0).toUpperCase()}
+                                    </div>
+                                    <p className="font-bold text-sm text-slate-900 dark:text-white">{reply.userName}</p>
+                                  </div>
+                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                                    {new Date(reply.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                  </span>
+                                </div>
+                                <p className="text-sm text-slate-600 dark:text-slate-300 font-medium pl-[34px] leading-relaxed">{reply.text}</p>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
                       </div>
-                      <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-medium pl-16">{review.comment}</p>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
@@ -561,7 +743,6 @@ function PartnerHotelContent() {
                 </form>
               </>
             ) : paymentStep === "UPI" ? (
-              // --- UPI DEEP LINK STEP ---
               <>
                 <button onClick={() => setPaymentStep("FORM")} className="absolute top-6 left-6 text-slate-400 hover:text-slate-600 font-bold text-xs uppercase tracking-widest">&larr; Back</button>
                 <div className="text-center">
@@ -585,7 +766,6 @@ function PartnerHotelContent() {
                 </div>
               </>
             ) : (
-              // --- UTR VERIFICATION STEP ---
               <form onSubmit={handleVerifyUTR}>
                 <div className="text-center">
                   <div className="h-16 w-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle2 className="h-8 w-8" /></div>

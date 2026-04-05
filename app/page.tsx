@@ -24,6 +24,9 @@ interface Trip {
   inviteCode: string;
   members: string[]; 
   adminId?: string; 
+  memberNames?: Record<string, string>;
+  // --- NEW: Added imageUrl to the interface ---
+  imageUrl?: string;
 }
 
 const TRAVEL_IMAGES = [
@@ -151,6 +154,22 @@ export default function Home() {
     
     const userName = user.displayName?.split(" ")[0] || "Traveler";
 
+    // --- NEW: FETCH IMAGE FROM UNSPLASH ---
+    let fetchedImageUrl = "";
+    try {
+      // We search unsplash with the title and specify landscape orientation
+      const unsplashRes = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(title)}&orientation=landscape&client_id=S3o5ZZwBMWNSOTH5s-hc8BiYzYmitblOVgZvYJ28Syc&per_page=1`);
+      const unsplashData = await unsplashRes.json();
+      
+      // If we find results, grab the regular sized image URL
+      if (unsplashData.results && unsplashData.results.length > 0) {
+        fetchedImageUrl = unsplashData.results[0].urls.regular;
+      }
+    } catch (err) {
+      console.error("Failed to fetch image from Unsplash", err);
+      // If it fails, fetchedImageUrl stays empty and we fall back to the old method automatically!
+    }
+
     try {
       await addDoc(collection(db, "trips"), {
         title, 
@@ -160,6 +179,7 @@ export default function Home() {
         members: [user.uid], 
         adminId: user.uid,            
         memberNames: { [user.uid]: userName },                              
+        imageUrl: fetchedImageUrl, // --- NEW: SAVE TO FIREBASE ---
         createdAt: new Date(), 
       });
       setTitle(""); setStartDate(""); setEndDate(""); setIsModalOpen(false);
@@ -686,8 +706,9 @@ export default function Home() {
                     </div>
 
                     <div className="h-48 md:h-56 bg-slate-200 dark:bg-slate-800 relative overflow-hidden shrink-0">
+                      {/* --- NEW: Display the Unsplash image, or fallback automatically --- */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={getTripImage(trip.id)} alt={trip.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out" />
+                      <img src={trip.imageUrl || getTripImage(trip.id)} alt={trip.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out" />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity"></div>
                       <h3 className="absolute bottom-5 left-6 right-6 text-2xl font-black text-white line-clamp-1 truncate drop-shadow-lg tracking-tight">{trip.title}</h3>
                     </div>
