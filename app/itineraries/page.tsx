@@ -4,7 +4,7 @@ import Link from "next/link";
 import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, addDoc } from "firebase/firestore"; 
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db } from "../lib/firebase"; 
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Printer, Clock, MapPin, Plane, Hotel, Utensils, Trash2, Map as MapIcon, CalendarPlus, ChevronDown, ChevronUp, AlignLeft, Navigation, BedDouble, Sparkles, Loader2, Menu, X, Sun, CloudRain, Hash, Info, ArrowRight } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Printer, Clock, MapPin, Plane, Hotel, Utensils, Trash2, Map as MapIcon, CalendarPlus, ChevronDown, ChevronUp, AlignLeft, Navigation, BedDouble, Sparkles, Loader2, Menu, X, Sun, CloudRain, Hash, Info, ArrowRight, } from "lucide-react";
 
 interface Trip { id: string; title: string; }
 interface Activity {
@@ -41,12 +41,11 @@ export default function ItinerariesPage() {
   // MOBILE MENU STATE
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // --- NEW: WEATHER FORECAST STATE ---
+  // WEATHER FORECAST STATE
   const [weatherData, setWeatherData] = useState<any[]>([]);
   const [isWeatherLoading, setIsWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState("");
 
-  // THE REAL API FETCH FUNCTION
   const handleTrackStatus = async (activityTitle: string, type: string, trackingNum?: string) => {
     setIsTrackerOpen(true);
     setIsTrackingLoading(true);
@@ -109,7 +108,6 @@ export default function ItinerariesPage() {
     setIsTrackingLoading(false);
   };
 
-  // THE AI GENERATE FUNCTION
   const handleGenerateItinerary = async () => {
     if (!aiPrompt.trim() || !selectedTripId) return;
     
@@ -119,17 +117,14 @@ export default function ItinerariesPage() {
       tomorrow.setDate(tomorrow.getDate() + 1);
       const startDate = tomorrow.toISOString().split('T')[0];
 
-      // --- FIXED: Grab the trip's destination title so the AI knows where you are going ---
       const currentTrip = trips.find(t => t.id === selectedTripId);
       const destination = currentTrip ? currentTrip.title : "";
       
-      // We safely wrap your prompt with the destination context
       const contextualPrompt = `Destination: ${destination}. Request: ${aiPrompt}`;
 
       const response = await fetch('/api/generate-itinerary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        // --- FIXED: Send the new contextualPrompt instead of just the raw aiPrompt ---
         body: JSON.stringify({ prompt: contextualPrompt, startDate: startDate })
       });
       
@@ -164,7 +159,6 @@ export default function ItinerariesPage() {
     setExpandedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id]);
   };
 
-  // 1. Auth & Fetch Trips
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -182,7 +176,6 @@ export default function ItinerariesPage() {
     return () => unsubscribeAuth();
   }, [selectedTripId]);
 
-  // 2. Fetch Activities for Selected Trip
   useEffect(() => {
     if (!selectedTripId) {
       setIsLoading(false);
@@ -197,7 +190,6 @@ export default function ItinerariesPage() {
     return () => unsubscribe();
   }, [selectedTripId]);
 
-  // --- NEW: FETCH LIVE WEATHER ---
   useEffect(() => {
     if (!selectedTripId || trips.length === 0) return;
     
@@ -210,8 +202,6 @@ export default function ItinerariesPage() {
         const currentTrip = trips.find(t => t.id === selectedTripId);
         if (!currentTrip || !currentTrip.title) return;
 
-        // Extract the last word of the title as the city (e.g., "Trip to Paris" -> "Paris")
-        // This helps the weather API find the correct location!
         const words = currentTrip.title.trim().split(" ");
         const presumedCity = words[words.length - 1];
 
@@ -234,7 +224,6 @@ export default function ItinerariesPage() {
     fetchWeather();
   }, [selectedTripId, trips]);
 
-  // 3. Delete Activity Logic
   const handleDeleteActivity = async (activityId: string) => {
     if (!confirm("Are you sure you want to remove this from the itinerary?")) return;
     try {
@@ -245,7 +234,6 @@ export default function ItinerariesPage() {
     }
   };
 
-  // 4. Export to Calendar (.ics) Logic
   const handleExportCalendar = () => {
     if (activities.length === 0 || !selectedTripId) return;
     const currentTrip = trips.find(t => t.id === selectedTripId);
@@ -333,6 +321,7 @@ export default function ItinerariesPage() {
           <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors">
             <CreditCard className="h-5 w-5 mr-3" /> Expenses
           </Link>
+          <Link href="/flights" className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl font-semibold"><Plane className="h-5 w-5 mr-3" /> Book Flights</Link>
           <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors">
             <BedDouble className="h-5 w-5 mr-3" /> Book Hotels
           </Link>
@@ -501,8 +490,9 @@ export default function ItinerariesPage() {
                   return (
                     <div key={date} className="relative z-10">
                       
-                      {/* Date Header */}
-                      <div className="sticky top-16 md:top-20 bg-[#f8fafc]/90 dark:bg-[#030712]/90 backdrop-blur-xl print:bg-transparent z-20 py-4 mb-6 flex flex-col md:flex-row md:items-center gap-1 md:gap-4 md:ml-2">
+                      {/* --- FIXED: THE DAY BAR --- */}
+                      {/* Changed `top-16 md:top-20` to `top-0` so it sticks perfectly to the top of the scroll container! */}
+                      <div className="sticky top-0 bg-[#f8fafc]/95 dark:bg-[#030712]/95 backdrop-blur-xl print:bg-transparent z-30 pt-6 pb-4 mb-6 flex flex-col md:flex-row md:items-center gap-1 md:gap-4 md:ml-2 border-b border-slate-200/50 dark:border-white/5 -mt-6">
                         <div className="bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-1.5 rounded-full text-sm font-black tracking-widest uppercase shadow-md inline-block w-max">Day {index + 1}</div>
                         <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">{weekday}, <span className="text-slate-500 dark:text-slate-400">{dateNum}</span></h3>
                       </div>
@@ -649,7 +639,7 @@ export default function ItinerariesPage() {
                 <button 
                   onClick={handleGenerateItinerary}
                   disabled={!aiPrompt.trim()}
-                  className="w-full bg-slate-900 dark:bg-indigo-600 text-white py-4 md:py-5 rounded-2xl font-black text-lg hover:bg-purple-600 dark:hover:bg-indigo-500 hover:-translate-y-1 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:bg-slate-900 shadow-xl shadow-slate-900/20 dark:shadow-indigo-900/30 flex items-center justify-center group"
+                  className="w-full bg-slate-900 dark:bg-indigo-600 text-white py-4 md:py-5 rounded-2xl font-black text-lg hover:bg-purple-600 dark:hover:bg-indigo-500 hover:-translate-y-1 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:bg-slate-900 shadow-xl shadow-slate-900/20 dark:shadow-indigo-900/30 flex items-center justify-center mx-auto group"
                 >
                   <Sparkles className="h-5 w-5 mr-2 group-hover:animate-pulse" /> Generate Magic Schedule
                 </button>

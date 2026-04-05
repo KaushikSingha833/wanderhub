@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { doc, getDoc, setDoc } from "firebase/firestore";
 import { onAuthStateChanged, updateProfile, signOut, User as FirebaseUser, deleteUser } from "firebase/auth";
 import { auth, db } from "../lib/firebase"; 
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, User, Globe, Bell, Shield, LogOut, Save, CheckCircle2, BedDouble, Menu, X, Smartphone, Moon, Languages, Clock, Lock, Loader2, Camera } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, User, Globe, Bell, Shield, LogOut, Save, CheckCircle2, BedDouble, Menu, X, Smartphone, Moon, Languages, Clock, Lock, Loader2, Camera, Plane } from "lucide-react";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -209,6 +209,7 @@ export default function SettingsPage() {
           <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><Map className="h-5 w-5 mr-3" /> Dashboard</Link>
           <Link href="/itineraries" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><Calendar className="h-5 w-5 mr-3" /> Itineraries</Link>
           <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><CreditCard className="h-5 w-5 mr-3" /> Expenses</Link>
+          <Link href="/flights" className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl font-semibold"><Plane className="h-5 w-5 mr-3" /> Book Flights</Link>
           <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><BedDouble className="h-5 w-5 mr-3" /> Book Hotels</Link>
           <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 rounded-xl font-bold shadow-sm transition-colors border border-transparent dark:border-indigo-500/20"><Settings className="h-5 w-5 mr-3" /> Settings</Link>
         </nav>
