@@ -19,7 +19,7 @@ interface Booking {
   checkOut: string;
   guests: number;
   totalPriceBase: number;
-  status: "Pending" | "Approved" | "Declined" | "Cancelled";
+  status: "Pending" | "Approved" | "Confirmed" | "Declined" | "Cancelled";
   createdAt: any;
   // --- NEW: EXTENSION ENGINE ---
   extensionRequest?: {
@@ -223,9 +223,9 @@ export default function MyBookingsPage() {
                   const isCancelled = booking.status === "Cancelled";
                   
                   const isPending = booking.status === "Pending" && !isPastCheckout;
-                  const isApproved = booking.status === "Approved" && !isPastCheckout;
-                  
-                  const isCompleted = booking.status === "Approved" && isPastCheckout;
+                  const isApproved = (booking.status === "Approved" || booking.status === "Confirmed") && !isPastCheckout;
+
+                  const isCompleted = (booking.status === "Approved" || booking.status === "Confirmed") && isPastCheckout;
                   const isExpired = booking.status === "Pending" && isPastCheckout;
 
                   // Determine if the card should be fully active or slightly faded out (for past/dead bookings)

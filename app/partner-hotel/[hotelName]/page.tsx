@@ -1,11 +1,22 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, Suspense, useMemo } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { collection, query, where, getDocs, addDoc, doc, getDoc, orderBy, serverTimestamp, updateDoc, arrayUnion, arrayRemove } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, doc, getDoc, orderBy, serverTimestamp, updateDoc, arrayUnion, arrayRemove, onSnapshot } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase"; 
 import { useCurrency } from "../../lib/useCurrency"; 
-import { MapPin, Star, Wifi, Coffee, BedDouble, Users, Calendar, ArrowLeft, CheckCircle2, Shield, Loader2, Sparkles, X, Tv, Wind, Smartphone, ChevronLeft, ChevronRight, Image as ImageIcon, MessageSquare, ThumbsUp, ThumbsDown } from "lucide-react";
+import { MapPin, Star, Wifi, Coffee, BedDouble, Users, Calendar, ArrowLeft, CheckCircle2, Shield, Loader2, Sparkles, X, Tv, Wind, Smartphone, ChevronLeft, ChevronRight, Image as ImageIcon, MessageSquare, ThumbsUp, ThumbsDown, Map as MapIcon, ArrowDownUp } from "lucide-react";
+
+// --- RAZORPAY SCRIPT LOADER ---
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 interface Room {
   id: string;
@@ -21,7 +32,6 @@ interface Room {
   amenities?: string[];
 }
 
-// --- NEW: REPLY INTERFACE ---
 interface ReviewReply {
   id: string;
   userId: string;
@@ -40,51 +50,45 @@ interface Review {
   createdAt: any;
   upvotedBy?: string[];
   downvotedBy?: string[];
-  // --- NEW: Replies Array ---
   replies?: ReviewReply[];
 }
 
-// --- WE WRAP THE MAIN LOGIC IN A SEPARATE COMPONENT TO SATISFY NEXT.JS SUSPENSE ---
 function PartnerHotelContent() {
   const params = useParams();
   const searchParams = useSearchParams();
   const router = useRouter();
   
-  // URL Parameters
   const decodedHotelName = decodeURIComponent(params.hotelName as string);
   
-  // Booking Form State (Pre-filled from URL)
   const [checkIn, setCheckIn] = useState(searchParams.get("checkIn") || "");
   const [checkOut, setCheckOut] = useState(searchParams.get("checkOut") || "");
   const [guests, setGuests] = useState(searchParams.get("guests") || "2");
   
-  // App State
+  // ✨ NEW: SORTING STATE
+  const [sortBy, setSortBy] = useState("recommended");
+
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
-  // Review States
+  const [trips, setTrips] = useState<any[]>([]);
+  const [selectedTripId, setSelectedTripId] = useState<string>("");
+
   const [reviews, setReviews] = useState<Review[]>([]);
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState("");
   const [isSubmittingReview, setIsSubmittingReview] = useState(false);
   
-  // --- NEW: Reply States ---
   const [replyingTo, setReplyingTo] = useState<string | null>(null);
   const [replyText, setReplyText] = useState("");
   const [isSubmittingReply, setIsSubmittingReply] = useState(false);
 
-  // Booking Modal State
   const [selectedRoom, setSelectedRoom] = useState<Room | null>(null);
   const [isBookingLoading, setIsBookingLoading] = useState(false);
   const [bookingSuccess, setBookingSuccess] = useState(false);
 
-  // Payment Modal States
-  const [paymentStep, setPaymentStep] = useState<"FORM" | "UPI" | "VERIFY">("FORM");
-  const [ownerUpiId, setOwnerUpiId] = useState("");
-  const [utrNumber, setUtrNumber] = useState("");
+  const [paymentStep, setPaymentStep] = useState<"FORM" | "PROCESSING">("FORM");
 
-  // Photo Slider States
   const [viewingPhotosFor, setViewingPhotosFor] = useState<Room | null>(null);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
@@ -93,6 +97,14 @@ function PartnerHotelContent() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
+      if (currentUser) {
+        const qTrips = query(collection(db, "trips"), where("members", "array-contains", currentUser.uid));
+        onSnapshot(qTrips, (snapshot) => {
+          const tripsData = snapshot.docs.map(doc => ({ id: doc.id, title: doc.data().title }));
+          setTrips(tripsData);
+          if (tripsData.length > 0) setSelectedTripId(tripsData[0].id);
+        });
+      }
     });
     return () => unsubscribe();
   }, [router]);
@@ -100,7 +112,6 @@ function PartnerHotelContent() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Fetch Rooms
         const qRooms = query(collection(db, "rooms"), where("hotelName", "==", decodedHotelName));
         const snapshotRooms = await getDocs(qRooms);
         const fetchedRooms = snapshotRooms.docs.map(doc => ({
@@ -108,17 +119,12 @@ function PartnerHotelContent() {
         })) as Room[];
         setRooms(fetchedRooms);
 
-        // Fetch Reviews
-        const qReviews = query(
-          collection(db, "hotelReviews"), 
-          where("hotelName", "==", decodedHotelName)
-        );
+        const qReviews = query(collection(db, "hotelReviews"), where("hotelName", "==", decodedHotelName));
         const snapshotReviews = await getDocs(qReviews);
         const fetchedReviews = snapshotReviews.docs.map(doc => ({
           id: doc.id, ...doc.data()
         })) as Review[];
         
-        // Sort descending (newest first)
         fetchedReviews.sort((a, b) => b.createdAt?.toMillis() - a.createdAt?.toMillis());
         setReviews(fetchedReviews);
 
@@ -131,6 +137,24 @@ function PartnerHotelContent() {
 
     if (decodedHotelName) fetchData();
   }, [decodedHotelName]);
+
+  // ✨ NEW: FILTERING AND SORTING ENGINE
+  const displayedRooms = useMemo(() => {
+    // 1. Filter by Capacity
+    let filtered = rooms.filter(room => {
+      const roomCapacity = room.maxGuests || 2; // Default to 2 if not set in old DB entries
+      return roomCapacity >= Number(guests);
+    });
+
+    // 2. Sort by Price
+    if (sortBy === "price_asc") {
+      filtered.sort((a, b) => a.price - b.price);
+    } else if (sortBy === "price_desc") {
+      filtered.sort((a, b) => b.price - a.price);
+    }
+
+    return filtered;
+  }, [rooms, guests, sortBy]);
 
   const averageRating = reviews.length > 0 
     ? (reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviews.length).toFixed(1) 
@@ -150,90 +174,55 @@ function PartnerHotelContent() {
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!user) {
-      alert("You must be logged in to leave a review.");
-      return;
-    }
+    if (!user) { alert("You must be logged in to leave a review."); return; }
     if (!newComment.trim()) return;
 
     setIsSubmittingReview(true);
     try {
       const reviewData = {
-        hotelName: decodedHotelName,
-        userId: user.uid,
-        userName: user.displayName || "WanderHub Traveler",
-        rating: newRating,
-        comment: newComment.trim(),
-        createdAt: serverTimestamp(),
-        upvotedBy: [],
-        downvotedBy: [],
-        replies: [] // Initialize empty replies array
+        hotelName: decodedHotelName, userId: user.uid, userName: user.displayName || "WanderHub Traveler",
+        rating: newRating, comment: newComment.trim(), createdAt: serverTimestamp(),
+        upvotedBy: [], downvotedBy: [], replies: []
       };
-
       const docRef = await addDoc(collection(db, "hotelReviews"), reviewData);
-      
       setReviews([{ ...reviewData, id: docRef.id, createdAt: { toMillis: () => Date.now() } } as any, ...reviews]);
-      setNewComment("");
-      setNewRating(5);
+      setNewComment(""); setNewRating(5);
     } catch (error) {
-      console.error("Error posting review:", error);
-      alert("Failed to post review.");
+      console.error("Error posting review:", error); alert("Failed to post review.");
     } finally {
       setIsSubmittingReview(false);
     }
   };
 
-  // --- NEW: SUBMIT NESTED REPLY ---
   const handleSubmitReply = async (e: React.FormEvent, reviewId: string) => {
     e.preventDefault();
-    if (!user) {
-      alert("You must be logged in to reply.");
-      return;
-    }
+    if (!user) { alert("You must be logged in to reply."); return; }
     if (!replyText.trim()) return;
 
     setIsSubmittingReply(true);
-
     const newReply: ReviewReply = {
-      id: Date.now().toString() + Math.random().toString(36).substring(2, 7), // Simple unique ID
-      userId: user.uid,
-      userName: user.displayName || "WanderHub Traveler",
-      text: replyText.trim(),
-      createdAt: Date.now()
+      id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
+      userId: user.uid, userName: user.displayName || "WanderHub Traveler",
+      text: replyText.trim(), createdAt: Date.now()
     };
 
     try {
       const reviewRef = doc(db, "hotelReviews", reviewId);
-      
-      // Push the reply into the Firebase array
-      await updateDoc(reviewRef, {
-        replies: arrayUnion(newReply)
-      });
-
-      // Optimistically update the UI so it feels instant
+      await updateDoc(reviewRef, { replies: arrayUnion(newReply) });
       setReviews(prev => prev.map(r => {
-        if (r.id === reviewId) {
-          return { ...r, replies: [...(r.replies || []), newReply] };
-        }
+        if (r.id === reviewId) { return { ...r, replies: [...(r.replies || []), newReply] }; }
         return r;
       }));
-
-      setReplyText("");
-      setReplyingTo(null);
+      setReplyText(""); setReplyingTo(null);
     } catch (error) {
-      console.error("Error posting reply:", error);
-      alert("Failed to post reply.");
+      console.error("Error posting reply:", error); alert("Failed to post reply.");
     } finally {
       setIsSubmittingReply(false);
     }
   };
 
   const handleVote = async (reviewId: string, type: 'upvote' | 'downvote') => {
-    if (!user) {
-      alert("You must be logged in to vote.");
-      return;
-    }
-
+    if (!user) { alert("You must be logged in to vote."); return; }
     const review = reviews.find(r => r.id === reviewId);
     if (!review) return;
 
@@ -242,7 +231,6 @@ function PartnerHotelContent() {
 
     let newUpvotedBy = [...(review.upvotedBy || [])];
     let newDownvotedBy = [...(review.downvotedBy || [])];
-
     const reviewRef = doc(db, "hotelReviews", reviewId);
 
     try {
@@ -251,69 +239,75 @@ function PartnerHotelContent() {
           newUpvotedBy = newUpvotedBy.filter(id => id !== user.uid);
           await updateDoc(reviewRef, { upvotedBy: arrayRemove(user.uid) });
         } else {
-          newUpvotedBy.push(user.uid);
-          newDownvotedBy = newDownvotedBy.filter(id => id !== user.uid);
-          await updateDoc(reviewRef, {
-            upvotedBy: arrayUnion(user.uid),
-            downvotedBy: arrayRemove(user.uid)
-          });
+          newUpvotedBy.push(user.uid); newDownvotedBy = newDownvotedBy.filter(id => id !== user.uid);
+          await updateDoc(reviewRef, { upvotedBy: arrayUnion(user.uid), downvotedBy: arrayRemove(user.uid) });
         }
       } else {
         if (hasDownvoted) {
           newDownvotedBy = newDownvotedBy.filter(id => id !== user.uid);
           await updateDoc(reviewRef, { downvotedBy: arrayRemove(user.uid) });
         } else {
-          newDownvotedBy.push(user.uid);
-          newUpvotedBy = newUpvotedBy.filter(id => id !== user.uid);
-          await updateDoc(reviewRef, {
-            downvotedBy: arrayUnion(user.uid),
-            upvotedBy: arrayRemove(user.uid)
-          });
+          newDownvotedBy.push(user.uid); newUpvotedBy = newUpvotedBy.filter(id => id !== user.uid);
+          await updateDoc(reviewRef, { downvotedBy: arrayUnion(user.uid), upvotedBy: arrayRemove(user.uid) });
         }
       }
-
-      setReviews(prev => prev.map(r => 
-        r.id === reviewId ? { ...r, upvotedBy: newUpvotedBy, downvotedBy: newDownvotedBy } : r
-      ));
-    } catch (error) {
-      console.error("Error updating vote:", error);
-    }
+      setReviews(prev => prev.map(r => r.id === reviewId ? { ...r, upvotedBy: newUpvotedBy, downvotedBy: newDownvotedBy } : r));
+    } catch (error) { console.error("Error updating vote:", error); }
   };
 
   const handleInitiatePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) { alert("Please log in to book."); router.push('/'); return; }
     if (!selectedRoom || !checkIn || !checkOut) { alert("Please fill out all dates."); return; }
+    if (trips.length > 0 && !selectedTripId) { alert("Please select an itinerary to attach this booking to."); return; }
+
+    const isScriptLoaded = await loadRazorpayScript();
+    if (!isScriptLoaded) return alert("Razorpay SDK failed to load. Check your internet connection.");
 
     setIsBookingLoading(true);
-    try {
-      const ownerRef = doc(db, "users", selectedRoom.hotelOwnerId);
-      const ownerSnap = await getDoc(ownerRef);
 
-      if (ownerSnap.exists() && ownerSnap.data().upiId) {
-        setOwnerUpiId(ownerSnap.data().upiId);
-        setPaymentStep("UPI"); 
-      } else {
-        await processFinalBooking("Pay at Hotel");
-      }
-    } catch (error) {
-      console.error("Payment init failed:", error);
-      alert("Failed to check payment status.");
+    const finalAmountINR = convert(selectedRoom.price) * nights;
+    const amountInPaise = Math.round(finalAmountINR * 100);
+
+    try {
+      const orderRes = await fetch("/api/razorpay", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ amount: amountInPaise })
+      });
+      const orderData = await orderRes.json();
+
+      if (orderData.error) throw new Error(orderData.error);
+
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_SZpnRvlSEBfADP",
+        amount: amountInPaise.toString(),
+        currency: "INR",
+        name: "WanderHub Hotels",
+        description: `${selectedRoom.hotelName} - ${nights} Night(s)`,
+        image: "https://cdn-icons-png.flaticon.com/512/3125/3125713.png", 
+        order_id: orderData.id, 
+        handler: async function (response: any) {
+          console.log("Payment Success:", response.razorpay_payment_id);
+          setPaymentStep("PROCESSING");
+          await processFinalBooking(response.razorpay_payment_id);
+        },
+        prefill: {
+          name: user.displayName || "Traveler",
+          email: user.email || "",
+          contact: "9999999999", 
+        },
+        theme: { color: "#4f46e5" },
+      };
+
+      const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.open();
+
+    } catch (err) {
+      console.error(err);
+      alert("Payment initialization failed.");
     } finally {
       setIsBookingLoading(false);
     }
-  };
-
-  const getUpiLink = () => {
-    if (!selectedRoom || !ownerUpiId) return "";
-    const name = encodeURIComponent(selectedRoom.hotelName);
-    return `upi://pay?pa=${ownerUpiId}&pn=${name}&am=${totalPriceInBase}&cu=INR`;
-  };
-
-  const handleVerifyUTR = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (utrNumber.length < 12) { alert("Please enter a valid 12-digit UTR."); return; }
-    await processFinalBooking(utrNumber);
   };
 
   const processFinalBooking = async (transactionId: string) => {
@@ -333,22 +327,36 @@ function PartnerHotelContent() {
         checkOut: checkOut || "",
         guests: Number(guests) || 2,
         totalPriceBase: totalPriceInBase || 0, 
-        status: "Pending", 
+        status: "Confirmed", 
         transactionId: transactionId, 
         createdAt: new Date()
       });
+
+      if (selectedTripId) {
+        await addDoc(collection(db, "activities"), {
+          tripId: selectedTripId,
+          title: `Check-in at ${selectedRoom.hotelName}`,
+          type: "hotel",
+          date: checkIn,
+          time: "14:00", 
+          location: hotelCity,
+          notes: `Room: ${selectedRoom.name} | Guests: ${guests} | Checkout: ${checkOut}`,
+          trackingNumber: transactionId.substring(4, 12).toUpperCase() 
+        });
+      }
 
       setBookingSuccess(true);
       setTimeout(() => {
         setSelectedRoom(null);
         setBookingSuccess(false);
         setPaymentStep("FORM");
-        router.push('/'); 
+        router.push('/itineraries'); 
       }, 3000);
 
     } catch (error) {
       console.error("Booking failed:", error);
       alert("Booking failed. Please try again.");
+      setPaymentStep("FORM");
     } finally {
       setIsBookingLoading(false);
     }
@@ -403,15 +411,35 @@ function PartnerHotelContent() {
         
         {/* ROOMS GRID */}
         <div className="mb-16">
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-6">Available Rooms</h2>
-          {rooms.length === 0 ? (
+          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white">Available Rooms</h2>
+            
+            {/* ✨ NEW: SORTING CONTROLS */}
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <ArrowDownUp className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                <select 
+                  value={sortBy} 
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="pl-9 pr-8 py-2 bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer appearance-none"
+                >
+                  <option value="recommended">Recommended</option>
+                  <option value="price_asc">Price: Low to High</option>
+                  <option value="price_desc">Price: High to Low</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {displayedRooms.length === 0 ? (
             <div className="bg-white dark:bg-[#0f172a] rounded-[2rem] p-12 text-center border border-slate-200 dark:border-white/10">
               <BedDouble className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500 font-bold">No rooms currently available for this property.</p>
+              <p className="text-slate-900 dark:text-white font-black text-xl mb-2">No rooms available for {guests} guests.</p>
+              <p className="text-slate-500 font-bold">Try adjusting your guest count or check back later.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {rooms.map(room => (
+              {displayedRooms.map(room => (
                 <div key={room.id} className="bg-white dark:bg-[#0f172a] rounded-[2rem] border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden flex flex-col hover:shadow-xl transition-all hover:-translate-y-1">
                   <div className="h-48 relative">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -570,7 +598,6 @@ function PartnerHotelContent() {
                         </div>
                         <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-medium pl-16 flex-1">{review.comment}</p>
                         
-                        {/* --- ACTION BAR (VOTES & REPLY TOGGLE) --- */}
                         <div className="ml-16 mt-4 flex items-center gap-6 pt-4 border-t border-slate-100 dark:border-white/5">
                           <div className="flex items-center gap-4">
                             <button 
@@ -589,7 +616,6 @@ function PartnerHotelContent() {
                             </button>
                           </div>
                           
-                          {/* NEW: Reply Toggle Button */}
                           <button 
                             onClick={() => setReplyingTo(replyingTo === review.id ? null : review.id)}
                             className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${replyingTo === review.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
@@ -598,7 +624,6 @@ function PartnerHotelContent() {
                           </button>
                         </div>
 
-                        {/* --- NEW: REPLY INPUT BOX --- */}
                         {replyingTo === review.id && (
                           <div className="ml-16 mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
                             <form onSubmit={(e) => handleSubmitReply(e, review.id)} className="flex gap-3">
@@ -617,7 +642,6 @@ function PartnerHotelContent() {
                           </div>
                         )}
 
-                        {/* --- NEW: NESTED REPLIES DISPLAY --- */}
                         {review.replies && review.replies.length > 0 && (
                           <div className="ml-16 mt-5 space-y-3">
                             {review.replies.map(reply => (
@@ -685,7 +709,7 @@ function PartnerHotelContent() {
         </div>
       )}
 
-      {/* BOOKING MODAL */}
+      {/* SECURE RAZORPAY BOOKING MODAL */}
       {selectedRoom && (
         <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-8 md:p-10 w-full max-w-lg shadow-2xl relative border border-transparent dark:border-white/10 animate-in zoom-in-95 duration-300">
@@ -695,14 +719,22 @@ function PartnerHotelContent() {
                 <div className="h-20 w-20 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6">
                   <CheckCircle2 className="h-10 w-10" />
                 </div>
-                <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-3">Request Sent!</h2>
-                <p className="text-slate-500 dark:text-slate-400 font-medium">The hotel partner has received your booking request. You will be redirected shortly.</p>
+                <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-3">Booking Secured!</h2>
+                <p className="text-slate-500 dark:text-slate-400 font-medium">Your payment is successful and your room is locked. Adding to itinerary...</p>
               </div>
-            ) : paymentStep === "FORM" ? (
+            ) : paymentStep === "PROCESSING" ? (
+              <div className="text-center py-10">
+                <Loader2 className="h-12 w-12 text-indigo-600 animate-spin mx-auto mb-6" />
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Finalizing Details...</h2>
+                <p className="text-slate-500 dark:text-slate-400 font-medium">Verifying payment with bank and confirming your room block.</p>
+              </div>
+            ) : (
               <>
                 <button onClick={() => setSelectedRoom(null)} className="absolute top-6 right-6 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 p-2 rounded-full transition-colors"><X className="h-5 w-5" /></button>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Request to Book</h2>
-                <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-6 flex items-center"><Shield className="h-4 w-4 mr-1.5"/> Secure WanderHub Partner</p>
+                
+                <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Checkout</h2>
+                <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-6 flex items-center"><Shield className="h-4 w-4 mr-1.5"/> Secured by Razorpay</p>
+                
                 <div className="bg-slate-50 dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-white/10 mb-6 flex items-center gap-4">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={selectedRoom.imageUrls?.[0] || selectedRoom.imageUrl} alt="Room" className="h-16 w-16 rounded-xl object-cover" />
@@ -711,6 +743,7 @@ function PartnerHotelContent() {
                     <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">{symbol}{convert(selectedRoom.price).toLocaleString(undefined, {maximumFractionDigits: 0})} / night</p>
                   </div>
                 </div>
+
                 <form onSubmit={handleInitiatePayment} className="space-y-5">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
@@ -722,13 +755,31 @@ function PartnerHotelContent() {
                       <input type="date" value={checkOut} onChange={(e)=>setCheckOut(e.target.value)} className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-xl p-3 outline-none font-bold text-slate-900 dark:text-white cursor-pointer dark:[color-scheme:dark]" required />
                     </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Guests</label>
-                    <select value={guests} onChange={(e)=>setGuests(e.target.value)} className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-xl p-3 outline-none font-bold text-slate-900 dark:text-white cursor-pointer appearance-none">
-                      <option value="1">1 Guest</option><option value="2">2 Guests</option><option value="3">3 Guests</option><option value="4">4 Guests</option>
-                    </select>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Guests</label>
+                      <select value={guests} onChange={(e)=>setGuests(e.target.value)} className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-xl p-3 outline-none font-bold text-slate-900 dark:text-white cursor-pointer appearance-none">
+                        <option value="1">1 Guest</option><option value="2">2 Guests</option><option value="3">3 Guests</option><option value="4">4 Guests</option>
+                      </select>
+                    </div>
+                    {/* ✨ PHASE 4 ITINERARY DROPDOWN ✨ */}
+                    <div>
+                      <label className="block text-[10px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-2">Attach to Itinerary</label>
+                      <div className="relative">
+                        <MapIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                        <select 
+                          value={selectedTripId} 
+                          onChange={(e) => setSelectedTripId(e.target.value)}
+                          className="w-full bg-indigo-50 dark:bg-[#1e293b] border border-indigo-100 dark:border-indigo-500/20 rounded-xl pl-9 pr-3 py-3 outline-none font-bold text-slate-900 dark:text-white cursor-pointer appearance-none"
+                        >
+                          {trips.length === 0 ? <option value="">No Trips Found</option> : trips.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                        </select>
+                      </div>
+                    </div>
                   </div>
-                  <div className="bg-slate-100 dark:bg-white/5 rounded-xl p-5 mt-4 flex justify-between items-center border border-slate-200 dark:border-white/5">
+
+                  <div className="bg-slate-100 dark:bg-white/5 rounded-xl p-5 mt-4 flex justify-between items-center border border-slate-200 dark:border-white/5 shadow-inner">
                     <div>
                       <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total Price</p>
                       <p className="text-xs font-medium text-slate-400 mt-1">{nights} night{nights > 1 ? 's' : ''}</p>
@@ -737,56 +788,12 @@ function PartnerHotelContent() {
                       {symbol}{(convert(selectedRoom.price) * nights).toLocaleString(undefined, {maximumFractionDigits: 0})}
                     </p>
                   </div>
-                  <button type="submit" disabled={isBookingLoading} className="w-full bg-indigo-600 text-white py-4 rounded-xl font-black text-lg hover:bg-indigo-500 transition-all shadow-xl shadow-indigo-600/20 disabled:opacity-70 flex justify-center items-center mt-4">
-                    {isBookingLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Send Request to Partner"}
+
+                  <button type="submit" disabled={isBookingLoading} className="w-full bg-slate-900 dark:bg-indigo-600 text-white py-4 rounded-xl font-black text-lg hover:bg-slate-800 dark:hover:bg-indigo-500 transition-all shadow-xl disabled:opacity-70 flex justify-center items-center mt-4">
+                    {isBookingLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Pay with Razorpay"}
                   </button>
                 </form>
               </>
-            ) : paymentStep === "UPI" ? (
-              <>
-                <button onClick={() => setPaymentStep("FORM")} className="absolute top-6 left-6 text-slate-400 hover:text-slate-600 font-bold text-xs uppercase tracking-widest">&larr; Back</button>
-                <div className="text-center">
-                   <div className="h-16 w-16 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-full flex items-center justify-center mx-auto mb-6"><Smartphone className="h-8 w-8" /></div>
-                   <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Direct UPI Payment</h2>
-                   <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-8">Pay directly to {selectedRoom.hotelName} for instant confirmation.</p>
-                   <div className="bg-slate-50 dark:bg-white/5 rounded-2xl p-6 mb-8 border border-slate-200 dark:border-white/5">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Total Due</p>
-                      <p className="text-4xl font-black text-slate-900 dark:text-white tracking-tighter">
-                        {symbol}{(convert(selectedRoom.price) * nights).toLocaleString(undefined, {maximumFractionDigits: 0})}
-                      </p>
-                   </div>
-                   <a 
-                    href={getUpiLink()} 
-                    onClick={() => setTimeout(() => setPaymentStep("VERIFY"), 2500)}
-                    className="w-full bg-slate-900 dark:bg-white text-white dark:text-black font-black py-4 rounded-xl shadow-xl flex justify-center items-center gap-3 mb-4 transition-transform hover:scale-105"
-                   >
-                     Open UPI App to Pay
-                   </a>
-                   <p className="text-xs text-slate-400 font-medium">Safe & Secure via Standard UPI Protocol</p>
-                </div>
-              </>
-            ) : (
-              <form onSubmit={handleVerifyUTR}>
-                <div className="text-center">
-                  <div className="h-16 w-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6"><CheckCircle2 className="h-8 w-8" /></div>
-                  <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Confirm Payment</h2>
-                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-8">Enter the 12-digit UTR from your bank transaction.</p>
-                  <div className="mb-6">
-                    <input 
-                      type="text" 
-                      value={utrNumber} 
-                      onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, '').slice(0, 12))}
-                      placeholder="e.g. 123456789012" 
-                      required 
-                      className="w-full bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl p-4 text-center font-black tracking-[0.2em] text-xl outline-none focus:border-indigo-500 dark:text-white"
-                    />
-                  </div>
-                  <button type="submit" disabled={isBookingLoading || utrNumber.length < 12} className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl shadow-xl hover:bg-indigo-500 flex justify-center items-center">
-                    {isBookingLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Verify & Complete"}
-                  </button>
-                  <button type="button" onClick={() => setPaymentStep("UPI")} className="mt-4 text-xs font-bold text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">Go Back</button>
-                </div>
-              </form>
             )}
           </div>
         </div>

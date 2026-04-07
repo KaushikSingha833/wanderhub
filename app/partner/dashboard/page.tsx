@@ -4,8 +4,7 @@ import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
 import { doc, getDoc, collection, addDoc, query, where, onSnapshot, deleteDoc, updateDoc, orderBy, deleteField } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase"; 
-import { useCurrency } from "../../lib/useCurrency"; // <-- CURRENCY ENGINE
-// --- NEW IMPORT: Added Pencil for the Edit button ---
+import { useCurrency } from "../../lib/useCurrency"; 
 import { Building2, Plus, BedDouble, Trash2, IndianRupee, Loader2, AlertTriangle, LogOut, Image as ImageIcon, CheckCircle2, TrendingUp, ShieldCheck, MapPin, AlignLeft, Tags, Inbox, Check, XCircle, Clock, Users, ArrowRightCircle, Settings, Wallet, Smartphone, Pencil } from "lucide-react";
 import { signOut } from "firebase/auth";
 
@@ -16,6 +15,7 @@ interface Room {
   description: string;
   imageUrl?: string;
   imageUrls?: string[];
+  maxGuests?: number; // ✨ ADDED MAX GUESTS
 }
 
 interface Booking {
@@ -31,7 +31,7 @@ interface Booking {
   checkOut: string;
   guests: number;
   totalPriceBase: number;
-  status: "Pending" | "Approved" | "Declined";
+  status: "Pending" | "Approved" | "Confirmed" | "Declined"; 
   createdAt: any;
   transactionId?: string;
   extensionRequest?: {
@@ -52,7 +52,6 @@ export default function PartnerDashboard() {
   // Room Inventory State
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isAddingRoom, setIsAddingRoom] = useState(false);
-  // --- NEW: EDIT STATE ---
   const [editingRoomId, setEditingRoomId] = useState<string | null>(null);
   
   // Booking Inbox State
@@ -63,6 +62,7 @@ export default function PartnerDashboard() {
   const [newRoomPrice, setNewRoomPrice] = useState("");
   const [newRoomDesc, setNewRoomDesc] = useState("");
   const [newRoomImages, setNewRoomImages] = useState<string[]>([""]);
+  const [newRoomMaxGuests, setNewRoomMaxGuests] = useState("2"); // ✨ NEW STATE FOR GUESTS
 
   // Payment Settings State
   const [upiId, setUpiId] = useState("");
@@ -137,16 +137,14 @@ export default function PartnerDashboard() {
     };
   }, [userProfile]);
 
-  // --- NEW: EDIT HELPERS ---
+  // EDIT HELPERS
   const handleEditClick = (room: Room) => {
     setEditingRoomId(room.id);
     setNewRoomName(room.name);
     setNewRoomPrice(room.price.toString());
     setNewRoomDesc(room.description || "");
-    // Load images array, fallback to single image, fallback to empty
     setNewRoomImages(room.imageUrls && room.imageUrls.length > 0 ? room.imageUrls : (room.imageUrl ? [room.imageUrl] : [""]));
-    
-    // Smooth scroll to the top form
+    setNewRoomMaxGuests(room.maxGuests?.toString() || "2"); // ✨ LOAD EXISTING GUESTS
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
@@ -156,6 +154,7 @@ export default function PartnerDashboard() {
     setNewRoomPrice("");
     setNewRoomDesc("");
     setNewRoomImages([""]);
+    setNewRoomMaxGuests("2"); // ✨ RESET GUESTS
   };
 
   // 3. SAVE A ROOM (Handles both Add and Update)
@@ -168,17 +167,15 @@ export default function PartnerDashboard() {
     setIsAddingRoom(true);
     try {
       if (editingRoomId) {
-        // --- UPDATE EXISTING ROOM ---
         await updateDoc(doc(db, "rooms", editingRoomId), {
           name: newRoomName,
           price: Number(newRoomPrice),
           description: newRoomDesc,
           imageUrl: validImages[0] || "", 
           imageUrls: validImages, 
+          maxGuests: Number(newRoomMaxGuests) // ✨ SAVE GUESTS
         });
-        // alert("Room updated successfully!"); // Optional: Uncomment to show an alert
       } else {
-        // --- ADD NEW ROOM ---
         await addDoc(collection(db, "rooms"), {
           hotelOwnerId: userProfile.uid,
           hotelName: userProfile.hotelName,
@@ -188,11 +185,10 @@ export default function PartnerDashboard() {
           city: userProfile.city, 
           imageUrl: validImages[0] || "", 
           imageUrls: validImages, 
+          maxGuests: Number(newRoomMaxGuests), // ✨ SAVE GUESTS
           createdAt: new Date()
         });
       }
-
-      // Reset Form after success
       handleCancelEdit();
     } catch (error) {
       console.error("Error saving room:", error);
@@ -205,7 +201,6 @@ export default function PartnerDashboard() {
   // 4. DELETE A ROOM
   const handleDeleteRoom = async (roomId: string) => {
     if (confirm("Remove this room from your inventory?")) {
-      // If they delete the room they are currently editing, cancel the edit
       if (editingRoomId === roomId) {
         handleCancelEdit();
       }
@@ -447,7 +442,6 @@ export default function PartnerDashboard() {
                       </div>
                     </div>
 
-                    {/* --- UPDATED SUBMIT HANDLER --- */}
                     <form onSubmit={handleSaveRoom} className="space-y-5">
                       <div>
                         <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Room Type / Name</label>
@@ -457,11 +451,32 @@ export default function PartnerDashboard() {
                         </div>
                       </div>
                       
-                      <div>
-                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Price per Night (Base: INR)</label>
-                        <div className="relative">
-                          <IndianRupee className="absolute left-4 top-4 h-5 w-5 text-slate-400" />
-                          <input type="number" value={newRoomPrice} onChange={(e) => setNewRoomPrice(e.target.value)} placeholder="2500" required className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none font-black text-slate-900 transition-all placeholder-slate-400" />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Price (INR)</label>
+                          <div className="relative">
+                            <IndianRupee className="absolute left-4 top-4 h-5 w-5 text-slate-400" />
+                            <input type="number" value={newRoomPrice} onChange={(e) => setNewRoomPrice(e.target.value)} placeholder="2500" required className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none font-black text-slate-900 transition-all placeholder-slate-400" />
+                          </div>
+                        </div>
+
+                        {/* ✨ NEW GUEST CAPACITY DROPDOWN */}
+                        <div>
+                          <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Max Guests</label>
+                          <div className="relative">
+                            <Users className="absolute left-4 top-4 h-5 w-5 text-slate-400" />
+                            <select 
+                              value={newRoomMaxGuests} 
+                              onChange={(e) => setNewRoomMaxGuests(e.target.value)}
+                              className="w-full pl-12 pr-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none font-bold text-slate-900 transition-all cursor-pointer appearance-none"
+                            >
+                              <option value="1">1 Person</option>
+                              <option value="2">2 People</option>
+                              <option value="3">3 People</option>
+                              <option value="4">4 People</option>
+                              <option value="5">5+ People</option>
+                            </select>
+                          </div>
                         </div>
                       </div>
                       
@@ -518,7 +533,6 @@ export default function PartnerDashboard() {
                         </button>
                       </div>
                       
-                      {/* --- UPDATED BUTTON LAYOUT FOR CANCEL/SAVE --- */}
                       <div className="flex gap-3 mt-4">
                         {editingRoomId && (
                           <button 
@@ -584,6 +598,9 @@ export default function PartnerDashboard() {
                               
                               <div>
                                 <h4 className="font-black text-slate-900 text-lg md:text-xl tracking-tight mb-1">{room.name}</h4>
+                                <div className="flex items-center gap-2 mb-1 text-sm text-slate-500 font-bold">
+                                  <Users className="h-4 w-4 text-indigo-500" /> {room.maxGuests || 2} Guests
+                                </div>
                                 <p className="text-sm font-medium text-slate-500 max-w-md line-clamp-2 leading-relaxed">{room.description || "No description provided."}</p>
                               </div>
                             </div>
@@ -597,7 +614,6 @@ export default function PartnerDashboard() {
                                 </div>
                               </div>
                               
-                              {/* --- NEW: ACTION BUTTONS GROUP --- */}
                               <div className="flex items-center gap-2">
                                 <button onClick={() => handleEditClick(room)} className={`p-3.5 border rounded-xl transition-all shadow-sm ${editingRoomId === room.id ? 'bg-indigo-600 text-white border-indigo-600' : 'bg-slate-50 text-slate-500 border-slate-100 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200'}`} title="Edit Room">
                                   <Pencil className="h-5 w-5" />
@@ -638,7 +654,7 @@ export default function PartnerDashboard() {
                     {bookings.map(booking => {
                       
                       const isPending = booking.status === "Pending";
-                      const isApproved = booking.status === "Approved";
+                      const isApproved = booking.status === "Approved" || booking.status === "Confirmed"; 
                       const isDeclined = booking.status === "Declined";
 
                       const today = new Date(); today.setHours(0,0,0,0);
@@ -669,7 +685,9 @@ export default function PartnerDashboard() {
                             
                             <div className="text-right flex flex-col items-end gap-2">
                               {isPending && <span className="inline-flex items-center text-amber-600 bg-amber-100 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest"><Clock className="h-3 w-3 mr-1.5"/> Pending</span>}
-                              {isApproved && <span className="inline-flex items-center text-emerald-600 bg-emerald-100 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest"><CheckCircle2 className="h-3 w-3 mr-1.5"/> Approved</span>}
+                              
+                              {isApproved && <span className="inline-flex items-center text-emerald-600 bg-emerald-100 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest"><CheckCircle2 className="h-3 w-3 mr-1.5"/> {booking.status === "Confirmed" ? "Confirmed" : "Approved"}</span>}
+                              
                               {isDeclined && <span className="inline-flex items-center text-red-600 bg-red-100 px-3 py-1 rounded-lg text-xs font-black uppercase tracking-widest"><XCircle className="h-3 w-3 mr-1.5"/> Declined</span>}
                               
                               {isApproved && liveStatus && (
@@ -682,15 +700,22 @@ export default function PartnerDashboard() {
 
                           {booking.transactionId && booking.transactionId !== "Pending" && booking.transactionId !== "Pay at Hotel" && (
                             <div className="bg-slate-50 border-b border-slate-100 p-4 px-6 flex items-center gap-3">
-                              <div className="h-8 w-8 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shrink-0"><Smartphone className="h-4 w-4" /></div>
+                              <div className={`h-8 w-8 rounded-full flex items-center justify-center shrink-0 ${booking.transactionId.startsWith('pay_') ? 'bg-indigo-100 text-indigo-600' : 'bg-emerald-100 text-emerald-600'}`}>
+                                {booking.transactionId.startsWith('pay_') ? <ShieldCheck className="h-4 w-4" /> : <Smartphone className="h-4 w-4" />}
+                              </div>
                               <div>
-                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">UPI Payment Received</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-0.5">
+                                  {booking.transactionId.startsWith('pay_') ? 'Razorpay Secured' : 'UPI Payment Received'}
+                                </p>
                                 <p className="text-sm font-bold text-slate-900 flex items-center">
-                                  UTR: <span className="font-mono text-emerald-600 ml-1 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100 tracking-wider">{booking.transactionId}</span>
+                                  Ref: <span className={`font-mono ml-1 px-1.5 py-0.5 rounded border tracking-wider ${booking.transactionId.startsWith('pay_') ? 'text-indigo-600 bg-indigo-50 border-indigo-100' : 'text-emerald-600 bg-emerald-50 border-emerald-100'}`}>
+                                    {booking.transactionId}
+                                  </span>
                                 </p>
                               </div>
                             </div>
                           )}
+
                           {booking.transactionId === "Pay at Hotel" && (
                             <div className="bg-slate-50 border-b border-slate-100 p-4 px-6 flex items-center gap-3">
                               <div className="h-8 w-8 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center shrink-0"><Clock className="h-4 w-4" /></div>

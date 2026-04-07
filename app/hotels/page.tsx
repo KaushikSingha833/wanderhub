@@ -4,14 +4,14 @@ import Link from "next/link";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { collection, getDocs } from "firebase/firestore";
 import { auth, db } from "../lib/firebase"; 
-import { useCurrency } from "../lib/useCurrency"; // <-- 1. IMPORTING THE CURRENCY ENGINE
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Search, MapPin, Star, Wifi, Coffee, ExternalLink, BedDouble, Menu, X, Sparkles, Users, Loader2, Plane } from "lucide-react";
+import { useCurrency } from "../lib/useCurrency"; 
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Search, MapPin, Star, Wifi, Coffee, ExternalLink, BedDouble, Menu, X, Sparkles, Users, Loader2, Plane, ArrowDownUp } from "lucide-react";
 
 interface HotelResult {
   id: string;
   name: string;
   location: string;
-  rating: number;
+  rating: number | string; // Changed to allow "New"
   reviews: number;
   pricePerNight: number;
   imageUrl: string;
@@ -34,8 +34,10 @@ export default function HotelsPage() {
   const [hotels, setHotels] = useState<HotelResult[]>([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // ✨ NEW: SORTING STATE
+  const [sortBy, setSortBy] = useState("recommended");
 
-  // --- 2. ACTIVATING THE CURRENCY ENGINE ---
   const { symbol, convert } = useCurrency();
 
   useEffect(() => {
@@ -43,7 +45,6 @@ export default function HotelsPage() {
     return () => unsubscribe();
   }, []);
 
-  // --- THE HYBRID AGGREGATOR FETCH FUNCTION ---
   const handleSearchHotels = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -56,14 +57,26 @@ export default function HotelsPage() {
     setHasSearched(true);
     setHotels([]);
 
-    // 1. FETCH INTERNAL WANDERHUB PARTNER ROOMS & GROUP BY HOTEL
     let internalRooms: HotelResult[] = [];
     try {
       console.log("🔍 Fetching internal WanderHub partner rooms...");
+      
+      // ✨ NEW: FETCH REAL RATINGS FIRST
+      const reviewsSnapshot = await getDocs(collection(db, "hotelReviews"));
+      const hotelRatings: Record<string, { total: number; count: number }> = {};
+      
+      reviewsSnapshot.docs.forEach(doc => {
+        const rev = doc.data() as any;
+        if (rev.hotelName && rev.rating) {
+          if (!hotelRatings[rev.hotelName]) hotelRatings[rev.hotelName] = { total: 0, count: 0 };
+          hotelRatings[rev.hotelName].total += rev.rating;
+          hotelRatings[rev.hotelName].count += 1;
+        }
+      });
+
       const roomsSnapshot = await getDocs(collection(db, "rooms"));
       const searchDestinationLower = destination.toLowerCase();
 
-      // --- NEW: GROUPING ENGINE ---
       const hotelGroups: Record<string, HotelResult> = {};
 
       roomsSnapshot.docs.forEach(doc => {
@@ -72,23 +85,25 @@ export default function HotelsPage() {
 
         const hotelName = roomData.hotelName || "WanderHub Partner Hotel";
 
+        // ✨ NEW: CALCULATE REAL RATING FOR THIS SPECIFIC HOTEL
+        const stats = hotelRatings[hotelName];
+        const realRating = stats ? Number((stats.total / stats.count).toFixed(1)) : 5.0; // Default to 5.0 if no reviews yet
+        const realReviewsCount = stats ? stats.count : 0;
+
         if (!hotelGroups[hotelName]) {
-          // First time seeing this hotel, create the master card
           hotelGroups[hotelName] = {
             id: roomData.ownerId || doc.id, 
             name: hotelName,
             location: roomData.city ? roomData.city.charAt(0).toUpperCase() + roomData.city.slice(1) : destination, 
-            rating: 5.0, 
-            reviews: Math.floor(Math.random() * 40) + 10, 
+            rating: realRating, // <-- Real Rating injected
+            reviews: realReviewsCount, // <-- Real Review count injected
             pricePerNight: roomData.price || 5000,
             imageUrl: roomData.imageUrl || "https://images.unsplash.com/photo-1542314831-c6a4d1409a54?w=800&q=80",
             provider: "WanderHub Direct",
-            // Passes search params to the next page so the user doesn't have to re-enter dates!
             bookingUrl: `/partner-hotel/${encodeURIComponent(hotelName)}?checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}`,
             isExclusive: true
           };
         } else {
-          // If we find another room for this same hotel that is CHEAPER, update the "Starting from" price
           if (roomData.price && roomData.price < hotelGroups[hotelName].pricePerNight) {
             hotelGroups[hotelName].pricePerNight = roomData.price;
           }
@@ -96,12 +111,11 @@ export default function HotelsPage() {
       });
 
       internalRooms = Object.values(hotelGroups);
-      console.log(`✅ Found ${internalRooms.length} WanderHub Exclusive Hotels (grouped from multiple rooms)!`);
+      console.log(`✅ Found ${internalRooms.length} WanderHub Exclusive Hotels!`);
     } catch (err) {
       console.error("Internal fetch error:", err);
     }
 
-    // 2. FETCH EXTERNAL BOOKING.COM API
     try {
       const apiKey = process.env.NEXT_PUBLIC_HOTEL_API_KEY;
       
@@ -116,7 +130,6 @@ export default function HotelsPage() {
 
       const cleanGuestCount = guests.replace(/\D/g, '') || "2";
 
-      console.log(`🔍 Looking up ID for: ${destination}`);
       const locationRes = await fetch(`https://booking-com.p.rapidapi.com/v1/hotels/locations?name=${encodeURIComponent(destination)}&locale=en-gb`, { 
         method: 'GET', 
         headers 
@@ -132,8 +145,6 @@ export default function HotelsPage() {
       const destId = locationData[0].dest_id;
       const destType = locationData[0].dest_type;
       
-      console.log("🔍 Fetching Booking.com hotels with valid ID...");
-      // KEEPING filter_by_currency=INR SO DATA IS ALWAYS CONSISTENT BASE CURRENCY
       const searchUrl = `https://booking-com.p.rapidapi.com/v1/hotels/search?dest_id=${destId}&dest_type=${destType}&checkin_date=${checkIn}&checkout_date=${checkOut}&adults_number=${cleanGuestCount}&room_number=1&order_by=popularity&units=metric&locale=en-gb&filter_by_currency=INR`;
 
       const searchRes = await fetch(searchUrl, { method: 'GET', headers });
@@ -157,16 +168,13 @@ export default function HotelsPage() {
         bookingUrl: h.url || "#"
       }));
       
-      // MERGE DATA: Put our exclusive partners at the very top!
       setHotels([...internalRooms, ...mappedHotels]);
-      console.log("🎉 Success! Hybrid data rendered.");
 
     } catch (error: any) {
       console.error("🔴 EXTERNAL API ERROR CAUGHT:", error.message);
       
       await new Promise(resolve => setTimeout(resolve, 1500)); 
 
-      // Even if RapidAPI fails, we STILL show our internal partners alongside the mock data!
       setHotels([
         ...internalRooms,
         {
@@ -186,11 +194,18 @@ export default function HotelsPage() {
           imageUrl: "https://images.unsplash.com/photo-1520250497591-112f2f40a3f4?w=800&q=80", provider: "Expedia", bookingUrl: "https://expedia.com"
         }
       ]);
-      console.log("🟢 Fallback mock data rendered alongside internal partners.");
     } finally {
       setIsSearching(false);
     }
   };
+
+  // ✨ NEW: SORTING ENGINE
+  // This smoothly sorts the results right before they are drawn on the screen!
+  const displayedHotels = [...hotels].sort((a, b) => {
+    if (sortBy === "price_asc") return a.pricePerNight - b.pricePerNight;
+    if (sortBy === "price_desc") return b.pricePerNight - a.pricePerNight;
+    return 0; // "recommended" keeps the original order (Exclusive Partners first!)
+  });
 
   return (
     <div className="flex h-screen bg-[#f8fafc] dark:bg-[#030712] font-sans text-slate-900 dark:text-slate-100 overflow-hidden transition-colors duration-300 selection:bg-indigo-100 selection:text-indigo-900">
@@ -237,7 +252,6 @@ export default function HotelsPage() {
       </aside>
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        {/* Decorative Background Blur */}
         <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none transition-colors duration-500"></div>
 
         {/* MOBILE TOP BAR */}
@@ -247,7 +261,6 @@ export default function HotelsPage() {
             <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-blue-500 dark:from-indigo-400 dark:to-blue-400">WanderHub</span>
           </div>
           
-          {/* ADD THIS START */}
           <div className="flex items-center gap-2">
             <Link href="/my-bookings" className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors">
               <Calendar className="h-6 w-6 text-indigo-500" />
@@ -256,7 +269,6 @@ export default function HotelsPage() {
               <Menu className="h-6 w-6" />
             </button>
           </div>
-          {/* ADD THIS END */}
         </div>
 
         {/* DESKTOP HEADER */}
@@ -266,7 +278,6 @@ export default function HotelsPage() {
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">Find the perfect stay for your trip.</p>
           </div>
           
-          {/* NEW MY BOOKINGS BUTTON */}
           <Link href="/my-bookings" className="flex items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:shadow-md transition-all px-5 py-2.5 rounded-xl font-bold text-slate-700 dark:text-slate-200 text-sm group">
             <Calendar className="h-4 w-4 mr-2 text-indigo-500 group-hover:scale-110 transition-transform" />
             My Bookings
@@ -278,7 +289,6 @@ export default function HotelsPage() {
             
             {/* --- PRO HERO SEARCH WIDGET --- */}
             <div className="relative rounded-[2rem] p-8 md:p-12 mb-12 overflow-hidden shadow-xl border border-indigo-500/10 dark:border-white/5">
-              {/* Dynamic Backgrounds */}
               <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-blue-900 to-slate-900 dark:from-indigo-950 dark:via-[#0f172a] dark:to-purple-950"></div>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="https://images.unsplash.com/photo-1542314831-c6a4d1409a54?w=1200&q=80" alt="Luxury Hotel" className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay" />
@@ -346,7 +356,6 @@ export default function HotelsPage() {
                </div>
             ) : isSearching ? (
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
-                 {/* Pro Skeleton Loader */}
                  {[1,2,3,4,5,6,7,8].map(i => (
                    <div key={i} className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm overflow-hidden flex flex-col animate-pulse">
                      <div className="h-56 bg-slate-200 dark:bg-slate-800"></div>
@@ -367,28 +376,43 @@ export default function HotelsPage() {
                </div>
             ) : (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="flex flex-col md:flex-row md:justify-between md:items-end px-2 md:px-0 border-b border-slate-200 dark:border-white/10 pb-4">
+                {/* ✨ UPDATED HEADER WITH SORT DROPDOWN ✨ */}
+                <div className="flex flex-col md:flex-row md:justify-between md:items-end px-2 md:px-0 border-b border-slate-200 dark:border-white/10 pb-4 gap-4">
                   <div>
                     <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Top deals for {destination}</h3>
                     <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Showing the best available rates for your dates.</p>
                   </div>
-                  <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-transparent dark:border-indigo-500/20 px-4 py-2 rounded-xl mt-4 md:mt-0 inline-block w-max">
-                    {hotels.length} properties found
-                  </span>
+                  
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                    <div className="relative">
+                      <ArrowDownUp className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                      <select 
+                        value={sortBy} 
+                        onChange={(e) => setSortBy(e.target.value)}
+                        className="pl-9 pr-8 py-2 bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer appearance-none"
+                      >
+                        <option value="recommended">Recommended</option>
+                        <option value="price_asc">Price: Low to High</option>
+                        <option value="price_desc">Price: High to Low</option>
+                      </select>
+                    </div>
+                    <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-transparent dark:border-indigo-500/20 px-4 py-2 rounded-xl w-max">
+                      {displayedHotels.length} properties found
+                    </span>
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
-                  {hotels.map(hotel => (
+                  {/* ✨ WE NOW MAP OVER THE SORTED displayedHotels INSTEAD OF hotels ✨ */}
+                  {displayedHotels.map(hotel => (
                     <div key={hotel.id} className={`bg-white dark:bg-[#0f172a] rounded-[2rem] border ${hotel.isExclusive ? 'border-purple-300 shadow-purple-100/50 dark:border-purple-500/30 dark:shadow-purple-900/30' : 'border-slate-200 dark:border-white/10'} shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden flex flex-col group relative hover:-translate-y-2`}>
                       
-                      {/* PREMIUM EXCLUSIVE BADGE */}
                       {hotel.isExclusive && (
                         <div className="absolute top-4 right-4 bg-white/90 dark:bg-black/80 backdrop-blur-md text-purple-700 dark:text-purple-400 px-3.5 py-1.5 rounded-xl text-[10px] font-black flex items-center shadow-lg z-10 uppercase tracking-widest border border-purple-200 dark:border-purple-500/30">
                           <Sparkles className="h-3 w-3 mr-1.5 text-purple-500 dark:text-purple-400" /> WanderHub Partner
                         </div>
                       )}
 
-                      {/* Image Container with Zoom */}
                       <div className="h-56 bg-slate-200 dark:bg-slate-800 relative overflow-hidden">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img src={hotel.imageUrl} alt={hotel.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out" />
@@ -399,7 +423,6 @@ export default function HotelsPage() {
                         </div>
                       </div>
 
-                      {/* Content Container */}
                       <div className="p-5 md:p-6 flex-1 flex flex-col">
                         <h4 className="font-black text-xl text-slate-900 dark:text-white line-clamp-1 mb-1 tracking-tight" title={hotel.name}>{hotel.name}</h4>
                         <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mb-4 flex items-center truncate"><MapPin className="h-3.5 w-3.5 mr-1.5 shrink-0 text-slate-400"/> {hotel.location}</p>
@@ -413,7 +436,6 @@ export default function HotelsPage() {
                           <div className="min-w-0">
                             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Starting from</p>
                             
-                            {/* --- THE MAGIC RENDER --- */}
                             <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tighter truncate" title={`${symbol}${convert(hotel.pricePerNight).toLocaleString()}`}>
                               {symbol}{convert(hotel.pricePerNight).toLocaleString(undefined, {maximumFractionDigits: 0})}
                               <span className="text-xs md:text-sm font-medium text-slate-500 tracking-normal ml-1">/night</span>
