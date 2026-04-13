@@ -23,6 +23,8 @@ interface HotelPoll {
   id: string;
   name: string;
   location: string;
+  rating: number | string; // ✨ Add this
+  reviews: number;         // ✨ Add this
   pricePerNight: number;
   imageUrl: string;
   bookingUrl: string;
