@@ -11,10 +11,11 @@ import {
   User as FirebaseUser,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
-  updateProfile
+  updateProfile,
+  sendPasswordResetEmail // --- NEW: FIREBASE PASSWORD RESET IMPORT ---
 } from "firebase/auth";
 import { auth, db } from "./lib/firebase";
-import { Map, Calendar, CreditCard, Settings, Plus, PlaneTakeoff, Globe, Clock, User as UserIcon, Users, LogOut, BedDouble, Menu, X, ArrowRight, Trash2, Mail, Lock, AlertCircle, Receipt, Sun, ShieldCheck, Sparkles, Globe2, Building2, Smartphone, Star, Zap, ChevronRight, BarChart, Loader2, Plane } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, Plus, PlaneTakeoff, Globe, Clock, User as UserIcon, Users, LogOut, BedDouble, Menu, X, ArrowRight, Trash2, Mail, Lock, AlertCircle, Receipt, Sun, ShieldCheck, Sparkles, Globe2, Building2, Smartphone, Star, Zap, ChevronRight, BarChart, Loader2, Plane, CheckCircle2 } from "lucide-react";
 
 interface Trip {
   id: string;
@@ -25,7 +26,6 @@ interface Trip {
   members: string[];
   adminId?: string;
   memberNames?: Record<string, string>;
-  // --- NEW: Added imageUrl to the interface ---
   imageUrl?: string;
 }
 
@@ -52,16 +52,21 @@ export default function Home() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthLoading, setIsAuthLoading] = useState(true);
 
-  // --- NEW: Landing Page Toggle ---
   const [showLanding, setShowLanding] = useState(true);
 
-  // --- NEW AUTH STATE ---
+  // AUTH STATE
   const [isLoginMode, setIsLoginMode] = useState(true);
   const [authLoading, setAuthLoading] = useState(false);
   const [authError, setAuthError] = useState("");
   const [authName, setAuthName] = useState("");
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
+
+  // --- NEW: FORGOT PASSWORD STATE ---
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [isResetting, setIsResetting] = useState(false);
+  const [resetMessage, setResetMessage] = useState("");
 
   const [trips, setTrips] = useState<Trip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -103,7 +108,6 @@ export default function Home() {
     return () => unsubscribe();
   }, [user]);
 
-  // --- GOOGLE SIGN IN ---
   const handleGoogleSignIn = async () => {
     const provider = new GoogleAuthProvider();
     try {
@@ -113,7 +117,6 @@ export default function Home() {
     }
   };
 
-  // --- EMAIL/PASSWORD AUTH ---
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError("");
@@ -127,12 +130,10 @@ export default function Home() {
 
         const userCredential = await createUserWithEmailAndPassword(auth, authEmail, authPassword);
 
-        // Attach the name to their Firebase profile
         await updateProfile(userCredential.user, {
           displayName: authName.trim()
         });
 
-        // Force a UI update to show the new name
         setUser({ ...userCredential.user, displayName: authName.trim() } as FirebaseUser);
       }
     } catch (err: any) {
@@ -145,6 +146,36 @@ export default function Home() {
     }
   };
 
+  // --- NEW: FIREBASE PASSWORD RESET ENGINE ---
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail) return;
+    setIsResetting(true);
+    setResetMessage("");
+    setAuthError(""); 
+
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      setResetMessage("A secure reset link has been sent to your email. Check your inbox.");
+      setTimeout(() => {
+        setIsForgotModalOpen(false);
+        setResetMessage("");
+        setResetEmail("");
+      }, 6000);
+    } catch (error: any) {
+      console.error("Password reset error:", error);
+      if (error.code === 'auth/user-not-found') {
+          setResetMessage("Error: No account found with this email.");
+      } else if (error.code === 'auth/invalid-email') {
+          setResetMessage("Error: Please enter a valid email address.");
+      } else {
+          setResetMessage("Error: Could not send reset email. Try again later.");
+      }
+    } finally {
+      setIsResetting(false);
+    }
+  };
+
   const generateInviteCode = () => Math.random().toString(36).substring(2, 8).toUpperCase();
 
   const handleCreateTrip = async (e: React.FormEvent) => {
@@ -154,20 +185,16 @@ export default function Home() {
 
     const userName = user.displayName?.split(" ")[0] || "Traveler";
 
-    // --- NEW: FETCH IMAGE FROM UNSPLASH ---
     let fetchedImageUrl = "";
     try {
-      // We search unsplash with the title and specify landscape orientation
       const unsplashRes = await fetch(`https://api.unsplash.com/search/photos?query=${encodeURIComponent(title)}&orientation=landscape&client_id=S3o5ZZwBMWNSOTH5s-hc8BiYzYmitblOVgZvYJ28Syc&per_page=1`);
       const unsplashData = await unsplashRes.json();
 
-      // If we find results, grab the regular sized image URL
       if (unsplashData.results && unsplashData.results.length > 0) {
         fetchedImageUrl = unsplashData.results[0].urls.regular;
       }
     } catch (err) {
       console.error("Failed to fetch image from Unsplash", err);
-      // If it fails, fetchedImageUrl stays empty and we fall back to the old method automatically!
     }
 
     try {
@@ -179,7 +206,7 @@ export default function Home() {
         members: [user.uid],
         adminId: user.uid,
         memberNames: { [user.uid]: userName },
-        imageUrl: fetchedImageUrl, // --- NEW: SAVE TO FIREBASE ---
+        imageUrl: fetchedImageUrl, 
         createdAt: new Date(),
       });
       setTitle(""); setStartDate(""); setEndDate(""); setIsModalOpen(false);
@@ -408,7 +435,7 @@ export default function Home() {
               {/* Grid Layout */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-                {/* Bento Card 1 - Large (Spans 2 columns on desktop) */}
+                {/* Bento Card 1 - Large */}
                 <div className="md:col-span-2 glass-panel p-8 md:p-12 rounded-[2rem] hover:bg-white/[0.04] transition-colors group relative overflow-hidden">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all"></div>
                   <div className="h-14 w-14 bg-indigo-500/20 rounded-2xl flex items-center justify-center mb-8 border border-indigo-500/30">
@@ -534,7 +561,13 @@ export default function Home() {
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Password</label>
+              {/* ✨ NEW: Forgot Password Button Area */}
+              <div className="flex justify-between items-center mb-2">
+                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Password</label>
+                {isLoginMode && (
+                  <button type="button" onClick={() => setIsForgotModalOpen(true)} className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors">Forgot Password?</button>
+                )}
+              </div>
               <div className="relative">
                 <Lock className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-500" />
                 <input
@@ -571,6 +604,51 @@ export default function Home() {
             </button>
           </p>
         </div>
+
+        {/* ✨ NEW: FORGOT PASSWORD MODAL */}
+        {isForgotModalOpen && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
+            <div className="bg-[#0f172a] rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl border border-white/10 relative animate-in zoom-in-95 duration-300">
+              <button onClick={() => { setIsForgotModalOpen(false); setResetMessage(""); }} className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+              
+              <div className="h-16 w-16 bg-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 border border-indigo-500/30 rotate-3 mx-auto">
+                <Lock className="h-8 w-8 -rotate-3" />
+              </div>
+              
+              <h3 className="text-2xl font-black text-white text-center tracking-tight mb-2">Reset Password</h3>
+              <p className="text-sm font-medium text-slate-400 text-center mb-6 leading-relaxed">
+                Enter your email address and we'll send you a secure link to reset your password.
+              </p>
+
+              {resetMessage && (
+                <div className={`mb-6 p-4 text-sm font-bold rounded-xl flex items-start text-left border ${resetMessage.startsWith("Error:") ? "bg-red-500/10 text-red-400 border-red-500/30" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"}`}>
+                  {resetMessage.startsWith("Error:") ? <AlertCircle className="h-5 w-5 mr-2 shrink-0 mt-0.5" /> : <CheckCircle2 className="h-5 w-5 mr-2 shrink-0 mt-0.5" />}
+                  {resetMessage.replace("Error: ", "")}
+                </div>
+              )}
+
+              <form onSubmit={handlePasswordReset}>
+                <div className="relative mb-6">
+                  <Mail className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-500" />
+                  <input 
+                    type="email" 
+                    value={resetEmail} 
+                    onChange={(e) => setResetEmail(e.target.value)} 
+                    placeholder="you@example.com" 
+                    required
+                    className="w-full pl-11 pr-4 py-3 bg-[#1e293b] text-white border border-white/10 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none font-medium transition-all placeholder-slate-500"
+                  />
+                </div>
+                <button type="submit" disabled={isResetting || !resetEmail} className="w-full bg-indigo-600 text-white font-black py-3.5 rounded-xl hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 flex justify-center items-center">
+                  {isResetting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Send Reset Link"}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
       </div>
     );
   }
@@ -708,7 +786,6 @@ export default function Home() {
                     </div>
 
                     <div className="h-48 md:h-56 bg-slate-200 dark:bg-slate-800 relative overflow-hidden shrink-0">
-                      {/* --- NEW: Display the Unsplash image, or fallback automatically --- */}
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={trip.imageUrl || getTripImage(trip.id)} alt={trip.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out" />
                       <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity"></div>

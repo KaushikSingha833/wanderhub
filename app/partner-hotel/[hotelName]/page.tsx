@@ -30,6 +30,9 @@ interface Room {
   ownerId: string;
   maxGuests?: number;
   amenities?: string[];
+  // ✨ ADDED FOR SAFETY
+  latitude?: number;
+  longitude?: number;
 }
 
 interface ReviewReply {
@@ -64,13 +67,15 @@ function PartnerHotelContent() {
   const [checkOut, setCheckOut] = useState(searchParams.get("checkOut") || "");
   const [guests, setGuests] = useState(searchParams.get("guests") || "2");
   
-  // ✨ NEW: SORTING STATE
   const [sortBy, setSortBy] = useState("recommended");
 
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   
+  // ✨ NEW: HOTEL MAP COORDINATES STATE
+  const [hotelCoords, setHotelCoords] = useState<{lat: number, lng: number} | null>(null);
+
   const [trips, setTrips] = useState<any[]>([]);
   const [selectedTripId, setSelectedTripId] = useState<string>("");
 
@@ -119,6 +124,16 @@ function PartnerHotelContent() {
         })) as Room[];
         setRooms(fetchedRooms);
 
+        // ✨ NEW: Fetch Hotel Owner's Coordinates for Google Maps
+        const qHotel = query(collection(db, "users"), where("hotelName", "==", decodedHotelName), where("role", "==", "hotel_partner"));
+        const snapshotHotel = await getDocs(qHotel);
+        if (!snapshotHotel.empty) {
+          const hotelData = snapshotHotel.docs[0].data();
+          if (hotelData.latitude && hotelData.longitude) {
+            setHotelCoords({ lat: hotelData.latitude, lng: hotelData.longitude });
+          }
+        }
+
         const qReviews = query(collection(db, "hotelReviews"), where("hotelName", "==", decodedHotelName));
         const snapshotReviews = await getDocs(qReviews);
         const fetchedReviews = snapshotReviews.docs.map(doc => ({
@@ -138,15 +153,12 @@ function PartnerHotelContent() {
     if (decodedHotelName) fetchData();
   }, [decodedHotelName]);
 
-  // ✨ NEW: FILTERING AND SORTING ENGINE
   const displayedRooms = useMemo(() => {
-    // 1. Filter by Capacity
     let filtered = rooms.filter(room => {
-      const roomCapacity = room.maxGuests || 2; // Default to 2 if not set in old DB entries
+      const roomCapacity = room.maxGuests || 2; 
       return roomCapacity >= Number(guests);
     });
 
-    // 2. Sort by Price
     if (sortBy === "price_asc") {
       filtered.sort((a, b) => a.price - b.price);
     } else if (sortBy === "price_desc") {
@@ -403,7 +415,22 @@ function PartnerHotelContent() {
           </div>
 
           <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight drop-shadow-lg mb-2">{decodedHotelName}</h1>
-          <p className="text-white/80 font-bold flex items-center text-lg"><MapPin className="h-5 w-5 mr-2" /> {hotelCity}</p>
+          
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 mt-2">
+            <p className="text-white/80 font-bold flex items-center text-lg"><MapPin className="h-5 w-5 mr-2" /> {hotelCity}</p>
+            
+            {/* ✨ NEW: SHOW LOCATION IN GOOGLE MAPS BUTTON */}
+            {hotelCoords && (
+              <a 
+                href={`https://www.google.com/maps/search/?api=1&query=${hotelCoords.lat},${hotelCoords.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center text-sm font-bold text-white bg-white/20 hover:bg-white/30 backdrop-blur-md px-4 py-2 rounded-full transition-all border border-white/20 shadow-lg w-max"
+              >
+                <MapIcon className="h-4 w-4 mr-2" /> Show on Map
+              </a>
+            )}
+          </div>
         </div>
       </div>
 
@@ -414,7 +441,6 @@ function PartnerHotelContent() {
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
             <h2 className="text-2xl font-black text-slate-900 dark:text-white">Available Rooms</h2>
             
-            {/* ✨ NEW: SORTING CONTROLS */}
             <div className="flex items-center gap-3">
               <div className="relative">
                 <ArrowDownUp className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
@@ -763,7 +789,6 @@ function PartnerHotelContent() {
                         <option value="1">1 Guest</option><option value="2">2 Guests</option><option value="3">3 Guests</option><option value="4">4 Guests</option>
                       </select>
                     </div>
-                    {/* ✨ PHASE 4 ITINERARY DROPDOWN ✨ */}
                     <div>
                       <label className="block text-[10px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-2">Attach to Itinerary</label>
                       <div className="relative">

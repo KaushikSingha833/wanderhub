@@ -4,12 +4,12 @@ import { useParams, useRouter } from "next/navigation";
 import { doc, getDoc, collection, addDoc, onSnapshot, query, where, orderBy, updateDoc, arrayRemove, deleteField, deleteDoc } from "firebase/firestore"; 
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db } from "../../lib/firebase"; 
-import { ArrowLeft, Calendar, Plus, Plane, Hotel, Utensils, Map as MapIcon, Clock, Crown, UserMinus, LogOut, Users, CheckSquare, Square, Trash2, BaggageClaim, MapPin, FileText, Hash, X, Edit2 } from "lucide-react";
+import { ArrowLeft, Calendar, Plus, Plane, Hotel, Utensils, Map as MapIcon, Clock, Crown, UserMinus, LogOut, Users, CheckSquare, Square, Trash2, BaggageClaim, MapPin, FileText, Hash, X, Edit2, Heart, X as XIcon, Trophy, Flame, ExternalLink, ThumbsUp } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion"; // ✨ NEW: Framer Motion
 
 interface Trip {
   id: string; title: string; startDate: string; endDate: string; inviteCode?: string;
   adminId?: string; members?: string[]; memberNames?: Record<string, string>;
-  // --- NEW: Added imageUrl so this page knows to look for it ---
   imageUrl?: string; 
 }
 interface Activity { 
@@ -17,6 +17,18 @@ interface Activity {
   location?: string; notes?: string; trackingNumber?: string; 
 }
 interface PackingItem { id: string; name: string; isChecked: boolean; }
+
+// ✨ NEW: HOTEL POLL INTERFACE
+interface HotelPoll {
+  id: string;
+  name: string;
+  location: string;
+  pricePerNight: number;
+  imageUrl: string;
+  bookingUrl: string;
+  suggestedByName: string;
+  votes: Record<string, "yes" | "no" | "super">;
+}
 
 const TRAVEL_IMAGES = [
   "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&q=80", 
@@ -42,6 +54,12 @@ export default function TripDetails() {
   const [trip, setTrip] = useState<Trip | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [packingItems, setPackingItems] = useState<PackingItem[]>([]);
+  
+  // ✨ NEW: VOTING ROOM STATE
+  const [activeTab, setActiveTab] = useState<"itinerary" | "voting">("itinerary");
+  const [polls, setPolls] = useState<HotelPoll[]>([]);
+  const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
+
   const [isLoading, setIsLoading] = useState(true);
 
   // Modal & Activity State
@@ -88,19 +106,22 @@ export default function TripDetails() {
       setPackingItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as PackingItem));
     });
 
-    return () => { unsubTrip(); unsubActivities(); unsubPacking(); };
+    // ✨ NEW: Fetch Hotel Polls
+    const qPolls = query(collection(db, "trips", tripId, "hotel_polls"));
+    const unsubPolls = onSnapshot(qPolls, (snapshot) => {
+      setPolls(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as HotelPoll));
+    });
+
+    return () => { unsubTrip(); unsubActivities(); unsubPacking(); unsubPolls(); };
   }, [tripId]);
 
-  // --- NEW: THE SELF-HEALING NAME SYNC ---
-  // This uses your exact idea: It grabs the guaranteed real Google name and pushes it into the trip!
+  // The Self-Healing Name Sync
   useEffect(() => {
     if (!trip || !user || !trip.members?.includes(user.uid)) return;
 
     const savedName = trip.memberNames?.[user.uid];
-    // This is the same logic your homepage uses for "Welcome back!"
     const realAuthName = user.displayName || user.email?.split('@')[0] || "Traveler";
 
-    // If their real name isn't saved in the trip properly, auto-fix it
     if (!savedName || savedName !== realAuthName) {
       updateDoc(doc(db, "trips", tripId), {
         [`memberNames.${user.uid}`]: realAuthName
@@ -124,7 +145,6 @@ export default function TripDetails() {
   };
 
   // --- ACTIVITY LOGIC ---
-  
   const openAddModal = () => {
     setEditingActivityId(null);
     setActTitle(""); setActType("activity"); setActDate(""); setActTime("");
@@ -194,6 +214,24 @@ export default function TripDetails() {
     catch (error) { console.error("Error deleting item:", error); }
   };
 
+  // ✨ NEW: VOTING LOGIC
+  const handleVote = async (pollId: string, vote: "yes" | "no") => {
+    if (!user) return;
+    setSwipeDirection(vote === "yes" ? "right" : "left");
+    
+    // Short timeout to let the swipe out animation finish before hiding the card
+    setTimeout(async () => {
+      try {
+        await updateDoc(doc(db, "trips", tripId, "hotel_polls", pollId), {
+          [`votes.${user.uid}`]: vote
+        });
+        setSwipeDirection(null);
+      } catch (error) {
+        console.error("Error casting vote:", error);
+      }
+    }, 200);
+  };
+
   const getIcon = (type: string) => {
     switch(type) {
       case 'flight': return <Plane className="h-5 w-5 text-sky-500 dark:text-sky-400" />;
@@ -207,9 +245,17 @@ export default function TripDetails() {
   if (!trip) return <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-[#030712] transition-colors"><div className="text-center"><MapIcon className="h-16 w-16 mx-auto text-slate-300 dark:text-slate-600 mb-4"/><h2 className="text-2xl font-bold text-slate-700 dark:text-slate-300">Trip not found</h2><button onClick={() => router.push('/')} className="mt-4 text-indigo-600 dark:text-indigo-400 font-bold hover:underline">Return Home</button></div></div>;
 
   const isAdmin = user.uid === trip.adminId;
-  
-  // --- FIXED: Now prefers the Unsplash image (trip.imageUrl) and only falls back if it doesn't exist ---
   const tripImageUrl = trip.imageUrl || getTripImage(trip.id);
+
+  // ✨ COMPUTE VOTING DATA
+  const unvotedPolls = polls.filter(p => !p.votes || !p.votes[user.uid]);
+  
+  // Calculate Leaderboard
+  const leaderboard = [...polls].sort((a, b) => {
+    const scoreA = Object.values(a.votes || {}).reduce((acc, v) => acc + (v === 'yes' ? 1 : 0), 0);
+    const scoreB = Object.values(b.votes || {}).reduce((acc, v) => acc + (v === 'yes' ? 1 : 0), 0);
+    return scoreB - scoreA;
+  });
 
   return (
     <div className="min-h-screen bg-[#f8fafc] dark:bg-[#030712] font-sans text-slate-900 dark:text-slate-100 pb-24 selection:bg-indigo-100 selection:text-indigo-900 transition-colors duration-300">
@@ -220,14 +266,12 @@ export default function TripDetails() {
         <img src={tripImageUrl} alt={trip.title} className="absolute inset-0 w-full h-full object-cover opacity-60 dark:opacity-40 transition-opacity" />
         <div className="absolute inset-0 bg-gradient-to-t from-[#f8fafc] dark:from-[#030712] via-slate-900/40 dark:via-black/60 to-transparent transition-colors"></div>
         
-        {/* Top Navigation inside Hero */}
         <div className="absolute top-0 w-full p-6 flex justify-between items-center z-20">
           <button onClick={() => router.push('/')} className="flex items-center text-sm font-bold text-white bg-black/20 hover:bg-black/40 backdrop-blur-md px-4 py-2 rounded-full transition-all border border-white/10">
             <ArrowLeft className="h-4 w-4 mr-2" /> Dashboard
           </button>
         </div>
 
-        {/* Hero Content */}
         <div className="absolute bottom-12 md:bottom-16 left-0 w-full px-6 md:px-12 z-20 max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
             <div>
@@ -253,85 +297,271 @@ export default function TripDetails() {
       {/* MAIN CONTENT OVERLAP */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 -mt-8 md:-mt-10 relative z-30 grid grid-cols-1 xl:grid-cols-3 gap-8">
         
-        {/* LEFT COLUMN: TIMELINE */}
+        {/* LEFT COLUMN: MAIN CONTENT AREA */}
         <div className="xl:col-span-2">
           
-          <div className="flex items-center justify-between bg-white dark:bg-[#0f172a] p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/10 mb-8 transition-colors">
-            <div>
-              <h2 className="text-2xl font-black text-slate-900 dark:text-white">Itinerary</h2>
-              <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mt-1">Your detailed day-by-day plan.</p>
-            </div>
-            <button onClick={openAddModal} className="flex items-center bg-indigo-600 dark:bg-indigo-500 text-white px-5 py-3 rounded-2xl font-bold hover:bg-indigo-700 dark:hover:bg-indigo-600 hover:shadow-lg hover:-translate-y-0.5 transition-all shadow-indigo-600/20 dark:shadow-none">
-              <Plus className="h-5 w-5 mr-2" /> Add Event
+          {/* ✨ NEW: TAB NAVIGATION */}
+          <div className="flex items-center gap-3 mb-6 p-1.5 bg-white dark:bg-[#0f172a] rounded-[1.5rem] shadow-sm border border-slate-100 dark:border-white/10 w-max transition-colors">
+            <button onClick={() => setActiveTab("itinerary")} className={`flex items-center px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === "itinerary" ? "bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}>
+              <Calendar className="h-4 w-4 mr-2" /> Itinerary
+            </button>
+            <button onClick={() => setActiveTab("voting")} className={`flex items-center px-6 py-2.5 rounded-xl font-bold text-sm transition-all ${activeTab === "voting" ? "bg-purple-50 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 shadow-sm" : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"}`}>
+              <Flame className="h-4 w-4 mr-2" /> Voting Room
+              {unvotedPolls.length > 0 && <span className="ml-2 bg-purple-500 text-white text-[10px] font-black px-2 py-0.5 rounded-full">{unvotedPolls.length}</span>}
             </button>
           </div>
 
-          {activities.length === 0 ? (
-            <div className="bg-white dark:bg-[#0f172a] rounded-[2rem] border border-slate-100 dark:border-white/10 shadow-sm p-12 text-center flex flex-col items-center justify-center min-h-[300px] transition-colors">
-              <div className="h-20 w-20 bg-indigo-50 dark:bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
-                <MapIcon className="h-10 w-10 text-indigo-300 dark:text-indigo-500/50" />
+          {/* ==================================================== */}
+          {/* TAB 1: ITINERARY VIEW (Untouched Original Code)        */}
+          {/* ==================================================== */}
+          {activeTab === "itinerary" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+              <div className="flex items-center justify-between bg-white dark:bg-[#0f172a] p-6 rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/10 mb-8 transition-colors">
+                <div>
+                  <h2 className="text-2xl font-black text-slate-900 dark:text-white">Itinerary</h2>
+                  <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mt-1">Your detailed day-by-day plan.</p>
+                </div>
+                <button onClick={openAddModal} className="flex items-center bg-indigo-600 dark:bg-indigo-500 text-white px-5 py-3 rounded-2xl font-bold hover:bg-indigo-700 dark:hover:bg-indigo-600 hover:shadow-lg hover:-translate-y-0.5 transition-all shadow-indigo-600/20 dark:shadow-none">
+                  <Plus className="h-5 w-5 mr-2" /> Add Event
+                </button>
               </div>
-              <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2">Blank Canvas</h2>
-              <p className="text-slate-500 dark:text-slate-400 font-medium max-w-sm mx-auto">Your itinerary is currently empty. Start adding flights, hotels, or dinner reservations!</p>
-            </div>
-          ) : (
-            <div className="bg-white dark:bg-[#0f172a] rounded-[2rem] border border-slate-100 dark:border-white/10 shadow-sm p-6 md:p-10 relative transition-colors">
-              <div className="absolute left-11 md:left-14 top-10 bottom-10 w-0.5 bg-gradient-to-b from-indigo-100 dark:from-indigo-500/20 via-slate-200 dark:via-slate-800 to-transparent"></div>
-              
-              <div className="space-y-8">
-                {activities.map((act) => (
-                  <div key={act.id} className="relative flex items-start gap-6 group">
-                    <div className="relative z-10 flex items-center justify-center w-12 h-12 rounded-2xl border-4 border-white dark:border-[#0f172a] bg-slate-50 dark:bg-[#1e293b] shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300 shrink-0">
-                      {getIcon(act.type)}
-                    </div>
-                    <div className="flex-1 relative bg-white dark:bg-[#1e293b]/50 p-6 rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-xl hover:border-indigo-100 dark:hover:border-indigo-500/30 transition-all duration-300 group-hover:-translate-y-1">
-                      
-                      <div className="absolute top-4 right-4 flex opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 dark:bg-[#1e293b]/80 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-slate-100 dark:border-white/10">
-                        <button onClick={() => openEditModal(act)} className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" title="Edit Activity">
-                          <Edit2 className="h-4 w-4" />
-                        </button>
-                        <button onClick={() => handleDeleteActivity(act.id)} className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors" title="Delete Activity">
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
 
-                      <div className="flex flex-wrap justify-between items-start gap-4 mb-3 pr-16">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1 rounded-full">{act.type}</span>
-                          <span className="text-sm font-bold text-slate-400 dark:text-slate-500 flex items-center"><Calendar className="h-3.5 w-3.5 mr-1.5" /> {act.date}</span>
+              {activities.length === 0 ? (
+                <div className="bg-white dark:bg-[#0f172a] rounded-[2rem] border border-slate-100 dark:border-white/10 shadow-sm p-12 text-center flex flex-col items-center justify-center min-h-[300px] transition-colors">
+                  <div className="h-20 w-20 bg-indigo-50 dark:bg-indigo-500/10 rounded-full flex items-center justify-center mb-6">
+                    <MapIcon className="h-10 w-10 text-indigo-300 dark:text-indigo-500/50" />
+                  </div>
+                  <h2 className="text-2xl font-black text-slate-800 dark:text-white mb-2">Blank Canvas</h2>
+                  <p className="text-slate-500 dark:text-slate-400 font-medium max-w-sm mx-auto">Your itinerary is currently empty. Start adding flights, hotels, or dinner reservations!</p>
+                </div>
+              ) : (
+                <div className="bg-white dark:bg-[#0f172a] rounded-[2rem] border border-slate-100 dark:border-white/10 shadow-sm p-6 md:p-10 relative transition-colors">
+                  <div className="absolute left-11 md:left-14 top-10 bottom-10 w-0.5 bg-gradient-to-b from-indigo-100 dark:from-indigo-500/20 via-slate-200 dark:via-slate-800 to-transparent"></div>
+                  
+                  <div className="space-y-8">
+                    {activities.map((act) => (
+                      <div key={act.id} className="relative flex items-start gap-6 group">
+                        <div className="relative z-10 flex items-center justify-center w-12 h-12 rounded-2xl border-4 border-white dark:border-[#0f172a] bg-slate-50 dark:bg-[#1e293b] shadow-sm group-hover:scale-110 group-hover:shadow-md transition-all duration-300 shrink-0">
+                          {getIcon(act.type)}
                         </div>
-                        <div className="flex items-center text-slate-900 dark:text-white font-black bg-slate-50 dark:bg-white/5 px-3 py-1 rounded-lg border border-slate-100 dark:border-white/5">
-                          <Clock className="h-4 w-4 mr-2 text-indigo-500 dark:text-indigo-400" /> {act.time}
+                        <div className="flex-1 relative bg-white dark:bg-[#1e293b]/50 p-6 rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm hover:shadow-xl hover:border-indigo-100 dark:hover:border-indigo-500/30 transition-all duration-300 group-hover:-translate-y-1">
+                          
+                          <div className="absolute top-4 right-4 flex opacity-0 group-hover:opacity-100 transition-opacity bg-white/80 dark:bg-[#1e293b]/80 backdrop-blur-sm rounded-lg p-1 shadow-sm border border-slate-100 dark:border-white/10">
+                            <button onClick={() => openEditModal(act)} className="p-1.5 text-slate-400 hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors" title="Edit Activity">
+                              <Edit2 className="h-4 w-4" />
+                            </button>
+                            <button onClick={() => handleDeleteActivity(act.id)} className="p-1.5 text-slate-400 hover:text-red-600 dark:hover:text-red-400 transition-colors" title="Delete Activity">
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+
+                          <div className="flex flex-wrap justify-between items-start gap-4 mb-3 pr-16">
+                            <div className="flex items-center gap-3">
+                              <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-3 py-1 rounded-full">{act.type}</span>
+                              <span className="text-sm font-bold text-slate-400 dark:text-slate-500 flex items-center"><Calendar className="h-3.5 w-3.5 mr-1.5" /> {act.date}</span>
+                            </div>
+                            <div className="flex items-center text-slate-900 dark:text-white font-black bg-slate-50 dark:bg-white/5 px-3 py-1 rounded-lg border border-slate-100 dark:border-white/5">
+                              <Clock className="h-4 w-4 mr-2 text-indigo-500 dark:text-indigo-400" /> {act.time}
+                            </div>
+                          </div>
+                          
+                          <h3 className="font-black text-xl text-slate-900 dark:text-white mb-4">{act.title}</h3>
+                          
+                          {(act.location || act.trackingNumber || act.notes) && (
+                            <div className="bg-slate-50 dark:bg-black/20 rounded-2xl p-4 space-y-3 border border-slate-100 dark:border-white/5">
+                              {act.trackingNumber && (
+                                <div className="flex items-center text-sm font-semibold text-slate-700 dark:text-slate-300">
+                                  <Hash className="h-4 w-4 mr-2 text-slate-400 dark:text-slate-500" /> {act.trackingNumber}
+                                </div>
+                              )}
+                              {act.location && (
+                                <div className="flex items-start text-sm font-medium text-slate-600 dark:text-slate-400">
+                                  <MapPin className="h-4 w-4 mr-2 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" /> {act.location}
+                                </div>
+                              )}
+                              {act.notes && (
+                                <div className="flex items-start text-sm text-slate-500 dark:text-slate-400 italic">
+                                  <FileText className="h-4 w-4 mr-2 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" /> "{act.notes}"
+                                </div>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
-                      
-                      <h3 className="font-black text-xl text-slate-900 dark:text-white mb-4">{act.title}</h3>
-                      
-                      {(act.location || act.trackingNumber || act.notes) && (
-                        <div className="bg-slate-50 dark:bg-black/20 rounded-2xl p-4 space-y-3 border border-slate-100 dark:border-white/5">
-                          {act.trackingNumber && (
-                            <div className="flex items-center text-sm font-semibold text-slate-700 dark:text-slate-300">
-                              <Hash className="h-4 w-4 mr-2 text-slate-400 dark:text-slate-500" /> {act.trackingNumber}
-                            </div>
-                          )}
-                          {act.location && (
-                            <div className="flex items-start text-sm font-medium text-slate-600 dark:text-slate-400">
-                              <MapPin className="h-4 w-4 mr-2 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" /> {act.location}
-                            </div>
-                          )}
-                          {act.notes && (
-                            <div className="flex items-start text-sm text-slate-500 dark:text-slate-400 italic">
-                              <FileText className="h-4 w-4 mr-2 text-slate-400 dark:text-slate-500 shrink-0 mt-0.5" /> "{act.notes}"
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </div>
+              )}
             </div>
           )}
+
+          {/* ==================================================== */}
+          {/* TAB 2: VOTING ROOM (Tinder Swiper & Consensus)         */}
+          {/* ==================================================== */}
+          {activeTab === "voting" && (
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[600px] flex flex-col">
+              
+              {/* 1. TINDER SWIPE STACK */}
+              {unvotedPolls.length > 0 ? (
+                <div className="flex-1 flex flex-col items-center justify-center relative w-full pt-8">
+                  <div className="absolute top-0 text-center w-full">
+                    <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Vote on Hotels</h3>
+                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Swipe Right to approve, Left to reject.</p>
+                  </div>
+
+                  <div className="relative w-full max-w-sm h-[450px] mx-auto mt-16 perspective-1000">
+                    <AnimatePresence>
+                      {unvotedPolls.map((poll, index) => {
+                        // Only render the top 3 cards for performance
+                        if (index > 2) return null;
+                        
+                        const isFront = index === 0;
+                        const cardScale = isFront ? 1 : 1 - (index * 0.05);
+                        const cardY = isFront ? 0 : index * 15;
+                        const cardOpacity = isFront ? 1 : 1 - (index * 0.2);
+
+                        return (
+                          <motion.div
+                            key={poll.id}
+                            initial={{ scale: 0.9, opacity: 0, y: 50 }}
+                            animate={{ scale: cardScale, opacity: cardOpacity, y: cardY }}
+                            exit={{ 
+                              x: swipeDirection === "right" ? 300 : -300, 
+                              opacity: 0, 
+                              rotate: swipeDirection === "right" ? 15 : -15,
+                              transition: { duration: 0.3 } 
+                            }}
+                            drag={isFront ? "x" : false}
+                            dragConstraints={{ left: 0, right: 0 }}
+                            onDragEnd={(e, info) => {
+                              if (info.offset.x > 100) handleVote(poll.id, "yes");
+                              else if (info.offset.x < -100) handleVote(poll.id, "no");
+                            }}
+                            className={`absolute inset-0 bg-white dark:bg-[#0f172a] rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col cursor-grab active:cursor-grabbing ${isFront ? 'z-50' : 'z-40 pointer-events-none'}`}
+                            style={{ originY: 1 }}
+                          >
+                            <div className="relative h-3/5 w-full bg-slate-200 dark:bg-slate-800 shrink-0">
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={poll.imageUrl} alt={poll.name} className="w-full h-full object-cover pointer-events-none" />
+                              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent"></div>
+                              
+                              <div className="absolute top-4 left-4 bg-white/90 dark:bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-black text-slate-800 dark:text-white flex items-center shadow-sm">
+                                ⭐ {poll.rating}
+                              </div>
+                            </div>
+                            
+                            <div className="p-6 flex flex-col flex-1 pointer-events-none select-none">
+                              <h3 className="text-2xl font-black text-slate-900 dark:text-white line-clamp-1 mb-1 tracking-tight">{poll.name}</h3>
+                              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center truncate mb-auto"><MapPin className="h-4 w-4 mr-1 shrink-0" /> {poll.location}</p>
+                              
+                              <div className="flex items-end justify-between mt-4">
+                                <div>
+                                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Price</p>
+                                  <p className="text-2xl font-black text-slate-900 dark:text-white">₹{poll.pricePerNight}<span className="text-sm font-medium text-slate-500">/nt</span></p>
+                                </div>
+                                <div className="text-right">
+                                  <p className="text-[10px] font-bold text-slate-400">Suggested by</p>
+                                  <p className="text-sm font-bold text-indigo-500 dark:text-indigo-400">{poll.suggestedByName.split(' ')[0]}</p>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        );
+                      })}
+                    </AnimatePresence>
+                  </div>
+
+                  {/* Manual Swipe Buttons */}
+                  <div className="flex items-center justify-center gap-6 mt-12 z-50">
+                    <button 
+                      onClick={() => handleVote(unvotedPolls[0].id, "no")}
+                      className="h-16 w-16 bg-white dark:bg-[#0f172a] rounded-full flex items-center justify-center text-red-500 shadow-xl border border-slate-100 dark:border-white/10 hover:scale-110 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all active:scale-95"
+                    >
+                      <XIcon className="h-8 w-8" strokeWidth={3} />
+                    </button>
+                    <button 
+                      onClick={() => handleVote(unvotedPolls[0].id, "yes")}
+                      className="h-16 w-16 bg-white dark:bg-[#0f172a] rounded-full flex items-center justify-center text-emerald-500 shadow-xl border border-slate-100 dark:border-white/10 hover:scale-110 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all active:scale-95"
+                    >
+                      <Heart className="h-8 w-8 fill-emerald-500" strokeWidth={3} />
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                
+              /* 2. CONSENSUS LEADERBOARD */
+                <div className="flex-1 bg-white dark:bg-[#0f172a] rounded-[2.5rem] border border-slate-100 dark:border-white/10 shadow-sm p-8 md:p-12 animate-in zoom-in-95 duration-500">
+                  <div className="text-center mb-10">
+                    <div className="h-20 w-20 bg-amber-50 dark:bg-amber-500/10 rounded-full flex items-center justify-center text-amber-500 dark:text-amber-400 mx-auto mb-6 shadow-inner border border-amber-100 dark:border-amber-500/20">
+                      <Trophy className="h-10 w-10" />
+                    </div>
+                    <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Group Consensus</h3>
+                    <p className="text-slate-500 dark:text-slate-400 font-medium">You've voted on all suggestions! Here are the current standings.</p>
+                  </div>
+
+                  {leaderboard.length === 0 ? (
+                     <div className="text-center p-8 border border-dashed border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50 dark:bg-[#1e293b]/30">
+                       <p className="text-slate-500 font-bold">No hotels have been suggested yet.</p>
+                       <button onClick={() => router.push('/hotels')} className="mt-4 text-indigo-600 dark:text-indigo-400 font-bold hover:underline">Go to Hotel Search to suggest one</button>
+                     </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {leaderboard.map((hotel, index) => {
+                        const yesVotes = Object.values(hotel.votes || {}).filter(v => v === 'yes').length;
+                        const noVotes = Object.values(hotel.votes || {}).filter(v => v === 'no').length;
+                        const isWinner = index === 0 && yesVotes > 0;
+
+                        return (
+                          <div key={hotel.id} className={`relative flex items-center gap-4 p-4 rounded-2xl border ${isWinner ? 'bg-amber-50/50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 shadow-md' : 'bg-slate-50 dark:bg-[#1e293b]/50 border-slate-100 dark:border-white/5'} transition-colors`}>
+                            
+                            {isWinner && (
+                              <div className="absolute -top-3 -left-3 bg-gradient-to-br from-amber-400 to-orange-500 text-white h-8 w-8 rounded-full flex items-center justify-center shadow-lg transform -rotate-12 border-2 border-white dark:border-[#0f172a]">
+                                <Crown className="h-4 w-4" />
+                              </div>
+                            )}
+
+                            <div className="font-black text-2xl text-slate-300 dark:text-slate-600 w-6 text-center">#{index + 1}</div>
+                            
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={hotel.imageUrl} alt="" className="h-16 w-16 rounded-xl object-cover shadow-sm" />
+                            
+                            <div className="flex-1 min-w-0">
+                              <h4 className="font-black text-slate-900 dark:text-white text-lg truncate tracking-tight">{hotel.name}</h4>
+                              <p className="text-xs font-bold text-slate-500 dark:text-slate-400">₹{hotel.pricePerNight} / night</p>
+                            </div>
+
+                            <div className="flex items-center gap-4 px-4 border-r border-slate-200 dark:border-white/10">
+                              <div className="text-center">
+                                <p className="text-[10px] font-black uppercase text-slate-400">Yes</p>
+                                <p className="text-lg font-black text-emerald-500">{yesVotes}</p>
+                              </div>
+                              <div className="text-center">
+                                <p className="text-[10px] font-black uppercase text-slate-400">No</p>
+                                <p className="text-lg font-black text-red-400">{noVotes}</p>
+                              </div>
+                            </div>
+
+                            <div className="pl-2">
+                              {isWinner ? (
+                                <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer" className="bg-slate-900 dark:bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-black text-sm transition-all shadow-md flex items-center whitespace-nowrap">
+                                  Book <ExternalLink className="h-4 w-4 ml-2" />
+                                </a>
+                              ) : (
+                                <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 p-3 bg-white dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 transition-colors flex items-center justify-center">
+                                  <ExternalLink className="h-4 w-4" />
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
 
         {/* RIGHT COLUMN: GROUPS & PACKING LIST */}
@@ -344,8 +574,6 @@ export default function TripDetails() {
               {trip.members?.map((memberUid) => {
                 const isThisMemberAdmin = memberUid === trip.adminId;
                 const isMe = memberUid === user.uid;
-                
-                // Uses the auto-synced name from the database!
                 const memberName = trip.memberNames?.[memberUid] || "Unknown Traveler";
 
                 return (

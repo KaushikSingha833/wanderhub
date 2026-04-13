@@ -1,10 +1,22 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, addDoc } from "firebase/firestore"; 
+import dynamic from "next/dynamic";
+import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, addDoc, setDoc, serverTimestamp } from "firebase/firestore"; 
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db } from "../lib/firebase"; 
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Printer, Clock, MapPin, Plane, Hotel, Utensils, Trash2, Map as MapIcon, CalendarPlus, ChevronDown, ChevronUp, AlignLeft, Navigation, BedDouble, Sparkles, Loader2, Menu, X, Sun, CloudRain, Hash, Info, ArrowRight, } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Printer, Clock, MapPin, Plane, Hotel, Utensils, Trash2, Map as MapIcon, CalendarPlus, ChevronDown, ChevronUp, AlignLeft, Navigation, BedDouble, Sparkles, Loader2, Menu, X, Sun, CloudRain, Hash, Info, ArrowRight, Radio, Users } from "lucide-react";
+
+// ✨ NEW: Dynamically load the map component (Bypasses the "window is not defined" SSR error)
+const DynamicRadarMap = dynamic(() => import('../components/RadarMap'), { 
+  ssr: false,
+  loading: () => (
+    <div className="h-full flex flex-col items-center justify-center text-indigo-500 bg-slate-900">
+      <Loader2 className="h-8 w-8 animate-spin mb-3" />
+      <p className="text-sm font-bold uppercase tracking-widest text-slate-500">Loading Satellites...</p>
+    </div>
+  )
+});
 
 interface Trip { id: string; title: string; }
 interface Activity {
@@ -28,7 +40,7 @@ export default function ItinerariesPage() {
   
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   
-  // LIVE TRACKER STATE
+  // LIVE TRACKER STATE (Air/Train Radar)
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isTrackingLoading, setIsTrackingLoading] = useState(false);
   const [trackingData, setTrackingData] = useState<any>(null);
@@ -45,6 +57,78 @@ export default function ItinerariesPage() {
   const [weatherData, setWeatherData] = useState<any[]>([]);
   const [isWeatherLoading, setIsWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState("");
+
+  // LIVE SAFE RADAR MAP STATE
+  const [activeTab, setActiveTab] = useState<'itinerary' | 'live_map'>('itinerary');
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
+  const [liveMembers, setLiveMembers] = useState<any[]>([]);
+  const [myLatestCoords, setMyLatestCoords] = useState<[number, number] | null>(null);
+
+  // BROADCAST ENGINE (Watch Position)
+  useEffect(() => {
+    let watchId: number;
+
+    if (isBroadcasting && selectedTripId && user) {
+      if (!navigator.geolocation) {
+        alert("Geolocation is not supported by your browser.");
+        setIsBroadcasting(false);
+        return;
+      }
+
+      watchId = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          setMyLatestCoords([latitude, longitude]);
+          
+          // Push to Firebase instantly
+          const trackRef = doc(db, "liveTracking", `${selectedTripId}_${user.uid}`);
+          setDoc(trackRef, {
+            tripId: selectedTripId,
+            userId: user.uid,
+            userName: user.displayName || "Traveler",
+            lat: latitude,
+            lng: longitude,
+            lastUpdated: serverTimestamp()
+          }, { merge: true });
+        },
+        (error) => {
+          console.error("GPS Error:", error);
+          alert("Make sure location permissions are allowed.");
+          setIsBroadcasting(false);
+        },
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 5000 }
+      );
+    } else if (!isBroadcasting && user && selectedTripId) {
+      // Remove ping from map when turned off
+      const trackRef = doc(db, "liveTracking", `${selectedTripId}_${user.uid}`);
+      deleteDoc(trackRef).catch(console.error);
+      setMyLatestCoords(null);
+    }
+
+    return () => {
+      if (watchId) navigator.geolocation.clearWatch(watchId);
+    };
+  }, [isBroadcasting, selectedTripId, user]);
+
+  // MULTI-PLAYER RADAR LISTENER
+  useEffect(() => {
+    if (!selectedTripId || activeTab !== 'live_map') return;
+    
+    const q = query(collection(db, "liveTracking"), where("tripId", "==", selectedTripId));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const activeMembers = snapshot.docs.map(doc => doc.data());
+      // Filter out people who haven't updated in the last 30 minutes (fallback safety)
+      const recentMembers = activeMembers.filter(m => {
+        if (!m.lastUpdated) return true; 
+        const diffMs = Date.now() - m.lastUpdated.toMillis();
+        return diffMs < 30 * 60 * 1000; 
+      });
+      setLiveMembers(recentMembers);
+    });
+
+    return () => unsubscribe();
+  }, [selectedTripId, activeTab]);
+
 
   const handleTrackStatus = async (activityTitle: string, type: string, trackingNum?: string) => {
     setIsTrackerOpen(true);
@@ -387,211 +471,256 @@ export default function ItinerariesPage() {
         <main className="flex-1 overflow-y-auto p-4 md:p-10 print:p-0 print:bg-white bg-[#f8fafc] dark:bg-transparent custom-scrollbar relative z-10">
           <div className="max-w-4xl mx-auto pb-24">
             
-            {/* --- PRO WEATHER WIDGET --- */}
-            {selectedTripId && !isWeatherLoading && weatherData.length > 0 && (
-              <div className="mb-10 relative overflow-hidden rounded-[2rem] p-8 print:hidden animate-in fade-in slide-in-from-top-8 duration-700 shadow-xl border border-indigo-500/10 dark:border-white/5">
-                {/* Dynamic Backgrounds */}
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-blue-600 to-sky-400 dark:from-indigo-950 dark:via-[#0f172a] dark:to-blue-900"></div>
-                <div className="absolute top-[-50%] right-[-10%] w-[500px] h-[500px] bg-white/20 dark:bg-white/5 rounded-full blur-[80px]"></div>
-                <div className="absolute bottom-[-30%] left-[-10%] w-[300px] h-[300px] bg-indigo-900/30 dark:bg-blue-500/10 rounded-full blur-[60px]"></div>
-                
-                {/* Content */}
-                <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-8 border-b border-white/20 dark:border-white/10 pb-4">
-                    <h3 className="text-xl font-black text-white flex items-center tracking-tight">
-                      <Sun className="h-6 w-6 mr-3 text-amber-300"/> Destination Forecast
-                    </h3>
-                    <span className="text-xs font-bold text-sky-100 uppercase tracking-widest bg-black/20 px-3 py-1 rounded-full backdrop-blur-sm">Live API</span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                    {weatherData.slice(0, 5).map((day: any, idx: number) => {
-                      const dateObj = new Date(day.dt * 1000);
-                      const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
-                      const dateNum = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                      const temp = Math.round(day.main.temp);
-                      const iconUrl = `https://openweathermap.org/img/wn/${day.weather[0].icon}@4x.png`;
-                      
-                      return (
-                        <div key={idx} className="bg-black/10 dark:bg-white/5 backdrop-blur-xl rounded-2xl p-5 flex flex-col items-center text-center border border-white/10 dark:border-white/5 hover:bg-black/20 dark:hover:bg-white/10 hover:-translate-y-1 transition-all duration-300 shadow-inner group">
-                          <p className="text-[10px] font-black uppercase tracking-widest text-sky-200 dark:text-sky-300 mb-0.5">{weekday}</p>
-                          <p className="text-xs font-bold text-white/80 mb-2">{dateNum}</p>
-                          
-                          <div className="relative h-16 w-16 mb-2 group-hover:scale-110 transition-transform duration-500">
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={iconUrl} alt="weather icon" className="absolute inset-0 w-full h-full object-contain drop-shadow-2xl filter brightness-110" />
-                          </div>
-                          
-                          <p className="text-3xl font-black text-white tracking-tighter drop-shadow-md">{temp}°</p>
-                          <p className="text-[11px] font-semibold text-sky-100 dark:text-sky-200 capitalize mt-2 bg-white/10 dark:bg-black/30 px-2.5 py-1 rounded-lg w-full truncate">{day.weather[0].description}</p>
-                        </div>
-                      );
-                    })}
-                  </div>
+            {/* ✨ NEW: TAB TOGGLE (ITINERARY vs LIVE MAP) */}
+            {selectedTripId && (
+              <div className="flex justify-center mb-10 print:hidden animate-in fade-in slide-in-from-top-4 duration-500">
+                <div className="bg-slate-200/50 dark:bg-[#1e293b] p-1.5 rounded-2xl inline-flex shadow-inner border border-slate-200/50 dark:border-white/5">
+                  <button 
+                    onClick={() => setActiveTab('itinerary')} 
+                    className={`flex items-center px-6 py-2.5 rounded-xl font-black text-sm transition-all ${activeTab === 'itinerary' ? 'bg-white dark:bg-indigo-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                  >
+                    <AlignLeft className="h-4 w-4 mr-2" /> Itinerary
+                  </button>
+                  <button 
+                    onClick={() => setActiveTab('live_map')} 
+                    className={`flex items-center px-6 py-2.5 rounded-xl font-black text-sm transition-all ${activeTab === 'live_map' ? 'bg-white dark:bg-indigo-600 text-slate-900 dark:text-white shadow-sm' : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300'}`}
+                  >
+                    <Radio className="h-4 w-4 mr-2" /> Live Map
+                  </button>
                 </div>
               </div>
             )}
-            
-            {/* Loading/Error States for Weather */}
-            {selectedTripId && isWeatherLoading && (
-              <div className="mb-10 bg-white dark:bg-[#0f172a] rounded-[2rem] p-8 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col items-center justify-center h-48 animate-pulse print:hidden">
-                <Loader2 className="h-8 w-8 mb-4 animate-spin text-indigo-400" /> 
-                <p className="text-slate-500 dark:text-slate-400 font-bold text-sm uppercase tracking-widest">Connecting to Weather Satellites...</p>
-              </div>
-            )}
-            {selectedTripId && weatherError && !isWeatherLoading && (
-              <div className="mb-10 bg-slate-100 dark:bg-[#1e293b] rounded-[2rem] p-6 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 font-medium flex items-center justify-center print:hidden shadow-inner">
-                <CloudRain className="h-5 w-5 mr-3 text-slate-400 dark:text-slate-500" /> {weatherError}
-              </div>
-            )}
-            {/* --- END WEATHER WIDGET --- */}
 
-            {trips.length === 0 ? (
-               <div className="text-center py-24 md:py-32">
-                 <div className="h-24 w-24 bg-white dark:bg-[#1e293b] rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/10 flex items-center justify-center mx-auto mb-6 rotate-3">
-                   <Calendar className="h-10 w-10 text-indigo-400" />
-                 </div>
-                 <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">No Trips Found</h3>
-                 <p className="text-slate-500 dark:text-slate-400 font-medium mt-3 text-lg">Head back to the dashboard to start planning.</p>
-                 <Link href="/" className="inline-flex mt-8 bg-slate-900 dark:bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors shadow-lg shadow-slate-900/20 dark:shadow-indigo-900/30">Go to Dashboard</Link>
-               </div>
-            ) : activities.length === 0 ? (
-               <div className="text-center py-20 md:py-28 bg-white dark:bg-[#0f172a] rounded-[2.5rem] border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-200/50 dark:shadow-none print:hidden px-6 relative overflow-hidden">
-                 <div className="absolute top-0 right-0 w-64 h-64 bg-purple-50 dark:bg-purple-900/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
-                 <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-50 dark:bg-indigo-900/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/4"></div>
-                 
-                 <div className="relative z-10">
-                   <div className="h-20 w-20 bg-gradient-to-br from-purple-100 to-indigo-100 dark:from-purple-900/50 dark:to-indigo-900/50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-inner border border-white dark:border-white/5">
-                     <Sparkles className="h-10 w-10 text-purple-600 dark:text-purple-400" />
-                   </div>
-                   <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Your canvas is blank.</h3>
-                   <p className="text-slate-500 dark:text-slate-400 font-medium mt-3 mb-10 max-w-md mx-auto text-lg leading-relaxed">Let our AI engine build a complete, optimized itinerary for you in seconds.</p>
-                   <button onClick={() => setShowAiModal(true)} className="w-full md:w-auto bg-slate-900 dark:bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-lg hover:bg-purple-600 dark:hover:bg-indigo-500 hover:scale-105 transition-all shadow-xl shadow-slate-900/20 dark:shadow-indigo-900/30 flex items-center justify-center mx-auto group">
-                     Generate Magic Schedule <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
-                   </button>
-                 </div>
-               </div>
-            ) : (
-              <div className="space-y-12 md:space-y-16 relative">
-                
-                {/* Global timeline connecting line */}
-                <div className="absolute left-6 md:left-[3.25rem] top-24 bottom-10 w-0.5 bg-slate-200 dark:bg-slate-800 print:hidden hidden md:block"></div>
-
-                <div className="hidden print:block mb-10 pb-6 border-b-2 border-slate-900 dark:border-white/20">
-                  <h1 className="text-4xl font-black text-slate-900 dark:text-white">{trips.find(t => t.id === selectedTripId)?.title} - Master Itinerary</h1>
-                  <p className="text-slate-500 dark:text-slate-400 font-bold mt-2">Generated securely by WanderHub</p>
-                </div>
-
-                {sortedDates.map((date, index) => {
-                  const dateObj = new Date(date);
-                  const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
-                  const dateNum = dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
-
-                  return (
-                    <div key={date} className="relative z-10">
-                      
-                      {/* --- FIXED: THE DAY BAR --- */}
-                      {/* Changed `top-16 md:top-20` to `top-0` so it sticks perfectly to the top of the scroll container! */}
-                      <div className="sticky top-0 bg-[#f8fafc]/95 dark:bg-[#030712]/95 backdrop-blur-xl print:bg-transparent z-30 pt-6 pb-4 mb-6 flex flex-col md:flex-row md:items-center gap-1 md:gap-4 md:ml-2 border-b border-slate-200/50 dark:border-white/5 -mt-6">
-                        <div className="bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-1.5 rounded-full text-sm font-black tracking-widest uppercase shadow-md inline-block w-max">Day {index + 1}</div>
-                        <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">{weekday}, <span className="text-slate-500 dark:text-slate-400">{dateNum}</span></h3>
+            {/* ======================================================= */}
+            {/* TAB 1: MASTER ITINERARY VIEW                            */}
+            {/* ======================================================= */}
+            {activeTab === 'itinerary' && (
+              <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* --- PRO WEATHER WIDGET --- */}
+                {selectedTripId && !isWeatherLoading && weatherData.length > 0 && (
+                  <div className="mb-10 relative overflow-hidden rounded-[2rem] p-8 print:hidden shadow-xl border border-indigo-500/10 dark:border-white/5">
+                    {/* Dynamic Backgrounds */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-600 via-blue-600 to-sky-400 dark:from-indigo-950 dark:via-[#0f172a] dark:to-blue-900"></div>
+                    <div className="absolute top-[-50%] right-[-10%] w-[500px] h-[500px] bg-white/20 dark:bg-white/5 rounded-full blur-[80px]"></div>
+                    <div className="absolute bottom-[-30%] left-[-10%] w-[300px] h-[300px] bg-indigo-900/30 dark:bg-blue-500/10 rounded-full blur-[60px]"></div>
+                    
+                    {/* Content */}
+                    <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-8 border-b border-white/20 dark:border-white/10 pb-4">
+                        <h3 className="text-xl font-black text-white flex items-center tracking-tight">
+                          <Sun className="h-6 w-6 mr-3 text-amber-300"/> Destination Forecast
+                        </h3>
+                        <span className="text-xs font-bold text-sky-100 uppercase tracking-widest bg-black/20 px-3 py-1 rounded-full backdrop-blur-sm">Live API</span>
                       </div>
-
-                      {/* Day's Activities */}
-                      <div className="space-y-4 md:pl-[6.5rem]">
-                        {groupedActivities[date].map((act) => {
-                          const isExpanded = expandedIds.includes(act.id);
+                      
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+                        {weatherData.slice(0, 5).map((day: any, idx: number) => {
+                          const dateObj = new Date(day.dt * 1000);
+                          const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+                          const dateNum = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                          const temp = Math.round(day.main.temp);
+                          const iconUrl = `https://openweathermap.org/img/wn/${day.weather[0].icon}@4x.png`;
                           
                           return (
-                            <div key={act.id} className="group relative bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 rounded-[1.5rem] shadow-sm hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all duration-300 print:border-slate-300 print:shadow-none">
+                            <div key={idx} className="bg-black/10 dark:bg-white/5 backdrop-blur-xl rounded-2xl p-5 flex flex-col items-center text-center border border-white/10 dark:border-white/5 hover:bg-black/20 dark:hover:bg-white/10 hover:-translate-y-1 transition-all duration-300 shadow-inner group">
+                              <p className="text-[10px] font-black uppercase tracking-widest text-sky-200 dark:text-sky-300 mb-0.5">{weekday}</p>
+                              <p className="text-xs font-bold text-white/80 mb-2">{dateNum}</p>
                               
-                              {/* Horizontal connector line (desktop) */}
-                              <div className="absolute top-1/2 -translate-y-1/2 -left-12 w-12 h-0.5 bg-slate-200 dark:bg-slate-800 hidden md:block group-hover:bg-indigo-200 dark:group-hover:bg-indigo-500/50 transition-colors"></div>
-                              
-                              {/* Icon Node (desktop) */}
-                              <div className="absolute top-1/2 -translate-y-1/2 -left-[3.75rem] w-4 h-4 rounded-full bg-white dark:bg-[#0f172a] border-4 border-slate-300 dark:border-slate-600 hidden md:block group-hover:border-indigo-500 dark:group-hover:border-indigo-400 group-hover:scale-125 transition-all shadow-sm"></div>
-
-                              <div className="p-4 md:p-6 cursor-pointer" onClick={() => toggleExpand(act.id)}>
-                                <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-                                  
-                                  {/* Time & Icon Block */}
-                                  <div className="flex items-center md:flex-col md:justify-center md:w-28 shrink-0 bg-slate-50 dark:bg-white/5 md:bg-transparent p-3 md:p-0 rounded-xl md:rounded-none border border-slate-100 dark:border-white/5 md:border-none md:border-r md:border-slate-100 dark:md:border-white/10 md:pr-6">
-                                    <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-white dark:bg-black/20 md:bg-slate-50 dark:md:bg-white/5 border border-slate-200 dark:border-white/5 md:border-none flex items-center justify-center shadow-sm md:shadow-none mr-3 md:mr-0 md:mb-2 group-hover:scale-110 transition-transform">
-                                      {getIcon(act.type)}
-                                    </div>
-                                    <span className="text-lg md:text-base font-black text-slate-900 dark:text-white tracking-tight">{act.time}</span>
-                                  </div>
-
-                                  {/* Content Block */}
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 mb-1.5">
-                                      <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-0.5 rounded-md">{act.type}</span>
-                                      {act.trackingNumber && <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-white/10 px-2 py-0.5 rounded-md flex items-center"><Hash className="h-3 w-3 mr-0.5"/> {act.trackingNumber}</span>}
-                                    </div>
-                                    <h4 className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 truncate tracking-tight">{act.title}</h4>
-                                    {act.location && !isExpanded && (
-                                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 flex items-center truncate"><MapPin className="h-3.5 w-3.5 mr-1.5 shrink-0"/> {act.location}</p>
-                                    )}
-                                  </div>
-
-                                  {/* Actions Block */}
-                                  <div className="flex items-center justify-end gap-2 md:ml-4 border-t border-slate-100 dark:border-white/10 md:border-none pt-3 md:pt-0 mt-2 md:mt-0">
-                                    <button onClick={(e) => { e.stopPropagation(); handleDeleteActivity(act.id); }} className="p-2.5 text-slate-300 hover:text-white dark:text-slate-600 dark:hover:text-white hover:bg-red-500 dark:hover:bg-red-500/80 rounded-xl transition-all print:hidden opacity-100 md:opacity-0 group-hover:opacity-100" title="Delete Activity">
-                                      <Trash2 className="h-5 w-5" />
-                                    </button>
-                                    <div className={`p-2 rounded-xl transition-colors ${isExpanded ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400' : 'bg-slate-50 dark:bg-white/5 text-slate-400 dark:text-slate-500 group-hover:bg-slate-100 dark:group-hover:bg-white/10'}`}>
-                                      {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
-                                    </div>
-                                  </div>
-                                </div>
+                              <div className="relative h-16 w-16 mb-2 group-hover:scale-110 transition-transform duration-500">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img src={iconUrl} alt="weather icon" className="absolute inset-0 w-full h-full object-contain drop-shadow-2xl filter brightness-110" />
                               </div>
                               
-                              {/* EXPANDED DETAILS AREA */}
-                              {isExpanded && (
-                                <div className="bg-slate-50/50 dark:bg-white/5 border-t border-slate-100 dark:border-white/10 p-5 md:p-6 md:pl-[9.5rem] animate-in slide-in-from-top-4 fade-in duration-300 print:pl-4 print:bg-white rounded-b-[1.5rem]">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                    
-                                    {/* Info Left */}
-                                    <div className="space-y-4">
-                                      <div className="flex items-start gap-3">
-                                        <div className="h-8 w-8 rounded-lg bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 shadow-sm"><MapPin className="h-4 w-4 text-slate-500 dark:text-slate-400" /></div>
-                                        <div className="flex-1 pt-1">
-                                          <p className="text-sm font-bold text-slate-900 dark:text-slate-200 mb-2">{act.location || "No address provided"}</p>
-                                          <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(act.location || act.title)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 hover:text-white dark:hover:text-white bg-indigo-50 dark:bg-indigo-500/20 hover:bg-indigo-600 dark:hover:bg-indigo-500 px-4 py-2 rounded-lg transition-colors print:hidden shadow-sm border border-indigo-100 dark:border-indigo-500/30 hover:border-transparent">
-                                            <Navigation className="h-3 w-3 mr-2" /> Get Directions
-                                          </a>
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {/* Info Right */}
-                                    <div className="space-y-4">
-                                      <div className="flex items-start gap-3">
-                                        <div className="h-8 w-8 rounded-lg bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 shadow-sm"><Info className="h-4 w-4 text-slate-500 dark:text-slate-400" /></div>
-                                        <div className="flex-1 pt-1">
-                                          <p className="text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed italic border-l-2 border-indigo-200 dark:border-indigo-500 pl-3 py-1 bg-white dark:bg-[#1e293b] rounded-r-lg shadow-sm">"{act.notes || "No additional notes for this event."}"</p>
-                                        </div>
-                                      </div>
-
-                                      {/* Tracking Button */}
-                                      {(act.type === 'flight' || act.type === 'train') && (
-                                        <div className="flex justify-end pt-2">
-                                          <button onClick={(e) => { e.stopPropagation(); handleTrackStatus(act.title, act.type, act.trackingNumber); }} className="inline-flex items-center text-sm font-black text-white bg-slate-900 dark:bg-sky-600 hover:bg-sky-600 dark:hover:bg-sky-500 px-5 py-2.5 rounded-xl transition-all shadow-lg hover:shadow-sky-500/30 print:hidden w-full md:w-auto justify-center">
-                                            <PlaneTakeoff className="h-4 w-4 mr-2" /> Live Status Tracker
-                                          </button>
-                                        </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                              )}
+                              <p className="text-3xl font-black text-white tracking-tighter drop-shadow-md">{temp}°</p>
+                              <p className="text-[11px] font-semibold text-sky-100 dark:text-sky-200 capitalize mt-2 bg-white/10 dark:bg-black/30 px-2.5 py-1 rounded-lg w-full truncate">{day.weather[0].description}</p>
                             </div>
                           );
                         })}
                       </div>
                     </div>
-                  );
-                })}
+                  </div>
+                )}
+                
+                {/* Loading/Error States for Weather */}
+                {selectedTripId && isWeatherLoading && (
+                  <div className="mb-10 bg-white dark:bg-[#0f172a] rounded-[2rem] p-8 border border-slate-200 dark:border-white/10 shadow-sm flex flex-col items-center justify-center h-48 animate-pulse print:hidden">
+                    <Loader2 className="h-8 w-8 mb-4 animate-spin text-indigo-400" /> 
+                    <p className="text-slate-500 dark:text-slate-400 font-bold text-sm uppercase tracking-widest">Connecting to Weather Satellites...</p>
+                  </div>
+                )}
+                {selectedTripId && weatherError && !isWeatherLoading && (
+                  <div className="mb-10 bg-slate-100 dark:bg-[#1e293b] rounded-[2rem] p-6 border border-slate-200 dark:border-white/10 text-slate-500 dark:text-slate-400 font-medium flex items-center justify-center print:hidden shadow-inner">
+                    <CloudRain className="h-5 w-5 mr-3 text-slate-400 dark:text-slate-500" /> {weatherError}
+                  </div>
+                )}
+
+                {/* Content States */}
+                {trips.length === 0 ? (
+                  <div className="text-center py-24 md:py-32">
+                    <div className="h-24 w-24 bg-white dark:bg-[#1e293b] rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/10 flex items-center justify-center mx-auto mb-6 rotate-3">
+                      <Calendar className="h-10 w-10 text-indigo-400" />
+                    </div>
+                    <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">No Trips Found</h3>
+                    <p className="text-slate-500 dark:text-slate-400 font-medium mt-3 text-lg">Head back to the dashboard to start planning.</p>
+                    <Link href="/" className="inline-flex mt-8 bg-slate-900 dark:bg-indigo-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors shadow-lg shadow-slate-900/20 dark:shadow-indigo-900/30">Go to Dashboard</Link>
+                  </div>
+                ) : activities.length === 0 ? (
+                  <div className="text-center py-20 md:py-28 bg-white dark:bg-[#0f172a] rounded-[2.5rem] border border-slate-200 dark:border-white/10 shadow-xl shadow-slate-200/50 dark:shadow-none print:hidden px-6 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-purple-50 dark:bg-purple-900/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/4"></div>
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-indigo-50 dark:bg-indigo-900/20 rounded-full blur-3xl translate-y-1/2 -translate-x-1/4"></div>
+                    
+                    <div className="relative z-10">
+                      <div className="h-20 w-20 bg-gradient-to-br from-purple-100 to-indigo-100 dark:from-purple-900/50 dark:to-indigo-900/50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 shadow-inner border border-white dark:border-white/5">
+                        <Sparkles className="h-10 w-10 text-purple-600 dark:text-purple-400" />
+                      </div>
+                      <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight">Your canvas is blank.</h3>
+                      <p className="text-slate-500 dark:text-slate-400 font-medium mt-3 mb-10 max-w-md mx-auto text-lg leading-relaxed">Let our AI engine build a complete, optimized itinerary for you in seconds.</p>
+                      <button onClick={() => setShowAiModal(true)} className="w-full md:w-auto bg-slate-900 dark:bg-indigo-600 text-white px-8 py-4 rounded-2xl font-black text-lg hover:bg-purple-600 dark:hover:bg-indigo-500 hover:scale-105 transition-all shadow-xl shadow-slate-900/20 dark:shadow-indigo-900/30 flex items-center justify-center mx-auto group">
+                        Generate Magic Schedule <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-12 md:space-y-16 relative">
+                    <div className="absolute left-6 md:left-[3.25rem] top-24 bottom-10 w-0.5 bg-slate-200 dark:bg-slate-800 print:hidden hidden md:block"></div>
+
+                    <div className="hidden print:block mb-10 pb-6 border-b-2 border-slate-900 dark:border-white/20">
+                      <h1 className="text-4xl font-black text-slate-900 dark:text-white">{trips.find(t => t.id === selectedTripId)?.title} - Master Itinerary</h1>
+                      <p className="text-slate-500 dark:text-slate-400 font-bold mt-2">Generated securely by WanderHub</p>
+                    </div>
+
+                    {sortedDates.map((date, index) => {
+                      const dateObj = new Date(date);
+                      const weekday = dateObj.toLocaleDateString('en-US', { weekday: 'long' });
+                      const dateNum = dateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric' });
+
+                      return (
+                        <div key={date} className="relative z-10">
+                          <div className="sticky top-0 bg-[#f8fafc]/95 dark:bg-[#030712]/95 backdrop-blur-xl print:bg-transparent z-30 pt-6 pb-4 mb-6 flex flex-col md:flex-row md:items-center gap-1 md:gap-4 md:ml-2 border-b border-slate-200/50 dark:border-white/5 -mt-6">
+                            <div className="bg-indigo-600 dark:bg-indigo-500 text-white px-4 py-1.5 rounded-full text-sm font-black tracking-widest uppercase shadow-md inline-block w-max">Day {index + 1}</div>
+                            <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">{weekday}, <span className="text-slate-500 dark:text-slate-400">{dateNum}</span></h3>
+                          </div>
+
+                          <div className="space-y-4 md:pl-[6.5rem]">
+                            {groupedActivities[date].map((act) => {
+                              const isExpanded = expandedIds.includes(act.id);
+                              
+                              return (
+                                <div key={act.id} className="group relative bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 rounded-[1.5rem] shadow-sm hover:shadow-xl hover:border-indigo-300 dark:hover:border-indigo-500/50 transition-all duration-300 print:border-slate-300 print:shadow-none">
+                                  <div className="absolute top-1/2 -translate-y-1/2 -left-12 w-12 h-0.5 bg-slate-200 dark:bg-slate-800 hidden md:block group-hover:bg-indigo-200 dark:group-hover:bg-indigo-500/50 transition-colors"></div>
+                                  <div className="absolute top-1/2 -translate-y-1/2 -left-[3.75rem] w-4 h-4 rounded-full bg-white dark:bg-[#0f172a] border-4 border-slate-300 dark:border-slate-600 hidden md:block group-hover:border-indigo-500 dark:group-hover:border-indigo-400 group-hover:scale-125 transition-all shadow-sm"></div>
+
+                                  <div className="p-4 md:p-6 cursor-pointer" onClick={() => toggleExpand(act.id)}>
+                                    <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+                                      <div className="flex items-center md:flex-col md:justify-center md:w-28 shrink-0 bg-slate-50 dark:bg-white/5 md:bg-transparent p-3 md:p-0 rounded-xl md:rounded-none border border-slate-100 dark:border-white/5 md:border-none md:border-r md:border-slate-100 dark:md:border-white/10 md:pr-6">
+                                        <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-white dark:bg-black/20 md:bg-slate-50 dark:md:bg-white/5 border border-slate-200 dark:border-white/5 md:border-none flex items-center justify-center shadow-sm md:shadow-none mr-3 md:mr-0 md:mb-2 group-hover:scale-110 transition-transform">
+                                          {getIcon(act.type)}
+                                        </div>
+                                        <span className="text-lg md:text-base font-black text-slate-900 dark:text-white tracking-tight">{act.time}</span>
+                                      </div>
+
+                                      <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 mb-1.5">
+                                          <span className="text-[10px] font-black uppercase tracking-widest text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 px-2.5 py-0.5 rounded-md">{act.type}</span>
+                                          {act.trackingNumber && <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 border border-slate-200 dark:border-white/10 px-2 py-0.5 rounded-md flex items-center"><Hash className="h-3 w-3 mr-0.5"/> {act.trackingNumber}</span>}
+                                        </div>
+                                        <h4 className="text-xl md:text-2xl font-black text-slate-800 dark:text-slate-100 truncate tracking-tight">{act.title}</h4>
+                                        {act.location && !isExpanded && (
+                                          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 flex items-center truncate"><MapPin className="h-3.5 w-3.5 mr-1.5 shrink-0"/> {act.location}</p>
+                                        )}
+                                      </div>
+
+                                      <div className="flex items-center justify-end gap-2 md:ml-4 border-t border-slate-100 dark:border-white/10 md:border-none pt-3 md:pt-0 mt-2 md:mt-0">
+                                        <button onClick={(e) => { e.stopPropagation(); handleDeleteActivity(act.id); }} className="p-2.5 text-slate-300 hover:text-white dark:text-slate-600 dark:hover:text-white hover:bg-red-500 dark:hover:bg-red-500/80 rounded-xl transition-all print:hidden opacity-100 md:opacity-0 group-hover:opacity-100" title="Delete Activity">
+                                          <Trash2 className="h-5 w-5" />
+                                        </button>
+                                        <div className={`p-2 rounded-xl transition-colors ${isExpanded ? 'bg-indigo-50 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400' : 'bg-slate-50 dark:bg-white/5 text-slate-400 dark:text-slate-500 group-hover:bg-slate-100 dark:group-hover:bg-white/10'}`}>
+                                          {isExpanded ? <ChevronUp className="h-5 w-5" /> : <ChevronDown className="h-5 w-5" />}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  
+                                  {isExpanded && (
+                                    <div className="bg-slate-50/50 dark:bg-white/5 border-t border-slate-100 dark:border-white/10 p-5 md:p-6 md:pl-[9.5rem] animate-in slide-in-from-top-4 fade-in duration-300 print:pl-4 print:bg-white rounded-b-[1.5rem]">
+                                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                        <div className="space-y-4">
+                                          <div className="flex items-start gap-3">
+                                            <div className="h-8 w-8 rounded-lg bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 shadow-sm"><MapPin className="h-4 w-4 text-slate-500 dark:text-slate-400" /></div>
+                                            <div className="flex-1 pt-1">
+                                              <p className="text-sm font-bold text-slate-900 dark:text-slate-200 mb-2">{act.location || "No address provided"}</p>
+                                              <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(act.location || act.title)}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs font-black uppercase tracking-wider text-indigo-600 dark:text-indigo-400 hover:text-white dark:hover:text-white bg-indigo-50 dark:bg-indigo-500/20 hover:bg-indigo-600 dark:hover:bg-indigo-500 px-4 py-2 rounded-lg transition-colors print:hidden shadow-sm border border-indigo-100 dark:border-indigo-500/30 hover:border-transparent">
+                                                <Navigation className="h-3 w-3 mr-2" /> Get Directions
+                                              </a>
+                                            </div>
+                                          </div>
+                                        </div>
+
+                                        <div className="space-y-4">
+                                          <div className="flex items-start gap-3">
+                                            <div className="h-8 w-8 rounded-lg bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 flex items-center justify-center shrink-0 shadow-sm"><Info className="h-4 w-4 text-slate-500 dark:text-slate-400" /></div>
+                                            <div className="flex-1 pt-1">
+                                              <p className="text-sm font-medium text-slate-600 dark:text-slate-300 leading-relaxed italic border-l-2 border-indigo-200 dark:border-indigo-500 pl-3 py-1 bg-white dark:bg-[#1e293b] rounded-r-lg shadow-sm">"{act.notes || "No additional notes for this event."}"</p>
+                                            </div>
+                                          </div>
+
+                                          {(act.type === 'flight' || act.type === 'train') && (
+                                            <div className="flex justify-end pt-2">
+                                              <button onClick={(e) => { e.stopPropagation(); handleTrackStatus(act.title, act.type, act.trackingNumber); }} className="inline-flex items-center text-sm font-black text-white bg-slate-900 dark:bg-sky-600 hover:bg-sky-600 dark:hover:bg-sky-500 px-5 py-2.5 rounded-xl transition-all shadow-lg hover:shadow-sky-500/30 print:hidden w-full md:w-auto justify-center">
+                                                <PlaneTakeoff className="h-4 w-4 mr-2" /> Live Status Tracker
+                                              </button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* ======================================================= */}
+            {/* TAB 2: LIVE MAP (New Broadcast Feature)                   */}
+            {/* ======================================================= */}
+            {activeTab === 'live_map' && (
+              <div className="h-[65vh] rounded-[2.5rem] overflow-hidden relative shadow-2xl border border-slate-200 dark:border-white/10 animate-in fade-in slide-in-from-bottom-4 duration-500 bg-slate-900">
+                
+                {/* Live Controls Overlay */}
+                <div className="absolute top-6 left-6 z-[1000] bg-white/90 dark:bg-[#0f172a]/95 backdrop-blur-xl p-5 rounded-[1.5rem] shadow-2xl border border-slate-200 dark:border-white/10 w-64">
+                   <h3 className="font-black text-slate-900 dark:text-white flex items-center mb-1">
+                     <span className="relative flex h-3 w-3 mr-2.5">
+                       {isBroadcasting && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
+                       <span className={`relative inline-flex rounded-full h-3 w-3 ${isBroadcasting ? 'bg-emerald-500' : 'bg-slate-300 dark:bg-slate-600'}`}></span>
+                     </span>
+                     Group Radar
+                   </h3>
+                   <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-5 leading-relaxed">Share your live location with members of this trip.</p>
+                   
+                   <button 
+                     onClick={() => setIsBroadcasting(!isBroadcasting)} 
+                     className={`w-full py-3 px-4 rounded-xl font-black text-xs uppercase tracking-widest transition-all shadow-lg flex items-center justify-center ${isBroadcasting ? 'bg-red-50 text-red-600 border border-red-200 hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:border-red-500/20' : 'bg-indigo-600 text-white hover:bg-indigo-500 shadow-indigo-600/30'}`}
+                   >
+                     {isBroadcasting ? 'Stop Broadcast' : 'Go Live Now'}
+                   </button>
+                </div>
+
+                {/* Info Overlay */}
+                <div className="absolute bottom-6 right-6 z-[1000] bg-black/60 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 text-white text-xs font-medium flex items-center shadow-lg">
+                   <Users className="h-4 w-4 mr-2 text-indigo-400" />
+                   {liveMembers.length} {liveMembers.length === 1 ? 'member' : 'members'} live
+                </div>
+
+                {/* ✨ NEW: DYNAMICALLY LOADED RADAR MAP */}
+                <DynamicRadarMap myLatestCoords={myLatestCoords} liveMembers={liveMembers} />
+
               </div>
             )}
           </div>
@@ -649,11 +778,10 @@ export default function ItinerariesPage() {
         </div>
       )}
 
-      {/* --- LIVE TRACKER MODAL --- */}
+      {/* --- LIVE TRACKER MODAL (Aviation/Train API) --- */}
       {isTrackerOpen && (
         <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[60]">
           <div className="bg-slate-900 dark:bg-[#0f172a] rounded-[2.5rem] p-8 w-full max-w-md shadow-2xl relative overflow-hidden border border-slate-700 dark:border-white/10 animate-in zoom-in-95 duration-300">
-            {/* Radar Background */}
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 border border-sky-500/20 rounded-full animate-ping"></div>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 border border-sky-500/10 rounded-full animate-ping delay-300"></div>
@@ -683,7 +811,6 @@ export default function ItinerariesPage() {
                   <h3 className="text-3xl font-black text-white tracking-tight drop-shadow-md">{trackingData.status}</h3>
                 </div>
                 
-                {/* Flight Path Visualization */}
                 <div className="relative pt-6 pb-8 px-4">
                   <div className="overflow-hidden h-1.5 mb-4 flex rounded-full bg-slate-800">
                     <div style={{ width: `${trackingData.progress}%` }} className="shadow-[0_0_15px_rgba(14,165,233,0.8)] flex flex-col text-center whitespace-nowrap text-white justify-center bg-sky-400 transition-all duration-1000 ease-out"></div>

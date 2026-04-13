@@ -211,14 +211,12 @@ export default function MyBookingsPage() {
                 {bookings.map(booking => {
                   
                   // --- DYNAMIC TIME LOGIC ---
-                  // Set today's date and normalize the time to midnight so comparison is exact by day
                   const today = new Date();
                   today.setHours(0, 0, 0, 0);
                   const checkoutDate = new Date(booking.checkOut);
                   checkoutDate.setHours(0, 0, 0, 0);
                   const isPastCheckout = checkoutDate < today;
 
-                  // Evaluate current state based on DB status AND the current date
                   const isDeclined = booking.status === "Declined";
                   const isCancelled = booking.status === "Cancelled";
                   
@@ -228,7 +226,6 @@ export default function MyBookingsPage() {
                   const isCompleted = (booking.status === "Approved" || booking.status === "Confirmed") && isPastCheckout;
                   const isExpired = booking.status === "Pending" && isPastCheckout;
 
-                  // Determine if the card should be fully active or slightly faded out (for past/dead bookings)
                   const isInactive = isCompleted || isExpired || isDeclined || isCancelled;
 
                   return (
@@ -241,7 +238,10 @@ export default function MyBookingsPage() {
                             <Shield className="h-6 w-6 text-indigo-500" />
                           </div>
                           <div>
-                            <h4 className="font-black text-lg md:text-xl text-slate-900 dark:text-white tracking-tight leading-tight">{booking.hotelName}</h4>
+                            {/* ✨ NEW: Clickable Hotel Name Link */}
+                            <Link href={`/partner-hotel/${encodeURIComponent(booking.hotelName)}`} className="hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors">
+                              <h4 className="font-black text-lg md:text-xl text-slate-900 dark:text-white tracking-tight leading-tight">{booking.hotelName}</h4>
+                            </Link>
                             <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-0.5">{booking.roomName}</p>
                           </div>
                         </div>
@@ -251,7 +251,6 @@ export default function MyBookingsPage() {
                             {isPending && <span className="inline-flex items-center text-amber-600 bg-amber-100 dark:bg-amber-500/20 dark:text-amber-400 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><Clock className="h-3.5 w-3.5 mr-1.5"/> Pending Approval</span>}
                             {isApproved && <span className="inline-flex items-center text-emerald-600 bg-emerald-100 dark:bg-emerald-500/20 dark:text-emerald-400 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><CheckCircle2 className="h-3.5 w-3.5 mr-1.5"/> Confirmed</span>}
                             
-                            {/* --- DYNAMIC BADGES --- */}
                             {isCompleted && <span className="inline-flex items-center text-slate-600 bg-slate-200 dark:bg-white/10 dark:text-slate-300 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><History className="h-3.5 w-3.5 mr-1.5"/> Completed Trip</span>}
                             {isExpired && <span className="inline-flex items-center text-slate-500 bg-slate-100 dark:bg-black/40 dark:text-slate-400 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><Clock className="h-3.5 w-3.5 mr-1.5"/> Request Expired</span>}
                             
@@ -259,7 +258,6 @@ export default function MyBookingsPage() {
                             {isCancelled && <span className="inline-flex items-center text-slate-600 bg-slate-200 dark:bg-white/10 dark:text-slate-300 px-3.5 py-1.5 rounded-lg text-xs font-black uppercase tracking-widest"><XCircle className="h-3.5 w-3.5 mr-1.5"/> Cancelled by You</span>}
                           </div>
                           
-                          {/* SHOW EXTENSION REQUEST STATUS IF THEY MADE ONE */}
                           {booking.extensionRequest && booking.extensionRequest.status === "Pending" && (
                             <span className="inline-flex items-center text-indigo-600 bg-indigo-100 dark:bg-indigo-500/20 dark:text-indigo-400 px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest shadow-sm">
                               <PlusSquare className="h-3 w-3 mr-1" /> Extension Pending
@@ -297,7 +295,6 @@ export default function MyBookingsPage() {
 
                       {/* Action Bar */}
                       <div className="px-6 md:px-8 py-4 bg-slate-50/50 dark:bg-[#1e293b]/30 border-t border-slate-100 dark:border-white/5 flex justify-end gap-3">
-                        {/* Users can only cancel if the trip hasn't ended yet */}
                         {isPending && (
                           <button onClick={() => handleCancelBooking(booking.id)} className="text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 px-4 py-2 rounded-lg text-xs font-black transition-colors border border-transparent hover:border-red-100 dark:hover:border-red-500/20">
                             Cancel Request
@@ -306,7 +303,6 @@ export default function MyBookingsPage() {
                         
                         {isApproved && (
                           <>
-                            {/* ONLY SHOW EXTEND BUTTON IF THEY DON'T HAVE A PENDING REQUEST ALREADY */}
                             {!booking.extensionRequest || booking.extensionRequest.status === "Declined" ? (
                               <button onClick={() => setExtendBooking(booking)} className="text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 px-4 py-2 rounded-lg text-xs font-black transition-colors shadow-sm flex items-center border border-transparent hover:border-indigo-200 dark:hover:border-indigo-500/30">
                                 <PlusSquare className="h-3.5 w-3.5 mr-1.5" /> Extend Stay
@@ -318,7 +314,6 @@ export default function MyBookingsPage() {
                           </>
                         )}
                         
-                        {/* Users can remove past/dead bookings to clean up their view */}
                         {(isInactive) && (
                           <button onClick={() => handleDeleteHistory(booking.id)} className="text-slate-500 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-white/10 hover:text-slate-900 dark:hover:text-white px-4 py-2 rounded-lg text-xs font-black transition-colors flex items-center">
                             <Trash2 className="h-3.5 w-3.5 mr-1.5" /> Remove from History
@@ -359,7 +354,7 @@ export default function MyBookingsPage() {
                 <input 
                   type="date" 
                   value={newCheckOut} 
-                  min={extendBooking.checkOut} // Prevents picking dates in the past
+                  min={extendBooking.checkOut} 
                   onChange={(e)=>setNewCheckOut(e.target.value)} 
                   className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-xl p-4 outline-none font-bold text-slate-900 dark:text-white cursor-pointer dark:[color-scheme:dark]" 
                   required 

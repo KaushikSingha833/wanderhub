@@ -1,11 +1,37 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase"; // Make sure this path is correct
-import { Building2, Mail, Lock, AlertCircle, CheckCircle2, User as UserIcon, FileText, Hash, MapPin, PlaneTakeoff, ShieldCheck, ArrowRight, Loader2 } from "lucide-react";
+import { Building2, Mail, Lock, AlertCircle, CheckCircle2, User as UserIcon, FileText, Hash, MapPin, PlaneTakeoff, ShieldCheck, ArrowRight, Loader2, LocateFixed } from "lucide-react";
+
+// --- NEW MAP IMPORTS ---
+import 'leaflet/dist/leaflet.css';
+import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
+import L from 'leaflet';
+
+// --- INTERACTIVE MAP CLICK HANDLER ---
+function LocationMarker({ lat, lng, setLat, setLng }: { lat: string, lng: string, setLat: any, setLng: any }) {
+  const map = useMapEvents({
+    click(e: any) {
+      setLat(e.latlng.lat.toFixed(6));
+      setLng(e.latlng.lng.toFixed(6));
+      map.flyTo(e.latlng, 16);
+    },
+  });
+
+  useEffect(() => {
+    if (lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng))) {
+      map.flyTo([Number(lat), Number(lng)], map.getZoom() > 10 ? map.getZoom() : 16);
+    }
+  }, [lat, lng, map]);
+
+  return lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng)) ? (
+    <Marker position={[Number(lat), Number(lng)]}></Marker>
+  ) : null;
+}
 
 export default function PartnerJoinPage() {
   const router = useRouter();
@@ -24,10 +50,49 @@ export default function PartnerJoinPage() {
   const [licenseNumber, setLicenseNumber] = useState("");
   const [gstNumber, setGstNumber] = useState("");
   
+  // ✨ NEW: GEOLOCATION STATES
+  const [latitude, setLatitude] = useState("");
+  const [longitude, setLongitude] = useState("");
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
   // UI States
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
+
+  // Fix Leaflet icons and hydration issues
+  useEffect(() => {
+    setIsMounted(true);
+    if (typeof window !== 'undefined') {
+      delete (L.Icon.Default.prototype as any)._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      });
+    }
+  }, []);
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      setError("Geolocation is not supported by your browser.");
+      return;
+    }
+    setIsDetectingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLatitude(position.coords.latitude.toFixed(6));
+        setLongitude(position.coords.longitude.toFixed(6));
+        setIsDetectingLocation(false);
+      },
+      (error) => {
+        console.error(error);
+        setError("Could not auto-detect location. Please drop the pin on the map manually.");
+        setIsDetectingLocation(false);
+      }
+    );
+  };
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -43,7 +108,7 @@ export default function PartnerJoinPage() {
         // Security Check: Ensure they are a Hotel Partner
         const userDoc = await getDoc(doc(db, "users", user.uid));
         if (userDoc.exists() && userDoc.data().role === "hotel_partner") {
-          router.push("/partner/dashboard");
+          router.push("/partner/dashboard"); // Make sure this matches your route
         } else {
           await auth.signOut();
           throw new Error("Access Denied: This email is not registered as a Hotel Partner.");
@@ -53,12 +118,17 @@ export default function PartnerJoinPage() {
         if (!licenseNumber.trim() || !gstNumber.trim()) {
           throw new Error("Please provide your business verification numbers.");
         }
+        
+        // ✨ Check for coordinates before proceeding
+        if (!latitude || !longitude) {
+          throw new Error("Please pin your exact property location on the map.");
+        }
 
         // 1. Create the Auth User
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // 2. Save the Business Profile to Firestore
+        // 2. Save the Business Profile to Firestore with Coordinates locked in!
         await setDoc(doc(db, "users", user.uid), {
           uid: user.uid,
           email: user.email,
@@ -69,6 +139,8 @@ export default function PartnerJoinPage() {
           verificationStatus: "pending", 
           licenseNumber: licenseNumber.trim(),
           gstNumber: gstNumber.trim().toUpperCase(), 
+          latitude: Number(latitude), // ✨ SAVED
+          longitude: Number(longitude), // ✨ SAVED
           createdAt: new Date(),
         });
 
@@ -100,7 +172,7 @@ export default function PartnerJoinPage() {
               Thank you for registering <strong className="text-white">{hotelName}</strong>.
             </p>
             <p className="text-slate-400 text-sm leading-relaxed mb-4">
-              Our trust & safety team is currently verifying your GSTIN (<span className="text-white font-mono">{gstNumber.toUpperCase()}</span>) and Business License.
+              Our trust & safety team is currently verifying your coordinates, GSTIN (<span className="text-white font-mono">{gstNumber.toUpperCase()}</span>) and Business License.
             </p>
             <div className="flex items-center text-xs font-bold text-amber-400 uppercase tracking-widest bg-amber-400/10 px-3 py-2 rounded-lg w-max">
               <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Verification Pending
@@ -225,37 +297,94 @@ export default function PartnerJoinPage() {
                 </div>
               </div>
 
-              {/* --- REGISTRATION VERIFICATION FIELDS --- */}
+              {/* --- REGISTRATION MAP AND VERIFICATION FIELDS --- */}
               {!isLoginMode && (
-                <div className="mt-8 bg-slate-50 rounded-3xl p-6 md:p-8 border border-slate-200 animate-in fade-in duration-500">
-                  <div className="flex items-center mb-6">
-                    <div className="h-8 w-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center mr-3 shrink-0">
-                      <ShieldCheck className="h-4 w-4" />
+                <>
+                  {/* ✨ NEW: GEOGRAPHIC LOCATION MAP ✨ */}
+                  <div className="mt-8 bg-slate-50 rounded-3xl p-6 md:p-8 border border-slate-200 animate-in fade-in duration-500">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center">
+                        <div className="h-8 w-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center mr-3 shrink-0">
+                          <MapPin className="h-4 w-4" />
+                        </div>
+                        <div>
+                          <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Property Location</h3>
+                          <p className="text-xs font-medium text-slate-500 mt-0.5">Pin your exact location for travelers.</p>
+                        </div>
+                      </div>
+                      <button 
+                        type="button" 
+                        onClick={handleDetectLocation}
+                        className="text-[10px] font-black uppercase tracking-widest bg-indigo-100 text-indigo-600 hover:bg-indigo-200 px-3 py-2 rounded-lg transition-colors flex items-center"
+                      >
+                        {isDetectingLocation ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <LocateFixed className="h-3 w-3 mr-1" />} Auto-Detect
+                      </button>
                     </div>
-                    <div>
-                      <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Business Verification</h3>
-                      <p className="text-xs font-medium text-slate-500 mt-0.5">Required for trust & safety compliance.</p>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-5">
-                    <div>
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Trade License Number</label>
-                      <div className="relative">
-                        <FileText className="absolute left-4 top-4 h-5 w-5 text-slate-400" />
-                        <input type="text" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} required placeholder="e.g. TL-2026-8921" className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none font-bold text-slate-900 transition-all placeholder-slate-400" />
+
+                    <div className="grid grid-cols-2 gap-4 mb-4">
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Latitude</label>
+                        <input type="number" step="any" value={latitude} onChange={(e) => setLatitude(e.target.value)} placeholder="e.g. 19.0760" required className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none font-bold text-slate-900 transition-all placeholder-slate-400" />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Longitude</label>
+                        <input type="number" step="any" value={longitude} onChange={(e) => setLongitude(e.target.value)} placeholder="e.g. 72.8777" required className="w-full px-4 py-3.5 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none font-bold text-slate-900 transition-all placeholder-slate-400" />
                       </div>
                     </div>
 
-                    <div>
-                      <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">GSTIN Number</label>
-                      <div className="relative">
-                        <Hash className="absolute left-4 top-4 h-5 w-5 text-slate-400" />
-                        <input type="text" value={gstNumber} onChange={(e) => setGstNumber(e.target.value)} required placeholder="22AAAAA0000A1Z5" className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none font-bold text-slate-900 transition-all placeholder-slate-400 uppercase" />
+                    {isMounted && (
+                      <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-inner h-64 relative z-0">
+                        <MapContainer 
+                          center={latitude && longitude && !isNaN(Number(latitude)) && !isNaN(Number(longitude)) ? [Number(latitude), Number(longitude)] : [20.5937, 78.9629]} 
+                          zoom={latitude && longitude ? 16 : 4} 
+                          style={{ height: '100%', width: '100%' }}
+                        >
+                          <TileLayer
+                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                          />
+                          <LocationMarker lat={latitude} lng={longitude} setLat={setLatitude} setLng={setLongitude} />
+                        </MapContainer>
+
+                        {!latitude && (
+                          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-indigo-100 z-[1000] text-[10px] font-black uppercase tracking-widest text-indigo-600 pointer-events-none whitespace-nowrap">
+                            Click map to drop pin 📍
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-8 bg-slate-50 rounded-3xl p-6 md:p-8 border border-slate-200 animate-in fade-in duration-500">
+                    <div className="flex items-center mb-6">
+                      <div className="h-8 w-8 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center mr-3 shrink-0">
+                        <ShieldCheck className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <h3 className="text-sm font-black text-slate-900 uppercase tracking-widest">Business Verification</h3>
+                        <p className="text-xs font-medium text-slate-500 mt-0.5">Required for trust & safety compliance.</p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-5">
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">Trade License Number</label>
+                        <div className="relative">
+                          <FileText className="absolute left-4 top-4 h-5 w-5 text-slate-400" />
+                          <input type="text" value={licenseNumber} onChange={(e) => setLicenseNumber(e.target.value)} required placeholder="e.g. TL-2026-8921" className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none font-bold text-slate-900 transition-all placeholder-slate-400" />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 ml-1">GSTIN Number</label>
+                        <div className="relative">
+                          <Hash className="absolute left-4 top-4 h-5 w-5 text-slate-400" />
+                          <input type="text" value={gstNumber} onChange={(e) => setGstNumber(e.target.value)} required placeholder="22AAAAA0000A1Z5" className="w-full pl-12 pr-4 py-4 bg-white border border-slate-200 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none font-bold text-slate-900 transition-all placeholder-slate-400 uppercase" />
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
+                </>
               )}
 
               <button type="submit" disabled={isLoading} className="w-full bg-slate-900 text-white font-black py-4 md:py-5 rounded-2xl shadow-xl shadow-slate-900/20 hover:bg-indigo-600 hover:shadow-indigo-600/30 transition-all disabled:opacity-50 mt-8 flex justify-center items-center text-lg group">
@@ -267,7 +396,7 @@ export default function PartnerJoinPage() {
             <div className="mt-8 md:mt-10 text-center">
               <p className="text-sm font-medium text-slate-500 bg-slate-50 inline-block px-6 py-3 rounded-full border border-slate-200">
                 {isLoginMode ? "Don't have a partner account?" : "Already registered your property?"}{" "}
-                <button onClick={() => { setIsLoginMode(!isLoginMode); setError(""); }} className="text-indigo-600 font-black hover:text-indigo-700 transition-colors ml-1">
+                <button type="button" onClick={() => { setIsLoginMode(!isLoginMode); setError(""); }} className="text-indigo-600 font-black hover:text-indigo-700 transition-colors ml-1">
                   {isLoginMode ? "Register here" : "Log in here"}
                 </button>
               </p>

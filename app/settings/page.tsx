@@ -3,9 +3,19 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { doc, getDoc, setDoc } from "firebase/firestore";
-import { onAuthStateChanged, updateProfile, signOut, User as FirebaseUser, deleteUser } from "firebase/auth";
+import { 
+  onAuthStateChanged, 
+  updateProfile, 
+  signOut, 
+  User as FirebaseUser, 
+  deleteUser,
+  // --- ✨ NEW: FIREBASE SECURITY IMPORTS ---
+  EmailAuthProvider,
+  reauthenticateWithCredential,
+  updatePassword
+} from "firebase/auth";
 import { auth, db } from "../lib/firebase"; 
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, User, Globe, Bell, Shield, LogOut, Save, CheckCircle2, BedDouble, Menu, X, Smartphone, Moon, Languages, Clock, Lock, Loader2, Camera, Plane } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, User, Globe, Bell, Shield, LogOut, Save, CheckCircle2, BedDouble, Menu, X, Smartphone, Moon, Languages, Clock, Lock, Loader2, Camera, Plane, AlertTriangle, Info, KeyRound } from "lucide-react";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -33,10 +43,38 @@ export default function SettingsPage() {
   const [smsAlerts, setSmsAlerts] = useState(false);
   const [twoFactorAuth, setTwoFactorAuth] = useState(false);
   
+  // --- ✨ NEW: PASSWORD CHANGE STATE ---
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+
   // UI States
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+
+  // CUSTOM DIALOG STATE
+  const [dialog, setDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "info" | "warning" | "danger";
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
+
+  const showDialog = (title: string, message: string, type: "info" | "warning" | "danger" = "info", onConfirm?: () => void, confirmText = "OK", cancelText?: string) => {
+    setDialog({ isOpen: true, title, message, type, confirmText, cancelText, onConfirm });
+  };
+
+  const closeDialog = () => setDialog(prev => ({ ...prev, isOpen: false }));
 
   // 1. Load User & Preferences
   useEffect(() => {
@@ -62,7 +100,6 @@ export default function SettingsPage() {
           if (data.smsAlerts !== undefined) setSmsAlerts(data.smsAlerts);
           if (data.twoFactorAuth !== undefined) setTwoFactorAuth(data.twoFactorAuth);
           
-          // --- BULLETPROOF THEME LOGIC ---
           const dbTheme = data.theme;
           const resolvedTheme = localTheme || dbTheme || 'System Default';
           
@@ -87,7 +124,6 @@ export default function SettingsPage() {
     return () => unsubscribe();
   }, [router]);
 
-  // --- THEME APPLICATION FUNCTION ---
   const applyThemeToDocument = (selectedTheme: string) => {
     const root = document.documentElement;
     if (selectedTheme === 'Dark Mode') {
@@ -95,7 +131,6 @@ export default function SettingsPage() {
     } else if (selectedTheme === 'Light Mode') {
       root.classList.remove('dark');
     } else {
-      // System Default Logic
       if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
         root.classList.add('dark');
       } else {
@@ -104,7 +139,6 @@ export default function SettingsPage() {
     }
   };
 
-  // --- HANDLE THEME CHANGE WITH AUTO-SAVE ---
   const handleThemeChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newTheme = e.target.value;
     setTheme(newTheme);
@@ -120,7 +154,6 @@ export default function SettingsPage() {
     }
   };
 
-  // 2. Save Other Preferences
   const handleSave = async () => {
     if (!user) return;
     setIsSaving(true);
@@ -141,34 +174,102 @@ export default function SettingsPage() {
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
       console.error("Error saving settings:", error);
-      alert("Failed to save settings.");
+      showDialog("Save Failed", "There was an error saving your preferences. Please try again.", "danger");
     } finally {
       setIsSaving(false);
     }
   };
 
-  // --- NEW: HANDLE ACCOUNT DELETION ---
-  const handleDeleteAccount = async () => {
+  // --- ✨ SECURE PASSWORD CHANGE ENGINE ---
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!user || !user.email) return;
+
+    if (newPassword !== confirmPassword) {
+      showDialog("Mismatch", "Your new passwords do not match. Please try again.", "warning");
+      return;
+    }
+    if (newPassword.length < 6) {
+      showDialog("Weak Password", "Your new password must be at least 6 characters long.", "warning");
+      return;
+    }
+
+    setIsChangingPassword(true);
+    try {
+      // 1. Re-authenticate to prove they own the account
+      const credential = EmailAuthProvider.credential(user.email, currentPassword);
+      await reauthenticateWithCredential(user, credential);
+      
+      // 2. Update the password
+      await updatePassword(user, newPassword);
+
+      showDialog("Success", "Your password has been successfully updated.", "info");
+      
+      // 3. Clear fields on success
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch (error: any) {
+      console.error("Password change error:", error);
+      if (error.code === 'auth/invalid-credential') {
+         showDialog("Error", "The current password you entered is incorrect.", "danger");
+      } else if (error.code === 'auth/requires-recent-login') {
+         showDialog("Session Expired", "For security, please sign out and sign back in before changing your password.", "warning");
+      } else {
+         showDialog("Error", "Could not update password. If you originally signed up with Google, you cannot set an email password here.", "danger");
+      }
+    } finally {
+      setIsChangingPassword(false);
+    }
+  };
+
+  const handlePushToggle = async (checked: boolean) => {
+    if (checked) {
+      if (!("Notification" in window)) {
+        showDialog("Not Supported", "Your browser does not support push notifications.", "warning");
+        return;
+      }
+      
+      const permission = await Notification.requestPermission();
+      if (permission === "granted") {
+        setPushAlerts(true);
+      } else {
+        showDialog(
+          "Permission Denied", 
+          "We cannot send push notifications because permission was denied. Please enable them in your browser settings if you wish to use this feature.", 
+          "warning"
+        );
+        setPushAlerts(false);
+      }
+    } else {
+      setPushAlerts(false);
+    }
+  };
+
+  const handleDeleteAccount = () => {
     if (!user) return;
     
-    const isConfirmed = window.confirm(
-      "Are you absolutely sure you want to permanently delete your account? This action cannot be undone and you will lose all access to your trips."
-    );
-
-    if (isConfirmed) {
-      try {
-        await deleteUser(user);
-        router.push("/");
-      } catch (error: any) {
-        console.error("Error deleting account:", error);
-        // Firebase requires users to have recently signed in to delete their account
-        if (error.code === 'auth/requires-recent-login') {
-          alert("For security reasons, please sign out and sign back in before deleting your account.");
-        } else {
-          alert("Failed to delete account. Please try again.");
+    showDialog(
+      "Delete Account?",
+      "Are you absolutely sure you want to permanently delete your account? This action cannot be undone and you will lose all access to your trips and history.",
+      "danger",
+      async () => {
+        closeDialog();
+        try {
+          await deleteUser(user);
+          router.push("/");
+        } catch (error: any) {
+          console.error("Error deleting account:", error);
+          if (error.code === 'auth/requires-recent-login') {
+            showDialog("Re-authentication Required", "For security reasons, please sign out and sign back in before deleting your account.", "warning");
+          } else {
+            showDialog("Error", "Failed to delete account. Please try again later.", "danger");
+          }
         }
-      }
-    }
+      },
+      "Delete Permanently",
+      "Cancel"
+    );
   };
 
   const handleLogout = () => {
@@ -176,27 +277,27 @@ export default function SettingsPage() {
     router.push("/");
   };
 
-  // Google managed alerts
   const handleGoogleAlert = (type: string) => {
     if (type === "photo") {
-      alert("Your profile picture is securely synced with your Google Account. Please update it directly in your Google settings.");
+      window.open("https://myaccount.google.com/personal-info", "_blank");
     } else if (type === "security") {
-      alert("Your password and primary authentication methods are securely managed by your Google Account.");
+      window.open("https://myaccount.google.com/security", "_blank");
     }
   };
 
   if (isLoading) return <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 transition-colors"><div className="animate-spin h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full"></div></div>;
   if (!user) return null;
 
+  // ✨ NEW: Check if the user signed in with Email/Password
+  const isEmailUser = user?.providerData.some(provider => provider.providerId === 'password');
+
   return (
     <div className="flex h-screen bg-[#f8fafc] dark:bg-[#030712] font-sans text-slate-900 dark:text-slate-100 overflow-hidden transition-colors duration-300 selection:bg-indigo-100 selection:text-indigo-900">
       
-      {/* MOBILE BLUR OVERLAY */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md z-40 md:hidden transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
-      {/* RESPONSIVE SIDEBAR */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-[#0f172a] border-r border-slate-200 dark:border-white/10 flex flex-col transform transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] print:hidden ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} md:relative md:translate-x-0`}>
         <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-white/10 shrink-0">
           <div className="flex items-center">
@@ -215,12 +316,9 @@ export default function SettingsPage() {
         </nav>
       </aside>
 
-      {/* MAIN CONTENT */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        {/* Decorative Background Blur */}
         <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none transition-colors duration-500"></div>
 
-        {/* MOBILE TOP BAR */}
         <div className="md:hidden h-16 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-md border-b border-slate-200 dark:border-white/10 flex items-center justify-between px-4 shrink-0 z-30 sticky top-0 transition-colors">
           <div className="flex items-center">
             <PlaneTakeoff className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-2" />
@@ -229,7 +327,6 @@ export default function SettingsPage() {
           <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
         </div>
 
-        {/* DESKTOP HEADER */}
         <header className="hidden md:flex h-20 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/10 items-center justify-between px-10 z-20 shrink-0 sticky top-0 transition-all">
           <div>
             <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Account Settings</h2>
@@ -283,7 +380,7 @@ export default function SettingsPage() {
                       </div>
                       <div>
                         <p className="text-sm font-black text-slate-900 dark:text-white mb-1.5 uppercase tracking-widest">Profile Picture</p>
-                        <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400 mb-4 max-w-sm leading-relaxed">Your photo is currently synced with your Google Account.</p>
+                        <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400 mb-4 max-w-sm leading-relaxed">Your photo is securely managed by your Google Account.</p>
                         <button onClick={() => handleGoogleAlert("photo")} className="bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-200 dark:hover:bg-white/10 transition-colors shadow-sm border border-slate-200 dark:border-white/10">Update on Google</button>
                       </div>
                     </div>
@@ -379,7 +476,7 @@ export default function SettingsPage() {
                           </div>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer shrink-0 sm:ml-4">
-                          <input type="checkbox" checked={pushAlerts} onChange={(e) => setPushAlerts(e.target.checked)} className="sr-only peer" />
+                          <input type="checkbox" checked={pushAlerts} onChange={(e) => handlePushToggle(e.target.checked)} className="sr-only peer" />
                           <div className="w-14 h-8 bg-slate-300 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-500 dark:peer-checked:bg-indigo-600 shadow-inner"></div>
                         </label>
                       </div>
@@ -426,11 +523,76 @@ export default function SettingsPage() {
                     <div className="pt-2 space-y-6">
                       <div className="bg-slate-50 dark:bg-[#1e293b]/30 border border-slate-200 dark:border-white/10 rounded-[1.5rem] p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition-colors">
                         <div>
-                          <p className="font-black text-lg text-slate-900 dark:text-white flex items-center tracking-tight mb-2"><Lock className="h-5 w-5 mr-3 text-slate-400"/> Google Authentication</p>
-                          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed max-w-md">Your password is securely managed by Google. To change it, visit your external Google Account settings.</p>
+                          <p className="font-black text-lg text-slate-900 dark:text-white flex items-center tracking-tight mb-2"><Globe className="h-5 w-5 mr-3 text-slate-400"/> Google Authentication</p>
+                          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed max-w-md">Your primary account security is managed by Google. To change external settings, visit your Google Account.</p>
                         </div>
                         <button onClick={() => handleGoogleAlert("security")} className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-700 dark:text-white px-6 py-3.5 rounded-xl text-sm font-bold hover:bg-slate-100 dark:hover:bg-white/10 transition-colors shrink-0 shadow-sm">Manage on Google</button>
                       </div>
+
+                      {/* ✨ NEW: CONDITIONAL SECURE PASSWORD CHANGE FORM */}
+                      {isEmailUser && (
+                        <div className="bg-slate-50 dark:bg-[#1e293b]/30 border border-slate-200 dark:border-white/10 rounded-[1.5rem] p-6 md:p-8 transition-colors">
+                          <div className="flex items-center gap-4 mb-6 pb-6 border-b border-slate-200 dark:border-white/5">
+                            <div className="h-12 w-12 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 border border-indigo-200 dark:border-indigo-500/30">
+                              <KeyRound className="h-6 w-6"/>
+                            </div>
+                            <div>
+                              <p className="font-black text-slate-800 dark:text-white text-lg tracking-tight">Update Password</p>
+                              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 max-w-md leading-relaxed">Securely change your WanderHub account password.</p>
+                            </div>
+                          </div>
+
+                          <form onSubmit={handleChangePassword} className="space-y-4 max-w-xl">
+                            <div>
+                              <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 ml-1">Current Password</label>
+                              <div className="relative">
+                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                                <input 
+                                  type="password" 
+                                  value={currentPassword} 
+                                  onChange={(e) => setCurrentPassword(e.target.value)} 
+                                  required
+                                  placeholder="••••••••" 
+                                  className="w-full bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-xl pl-12 pr-4 py-3.5 outline-none font-medium text-slate-900 dark:text-white transition-all" 
+                                />
+                              </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 ml-1">New Password</label>
+                                <input 
+                                  type="password" 
+                                  value={newPassword} 
+                                  onChange={(e) => setNewPassword(e.target.value)} 
+                                  required
+                                  minLength={6}
+                                  placeholder="Min. 6 characters" 
+                                  className="w-full bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-xl px-4 py-3.5 outline-none font-medium text-slate-900 dark:text-white transition-all" 
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 ml-1">Confirm New Password</label>
+                                <input 
+                                  type="password" 
+                                  value={confirmPassword} 
+                                  onChange={(e) => setConfirmPassword(e.target.value)} 
+                                  required
+                                  placeholder="Re-type new password" 
+                                  className="w-full bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-xl px-4 py-3.5 outline-none font-medium text-slate-900 dark:text-white transition-all" 
+                                />
+                              </div>
+                            </div>
+
+                            <div className="pt-2">
+                              <button type="submit" disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword} className="bg-indigo-600 text-white font-bold text-sm px-6 py-3 rounded-xl hover:bg-indigo-500 transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 flex items-center justify-center w-full sm:w-auto">
+                                {isChangingPassword ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+                                {isChangingPassword ? "Updating..." : "Update Password"}
+                              </button>
+                            </div>
+                          </form>
+                        </div>
+                      )}
 
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 md:p-8 border border-slate-200 dark:border-white/10 rounded-[1.5rem] bg-slate-50 dark:bg-[#1e293b]/30 shadow-sm transition-colors">
                         <div className="flex items-center gap-5 mb-5 sm:mb-0">
@@ -446,7 +608,7 @@ export default function SettingsPage() {
                         </label>
                       </div>
 
-                      <div className="pt-6 mt-2">
+                      <div className="pt-6 mt-2 border-t border-slate-200 dark:border-white/10">
                         <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 ml-1">Danger Zone</p>
                         <button onClick={handleDeleteAccount} className="text-red-600 dark:text-red-400 font-bold text-sm bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 px-6 py-3.5 rounded-xl transition-colors border border-red-100 dark:border-red-500/20 w-full sm:w-auto text-center">
                           Delete My Account Permanently
@@ -478,6 +640,52 @@ export default function SettingsPage() {
           </div>
         </main>
       </div>
+
+      {/* --- ✨ NEW: CUSTOM ALERT DIALOG MODAL --- */}
+      {dialog.isOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#0f172a] rounded-[2rem] p-8 max-w-md w-full shadow-2xl border border-slate-200 dark:border-white/10 animate-in zoom-in-95 duration-300 relative">
+            <button onClick={closeDialog} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
+              <X className="h-5 w-5" />
+            </button>
+            
+            <div className="flex items-center gap-4 mb-4">
+              <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 border ${
+                dialog.type === 'danger' ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/30' :
+                dialog.type === 'warning' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/30' :
+                'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30'
+              }`}>
+                {dialog.type === 'danger' ? <AlertTriangle className="h-6 w-6" /> : 
+                 dialog.type === 'warning' ? <AlertTriangle className="h-6 w-6" /> : 
+                 <Info className="h-6 w-6" />}
+              </div>
+              <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{dialog.title}</h3>
+            </div>
+            
+            <p className="text-slate-600 dark:text-slate-300 font-medium mb-8 leading-relaxed pl-1">
+              {dialog.message}
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-3 justify-end mt-2">
+              {dialog.cancelText && (
+                <button onClick={closeDialog} className="px-6 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors w-full sm:w-auto">
+                  {dialog.cancelText}
+                </button>
+              )}
+              <button 
+                onClick={dialog.onConfirm || closeDialog} 
+                className={`px-6 py-3 rounded-xl font-black text-white transition-all shadow-lg w-full sm:w-auto ${
+                  dialog.type === 'danger' ? 'bg-red-600 hover:bg-red-500 shadow-red-600/20' : 
+                  'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'
+                }`}
+              >
+                {dialog.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
