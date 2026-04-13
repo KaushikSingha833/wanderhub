@@ -11,6 +11,8 @@ import { Building2, Mail, Lock, AlertCircle, CheckCircle2, User as UserIcon, Fil
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
 import L from 'leaflet';
+import dynamic from 'next/dynamic'; // ✨ NEW
+
 
 // --- INTERACTIVE MAP CLICK HANDLER ---
 function LocationMarker({ lat, lng, setLat, setLng }: { lat: string, lng: string, setLat: any, setLng: any }) {
@@ -32,7 +34,11 @@ function LocationMarker({ lat, lng, setLat, setLng }: { lat: string, lng: string
     <Marker position={[Number(lat), Number(lng)]}></Marker>
   ) : null;
 }
-
+// ✨ Dynamically import the map component with SSR disabled
+const PartnerMap = dynamic(() => import('../../components/PartnerMap'), { 
+  ssr: false, 
+  loading: () => <div className="h-full w-full bg-slate-100 animate-pulse flex items-center justify-center text-slate-400 font-bold uppercase tracking-widest text-xs">Loading Map...</div> 
+});
 export default function PartnerJoinPage() {
   const router = useRouter();
 
@@ -333,26 +339,21 @@ export default function PartnerJoinPage() {
                     </div>
 
                     {isMounted && (
-                      <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-inner h-64 relative z-0">
-                        <MapContainer 
-                          center={latitude && longitude && !isNaN(Number(latitude)) && !isNaN(Number(longitude)) ? [Number(latitude), Number(longitude)] : [20.5937, 78.9629]} 
-                          zoom={latitude && longitude ? 16 : 4} 
-                          style={{ height: '100%', width: '100%' }}
-                        >
-                          <TileLayer
-                            attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                          />
-                          <LocationMarker lat={latitude} lng={longitude} setLat={setLatitude} setLng={setLongitude} />
-                        </MapContainer>
+                    <div className="rounded-2xl overflow-hidden border border-slate-200 shadow-inner h-64 relative z-0">
+                      <PartnerMap 
+                        latitude={latitude} 
+                        longitude={longitude} 
+                        setLatitude={setLatitude} 
+                        setLongitude={setLongitude} 
+                      />
 
-                        {!latitude && (
-                          <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-indigo-100 z-[1000] text-[10px] font-black uppercase tracking-widest text-indigo-600 pointer-events-none whitespace-nowrap">
-                            Click map to drop pin 📍
-                          </div>
-                        )}
-                      </div>
-                    )}
+                      {!latitude && (
+                        <div className="absolute top-4 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md px-4 py-2 rounded-full shadow-lg border border-indigo-100 z-[1000] text-[10px] font-black uppercase tracking-widest text-indigo-600 pointer-events-none whitespace-nowrap">
+                          Click map to drop pin 📍
+                        </div>
+                      )}
+                    </div>
+                  )}
                   </div>
 
                   <div className="mt-8 bg-slate-50 rounded-3xl p-6 md:p-8 border border-slate-200 animate-in fade-in duration-500">
