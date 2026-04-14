@@ -5,7 +5,7 @@ import { doc, getDoc, collection, addDoc, onSnapshot, query, where, orderBy, upd
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db } from "../../lib/firebase"; 
 import { ArrowLeft, Calendar, Plus, Plane, Hotel, Utensils, Map as MapIcon, Clock, Crown, UserMinus, LogOut, Users, CheckSquare, Square, Trash2, BaggageClaim, MapPin, FileText, Hash, X, Edit2, Heart, X as XIcon, Trophy, Flame, ExternalLink, ThumbsUp } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion"; // ✨ NEW: Framer Motion
+import { motion, AnimatePresence } from "framer-motion"; 
 
 interface Trip {
   id: string; title: string; startDate: string; endDate: string; inviteCode?: string;
@@ -23,8 +23,8 @@ interface HotelPoll {
   id: string;
   name: string;
   location: string;
-  rating: number | string; // ✨ Add this
-  reviews: number;         // ✨ Add this
+  rating: number | string; 
+  reviews: number;         
   pricePerNight: number;
   imageUrl: string;
   bookingUrl: string;
@@ -405,16 +405,16 @@ export default function TripDetails() {
               
               {/* 1. TINDER SWIPE STACK */}
               {unvotedPolls.length > 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center relative w-full pt-8">
-                  <div className="absolute top-0 text-center w-full">
-                    <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Vote on Hotels</h3>
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Swipe Right to approve, Left to reject.</p>
+                <div className="flex-1 flex flex-col items-center justify-center relative w-full pt-4 sm:pt-8">
+                  <div className="absolute top-0 text-center w-full px-4">
+                    <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white tracking-tight">Vote on Hotels</h3>
+                    <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Swipe Right to approve, Left to reject.</p>
                   </div>
 
-                  <div className="relative w-full max-w-sm h-[450px] mx-auto mt-16 perspective-1000">
+                  {/* ✨ RESPONSIVE CONTAINER FIX: w-[92%] on mobile, max-w-sm to cap size, adjusted height */}
+                  <div className="relative w-[92%] sm:w-full max-w-sm h-[420px] sm:h-[450px] mx-auto mt-16 sm:mt-20 perspective-1000">
                     <AnimatePresence>
                       {unvotedPolls.map((poll, index) => {
-                        // Only render the top 3 cards for performance
                         if (index > 2) return null;
                         
                         const isFront = index === 0;
@@ -439,10 +439,11 @@ export default function TripDetails() {
                               if (info.offset.x > 100) handleVote(poll.id, "yes");
                               else if (info.offset.x < -100) handleVote(poll.id, "no");
                             }}
-                            className={`absolute inset-0 bg-white dark:bg-[#0f172a] rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col cursor-grab active:cursor-grabbing ${isFront ? 'z-50' : 'z-40 pointer-events-none'}`}
+                            className={`absolute inset-0 bg-white dark:bg-[#0f172a] rounded-[2rem] sm:rounded-[2.5rem] shadow-2xl border border-slate-200 dark:border-white/10 overflow-hidden flex flex-col cursor-grab active:cursor-grabbing ${isFront ? 'z-50' : 'z-40 pointer-events-none'}`}
                             style={{ originY: 1 }}
                           >
-                            <div className="relative h-3/5 w-full bg-slate-200 dark:bg-slate-800 shrink-0">
+                            {/* ✨ RESPONSIVE IMAGE: 50% height on mobile for more text room, 60% on sm/PC */}
+                            <div className="relative h-1/2 sm:h-3/5 w-full bg-slate-200 dark:bg-slate-800 shrink-0">
                               {/* eslint-disable-next-line @next/next/no-img-element */}
                               <img src={poll.imageUrl} alt={poll.name} className="w-full h-full object-cover pointer-events-none" />
                               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/80 via-slate-900/20 to-transparent"></div>
@@ -452,18 +453,19 @@ export default function TripDetails() {
                               </div>
                             </div>
                             
-                            <div className="p-6 flex flex-col flex-1 pointer-events-none select-none">
-                              <h3 className="text-2xl font-black text-slate-900 dark:text-white line-clamp-1 mb-1 tracking-tight">{poll.name}</h3>
-                              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center truncate mb-auto"><MapPin className="h-4 w-4 mr-1 shrink-0" /> {poll.location}</p>
+                            {/* ✨ RESPONSIVE PADDING & TEXT: Reduced padding and clamped text on small screens */}
+                            <div className="p-4 sm:p-6 flex flex-col flex-1 pointer-events-none select-none">
+                              <h3 className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white line-clamp-2 sm:line-clamp-1 mb-1 tracking-tight leading-tight">{poll.name}</h3>
+                              <p className="text-xs sm:text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center truncate mb-auto"><MapPin className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 shrink-0" /> {poll.location}</p>
                               
-                              <div className="flex items-end justify-between mt-4">
+                              <div className="flex items-end justify-between mt-3 sm:mt-4">
                                 <div>
                                   <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Price</p>
-                                  <p className="text-2xl font-black text-slate-900 dark:text-white">₹{poll.pricePerNight}<span className="text-sm font-medium text-slate-500">/nt</span></p>
+                                  <p className="text-xl sm:text-2xl font-black text-slate-900 dark:text-white">₹{poll.pricePerNight}<span className="text-xs sm:text-sm font-medium text-slate-500">/nt</span></p>
                                 </div>
                                 <div className="text-right">
                                   <p className="text-[10px] font-bold text-slate-400">Suggested by</p>
-                                  <p className="text-sm font-bold text-indigo-500 dark:text-indigo-400">{poll.suggestedByName.split(' ')[0]}</p>
+                                  <p className="text-xs sm:text-sm font-bold text-indigo-500 dark:text-indigo-400">{poll.suggestedByName.split(' ')[0]}</p>
                                 </div>
                               </div>
                             </div>
@@ -473,84 +475,86 @@ export default function TripDetails() {
                     </AnimatePresence>
                   </div>
 
-                  {/* Manual Swipe Buttons */}
-                  <div className="flex items-center justify-center gap-6 mt-12 z-50">
+                  {/* ✨ RESPONSIVE BUTTONS: Slightly smaller and less margin on mobile */}
+                  <div className="flex items-center justify-center gap-4 sm:gap-6 mt-8 sm:mt-12 z-50">
                     <button 
                       onClick={() => handleVote(unvotedPolls[0].id, "no")}
-                      className="h-16 w-16 bg-white dark:bg-[#0f172a] rounded-full flex items-center justify-center text-red-500 shadow-xl border border-slate-100 dark:border-white/10 hover:scale-110 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all active:scale-95"
+                      className="h-14 w-14 sm:h-16 sm:w-16 bg-white dark:bg-[#0f172a] rounded-full flex items-center justify-center text-red-500 shadow-xl border border-slate-100 dark:border-white/10 hover:scale-110 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all active:scale-95"
                     >
-                      <XIcon className="h-8 w-8" strokeWidth={3} />
+                      <XIcon className="h-6 w-6 sm:h-8 sm:w-8" strokeWidth={3} />
                     </button>
                     <button 
                       onClick={() => handleVote(unvotedPolls[0].id, "yes")}
-                      className="h-16 w-16 bg-white dark:bg-[#0f172a] rounded-full flex items-center justify-center text-emerald-500 shadow-xl border border-slate-100 dark:border-white/10 hover:scale-110 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all active:scale-95"
+                      className="h-14 w-14 sm:h-16 sm:w-16 bg-white dark:bg-[#0f172a] rounded-full flex items-center justify-center text-emerald-500 shadow-xl border border-slate-100 dark:border-white/10 hover:scale-110 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 transition-all active:scale-95"
                     >
-                      <Heart className="h-8 w-8 fill-emerald-500" strokeWidth={3} />
+                      <Heart className="h-6 w-6 sm:h-8 sm:w-8 fill-emerald-500" strokeWidth={3} />
                     </button>
                   </div>
                 </div>
               ) : (
                 
               /* 2. CONSENSUS LEADERBOARD */
-                <div className="flex-1 bg-white dark:bg-[#0f172a] rounded-[2.5rem] border border-slate-100 dark:border-white/10 shadow-sm p-8 md:p-12 animate-in zoom-in-95 duration-500">
-                  <div className="text-center mb-10">
-                    <div className="h-20 w-20 bg-amber-50 dark:bg-amber-500/10 rounded-full flex items-center justify-center text-amber-500 dark:text-amber-400 mx-auto mb-6 shadow-inner border border-amber-100 dark:border-amber-500/20">
-                      <Trophy className="h-10 w-10" />
+                /* ✨ RESPONSIVE LEADERBOARD: Adjusted padding and layout for small screens */
+                <div className="flex-1 bg-white dark:bg-[#0f172a] rounded-[1.5rem] sm:rounded-[2.5rem] border border-slate-100 dark:border-white/10 shadow-sm p-5 sm:p-8 md:p-12 animate-in zoom-in-95 duration-500">
+                  <div className="text-center mb-8 sm:mb-10">
+                    <div className="h-16 w-16 sm:h-20 sm:w-20 bg-amber-50 dark:bg-amber-500/10 rounded-full flex items-center justify-center text-amber-500 dark:text-amber-400 mx-auto mb-4 sm:mb-6 shadow-inner border border-amber-100 dark:border-amber-500/20">
+                      <Trophy className="h-8 w-8 sm:h-10 sm:w-10" />
                     </div>
-                    <h3 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Group Consensus</h3>
-                    <p className="text-slate-500 dark:text-slate-400 font-medium">You've voted on all suggestions! Here are the current standings.</p>
+                    <h3 className="text-2xl sm:text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-2">Group Consensus</h3>
+                    <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 font-medium px-2">You've voted on all suggestions! Here are the current standings.</p>
                   </div>
 
                   {leaderboard.length === 0 ? (
-                     <div className="text-center p-8 border border-dashed border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50 dark:bg-[#1e293b]/30">
-                       <p className="text-slate-500 font-bold">No hotels have been suggested yet.</p>
-                       <button onClick={() => router.push('/hotels')} className="mt-4 text-indigo-600 dark:text-indigo-400 font-bold hover:underline">Go to Hotel Search to suggest one</button>
+                     <div className="text-center p-6 sm:p-8 border border-dashed border-slate-200 dark:border-white/10 rounded-2xl bg-slate-50 dark:bg-[#1e293b]/30">
+                       <p className="text-sm sm:text-base text-slate-500 font-bold">No hotels have been suggested yet.</p>
+                       <button onClick={() => router.push('/hotels')} className="mt-3 text-sm sm:text-base text-indigo-600 dark:text-indigo-400 font-bold hover:underline">Go to Hotel Search to suggest one</button>
                      </div>
                   ) : (
-                    <div className="space-y-4">
+                    <div className="space-y-3 sm:space-y-4">
                       {leaderboard.map((hotel, index) => {
                         const yesVotes = Object.values(hotel.votes || {}).filter(v => v === 'yes').length;
                         const noVotes = Object.values(hotel.votes || {}).filter(v => v === 'no').length;
                         const isWinner = index === 0 && yesVotes > 0;
 
                         return (
-                          <div key={hotel.id} className={`relative flex items-center gap-4 p-4 rounded-2xl border ${isWinner ? 'bg-amber-50/50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 shadow-md' : 'bg-slate-50 dark:bg-[#1e293b]/50 border-slate-100 dark:border-white/5'} transition-colors`}>
+                          /* ✨ LEADERBOARD ITEM RESPONSIVENESS */
+                          <div key={hotel.id} className={`relative flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-2xl border ${isWinner ? 'bg-amber-50/50 dark:bg-amber-500/10 border-amber-200 dark:border-amber-500/30 shadow-md' : 'bg-slate-50 dark:bg-[#1e293b]/50 border-slate-100 dark:border-white/5'} transition-colors overflow-hidden`}>
                             
                             {isWinner && (
-                              <div className="absolute -top-3 -left-3 bg-gradient-to-br from-amber-400 to-orange-500 text-white h-8 w-8 rounded-full flex items-center justify-center shadow-lg transform -rotate-12 border-2 border-white dark:border-[#0f172a]">
-                                <Crown className="h-4 w-4" />
+                              <div className="absolute -top-3 -left-3 bg-gradient-to-br from-amber-400 to-orange-500 text-white h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center shadow-lg transform -rotate-12 border-2 border-white dark:border-[#0f172a]">
+                                <Crown className="h-3.5 w-3.5" />
                               </div>
                             )}
 
-                            <div className="font-black text-2xl text-slate-300 dark:text-slate-600 w-6 text-center">#{index + 1}</div>
+                            <div className="font-black text-xl sm:text-2xl text-slate-300 dark:text-slate-600 w-5 sm:w-6 text-center">#{index + 1}</div>
                             
                             {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={hotel.imageUrl} alt="" className="h-16 w-16 rounded-xl object-cover shadow-sm" />
+                            <img src={hotel.imageUrl} alt="" className="h-12 w-12 sm:h-16 sm:w-16 rounded-xl object-cover shadow-sm shrink-0" />
                             
-                            <div className="flex-1 min-w-0">
-                              <h4 className="font-black text-slate-900 dark:text-white text-lg truncate tracking-tight">{hotel.name}</h4>
-                              <p className="text-xs font-bold text-slate-500 dark:text-slate-400">₹{hotel.pricePerNight} / night</p>
+                            <div className="flex-1 min-w-0 pr-1">
+                              <h4 className="font-black text-slate-900 dark:text-white text-base sm:text-lg truncate tracking-tight">{hotel.name}</h4>
+                              <p className="text-[10px] sm:text-xs font-bold text-slate-500 dark:text-slate-400">₹{hotel.pricePerNight} / night</p>
                             </div>
 
-                            <div className="flex items-center gap-4 px-4 border-r border-slate-200 dark:border-white/10">
+                            <div className="flex items-center gap-2 sm:gap-4 px-2 sm:px-4 border-r border-slate-200 dark:border-white/10 shrink-0">
                               <div className="text-center">
-                                <p className="text-[10px] font-black uppercase text-slate-400">Yes</p>
-                                <p className="text-lg font-black text-emerald-500">{yesVotes}</p>
+                                <p className="text-[9px] sm:text-[10px] font-black uppercase text-slate-400">Yes</p>
+                                <p className="text-base sm:text-lg font-black text-emerald-500 leading-none">{yesVotes}</p>
                               </div>
                               <div className="text-center">
-                                <p className="text-[10px] font-black uppercase text-slate-400">No</p>
-                                <p className="text-lg font-black text-red-400">{noVotes}</p>
+                                <p className="text-[9px] sm:text-[10px] font-black uppercase text-slate-400">No</p>
+                                <p className="text-base sm:text-lg font-black text-red-400 leading-none">{noVotes}</p>
                               </div>
                             </div>
 
-                            <div className="pl-2">
+                            <div className="pl-1 sm:pl-2 shrink-0">
                               {isWinner ? (
-                                <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer" className="bg-slate-900 dark:bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-3 rounded-xl font-black text-sm transition-all shadow-md flex items-center whitespace-nowrap">
-                                  Book <ExternalLink className="h-4 w-4 ml-2" />
+                                <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer" className="bg-slate-900 dark:bg-indigo-600 hover:bg-indigo-700 text-white px-3 sm:px-5 py-2.5 sm:py-3 rounded-xl font-black text-xs sm:text-sm transition-all shadow-md flex items-center whitespace-nowrap">
+                                  Book <ExternalLink className="hidden sm:block h-4 w-4 ml-2" />
                                 </a>
                               ) : (
-                                <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 p-3 bg-white dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 transition-colors flex items-center justify-center">
-                                  <ExternalLink className="h-4 w-4" />
+                                <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer" className="text-slate-500 hover:text-indigo-600 dark:hover:text-indigo-400 p-2 sm:p-3 bg-white dark:bg-white/5 rounded-xl border border-slate-200 dark:border-white/10 transition-colors flex items-center justify-center">
+                                  <ExternalLink className="h-4 w-4 sm:h-4 sm:w-4" />
                                 </a>
                               )}
                             </div>

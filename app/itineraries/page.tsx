@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, addDoc, setDoc, serverTimestamp } from "firebase/firestore"; 
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db } from "../lib/firebase"; 
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Printer, Clock, MapPin, Plane, Hotel, Utensils, Trash2, Map as MapIcon, CalendarPlus, ChevronDown, ChevronUp, AlignLeft, Navigation, BedDouble, Sparkles, Loader2, Menu, X, Sun, CloudRain, Hash, Info, ArrowRight, Radio, Users } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Printer, Clock, MapPin, Plane, Hotel, Utensils, Trash2, Map as MapIcon, CalendarPlus, ChevronDown, ChevronUp, AlignLeft, Navigation, BedDouble, Sparkles, Loader2, Menu, X, Sun, CloudRain, Hash, Info, ArrowRight, Radio, Users, MessageSquare } from "lucide-react";
 
 // ✨ NEW: Dynamically load the map component (Bypasses the "window is not defined" SSR error)
 const DynamicRadarMap = dynamic(() => import('../components/RadarMap'), { 
@@ -395,12 +395,17 @@ export default function ItinerariesPage() {
             <X className="h-5 w-5" />
           </button>
         </div>
-        <nav className="flex-1 px-4 py-6 space-y-2 overflow-y-auto custom-scrollbar">
+        {/* ADD 'flex flex-col' TO THE NAV CLASS */}
+        <nav className="flex-1 px-4 py-6 overflow-y-auto custom-scrollbar flex flex-col">
+          <div className="space-y-2">
           <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors">
             <Map className="h-5 w-5 mr-3" /> Dashboard
           </Link>
           <Link href="/itineraries" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 rounded-xl font-bold shadow-sm transition-colors border border-transparent dark:border-indigo-500/20">
             <Calendar className="h-5 w-5 mr-3" /> Itineraries
+          </Link>
+          <Link href="/chat" className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors">
+            <MessageSquare className="h-5 w-5 mr-3" /> Group Chat
           </Link>
           <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors">
             <CreditCard className="h-5 w-5 mr-3" /> Expenses
@@ -412,6 +417,13 @@ export default function ItinerariesPage() {
           <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors">
             <Settings className="h-5 w-5 mr-3" /> Settings
           </Link>
+          </div>
+          {/* Add the About Us link at the very end wrapped in this specific div */}
+          <div className="mt-auto pt-6">
+            <Link href="/about" className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl font-semibold transition-colors">
+              <Info className="h-5 w-5 mr-3" /> About Us
+            </Link>
+          </div>
         </nav>
       </aside>
 
