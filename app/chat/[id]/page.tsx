@@ -482,7 +482,7 @@ export default function TripChatPage() {
                 <div className="absolute bottom-full mb-4 left-0 z-50 shadow-2xl animate-in slide-in-from-bottom-2">
                   <EmojiPicker 
                     onEmojiClick={(emojiData) => { setNewMessage(prev => prev + emojiData.emoji); setShowEmojiPicker(false); }}
-                    theme="auto"
+                    theme={"auto" as any}
                   />
                 </div>
               )}
