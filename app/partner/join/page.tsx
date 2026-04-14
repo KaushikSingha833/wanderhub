@@ -7,38 +7,14 @@ import { doc, setDoc, getDoc } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase"; // Make sure this path is correct
 import { Building2, Mail, Lock, AlertCircle, CheckCircle2, User as UserIcon, FileText, Hash, MapPin, PlaneTakeoff, ShieldCheck, ArrowRight, Loader2, LocateFixed } from "lucide-react";
 
-// --- NEW MAP IMPORTS ---
-import 'leaflet/dist/leaflet.css';
-import { MapContainer, TileLayer, Marker, useMapEvents } from 'react-leaflet';
-import L from 'leaflet';
 import dynamic from 'next/dynamic'; // ✨ NEW
 
-
-// --- INTERACTIVE MAP CLICK HANDLER ---
-function LocationMarker({ lat, lng, setLat, setLng }: { lat: string, lng: string, setLat: any, setLng: any }) {
-  const map = useMapEvents({
-    click(e: any) {
-      setLat(e.latlng.lat.toFixed(6));
-      setLng(e.latlng.lng.toFixed(6));
-      map.flyTo(e.latlng, 16);
-    },
-  });
-
-  useEffect(() => {
-    if (lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng))) {
-      map.flyTo([Number(lat), Number(lng)], map.getZoom() > 10 ? map.getZoom() : 16);
-    }
-  }, [lat, lng, map]);
-
-  return lat && lng && !isNaN(Number(lat)) && !isNaN(Number(lng)) ? (
-    <Marker position={[Number(lat), Number(lng)]}></Marker>
-  ) : null;
-}
 // ✨ Dynamically import the map component with SSR disabled
 const PartnerMap = dynamic(() => import('../../components/PartnerMap'), { 
   ssr: false, 
   loading: () => <div className="h-full w-full bg-slate-100 animate-pulse flex items-center justify-center text-slate-400 font-bold uppercase tracking-widest text-xs">Loading Map...</div> 
 });
+
 export default function PartnerJoinPage() {
   const router = useRouter();
 
@@ -67,17 +43,9 @@ export default function PartnerJoinPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  // Fix Leaflet icons and hydration issues
+  // Fix hydration issues
   useEffect(() => {
     setIsMounted(true);
-    if (typeof window !== 'undefined') {
-      delete (L.Icon.Default.prototype as any)._getIconUrl;
-      L.Icon.Default.mergeOptions({
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-      });
-    }
   }, []);
 
   const handleDetectLocation = () => {
