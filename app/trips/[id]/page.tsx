@@ -5,7 +5,7 @@ import { doc, getDoc, collection, addDoc, onSnapshot, query, where, orderBy, upd
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db } from "../../lib/firebase"; 
 import { sendGroupNotification } from "../../lib/notifications";
-import { ArrowLeft, Calendar, Plus, Plane, Hotel, Utensils, Map as MapIcon, Clock, Crown, UserMinus, LogOut, Users, CheckSquare, Square, Trash2, BaggageClaim, MapPin, FileText, Hash, X, Edit2, Heart, X as XIcon, Trophy, Flame, ExternalLink, ThumbsUp, Loader2 } from "lucide-react";
+import { ArrowLeft, Calendar, Plus, Plane, Hotel, Utensils, Map as MapIcon, Clock, Crown, UserMinus, LogOut, Users, CheckSquare, Square, Trash2, BaggageClaim, MapPin, FileText, Hash, X, Edit2, Heart, X as XIcon, Trophy, Flame, ExternalLink, ThumbsUp, Loader2, Star } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion"; 
 
 interface Trip {
