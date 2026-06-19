@@ -15,7 +15,7 @@ import {
   sendPasswordResetEmail
 } from "firebase/auth";
 import { auth, db } from "./lib/firebase";
-import { Map, Calendar, CreditCard, Settings, Plus, PlaneTakeoff, Globe, Clock, User as UserIcon, Users, LogOut, BedDouble, Menu, X, ArrowRight, Trash2, Mail, Lock, AlertCircle, Receipt, Sun, ShieldCheck, Sparkles, Globe2, Building2, Smartphone, Star, Zap, ChevronRight, BarChart, Loader2, Plane, CheckCircle2, MessageSquare, Info } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, Plus, PlaneTakeoff, Globe, Clock, User as UserIcon, Users, LogOut, BedDouble, Menu, X, ArrowRight, Archive, Mail, Lock, AlertCircle, Receipt, Sun, ShieldCheck, Sparkles, Globe2, Building2, Smartphone, Star, Zap, ChevronRight, BarChart, Loader2, Plane, CheckCircle2, MessageSquare, Info, History } from "lucide-react";
 
 interface Trip {
   id: string;
@@ -27,6 +27,7 @@ interface Trip {
   adminId?: string;
   memberNames?: Record<string, string>;
   imageUrl?: string;
+  status?: string; 
 }
 
 const TRAVEL_IMAGES = [
@@ -94,6 +95,7 @@ export default function Home() {
     const q = query(
       collection(db, "trips"),
       where("members", "array-contains", user.uid),
+      where("status", "==", "active"),
       orderBy("createdAt", "desc")
     );
 
@@ -206,6 +208,7 @@ export default function Home() {
         adminId: user.uid,
         memberNames: { [user.uid]: userName },
         imageUrl: fetchedImageUrl, 
+        status: "active",
         createdAt: new Date(),
       });
       setTitle(""); setStartDate(""); setEndDate(""); setIsModalOpen(false);
@@ -240,15 +243,18 @@ export default function Home() {
     }
   };
 
-  const handleDeleteTrip = async (e: React.MouseEvent, tripId: string, tripTitle: string) => {
+  // ✨ NEW: Archive Trip Function instead of Delete
+  const handleArchiveTrip = async (e: React.MouseEvent, tripId: string, tripTitle: string) => {
     e.stopPropagation();
 
-    if (confirm(`Are you sure you want to permanently delete "${tripTitle}"? This cannot be undone.`)) {
+    if (confirm(`Are you sure you want to archive "${tripTitle}"? It will be moved to your History.`)) {
       try {
-        await deleteDoc(doc(db, "trips", tripId));
+        await updateDoc(doc(db, "trips", tripId), {
+          status: "archived"
+        });
       } catch (error) {
-        console.error("Error deleting trip:", error);
-        alert("Failed to delete trip.");
+        console.error("Error archiving trip:", error);
+        alert("Failed to archive trip.");
       }
     }
   };
@@ -672,6 +678,7 @@ export default function Home() {
           <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><CreditCard className="h-5 w-5 mr-3 opacity-70" /> Expenses</Link>
           <Link href="/flights" className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Plane className="h-5 w-5 mr-3 opacity-70" /> Book Flights</Link>
           <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><BedDouble className="h-5 w-5 mr-3 opacity-70" /> Book Hotels</Link>
+          <Link href="/history" className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><History className="h-5 w-5 mr-3 opacity-70" /> Trip History</Link>
           <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Settings className="h-5 w-5 mr-3 opacity-70" /> Settings</Link>
           
           <div className="mt-auto pt-6 border-t border-zinc-200 dark:border-zinc-800">
@@ -796,14 +803,14 @@ export default function Home() {
                     {/* Dark Gradient Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-500"></div>
 
-                    {/* Top Right Admin Button */}
+                    {/* ✨ NEW: Top Right Admin Button (Now Archives) */}
                     {trip.adminId === user.uid && (
                       <button
-                        onClick={(e) => handleDeleteTrip(e, trip.id, trip.title)}
-                        className="absolute top-5 right-5 h-10 w-10 bg-white/10 hover:bg-red-500/90 backdrop-blur-md border border-white/20 text-white rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 shadow-lg scale-90 group-hover:scale-100"
-                        title="Delete Trip"
+                        onClick={(e) => handleArchiveTrip(e, trip.id, trip.title)}
+                        className="absolute top-5 right-5 h-10 w-10 bg-white/10 hover:bg-white backdrop-blur-md border border-white/20 text-white hover:text-zinc-900 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 shadow-lg scale-90 group-hover:scale-100 z-20"
+                        title="Archive Trip"
                       >
-                        <Trash2 className="h-4 w-4" />
+                        <Archive className="h-4 w-4" />
                       </button>
                     )}
 

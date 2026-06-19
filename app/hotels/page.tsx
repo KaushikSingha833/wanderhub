@@ -5,7 +5,7 @@ import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { collection, getDocs, query, where, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../lib/firebase"; 
 import { useCurrency } from "../lib/useCurrency"; 
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Search, MapPin, Star, Wifi, Coffee, ExternalLink, BedDouble, Menu, X, Sparkles, Users, Loader2, Plane, ArrowDownUp, LocateFixed, CheckCircle2, MessageSquare, Info, ChevronDown } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Search, MapPin, Star, Wifi, Coffee, ExternalLink, BedDouble, Menu, X, Sparkles, Users, Loader2, Plane, ArrowDownUp, LocateFixed, CheckCircle2, MessageSquare, Info, ChevronDown, History } from "lucide-react";
 
 // --- HAVERSINE DISTANCE FORMULA ---
 function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -68,7 +68,7 @@ export default function HotelsPage() {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        const q = query(collection(db, "trips"), where("members", "array-contains", currentUser.uid));
+        const q = query(collection(db, "trips"), where("members", "array-contains", currentUser.uid),where("status", "==", "active"));
         onSnapshot(q, (snapshot) => {
           const tripsData = snapshot.docs.map(doc => ({ id: doc.id, title: doc.data().title }));
           setUserTrips(tripsData);
@@ -159,6 +159,32 @@ export default function HotelsPage() {
 
     let internalRooms: HotelResult[] = [];
     try {
+      // 1. ✨ "TRAIN BOOKING" LOGIC: Find Occupied Rooms
+      const reqStart = new Date(checkIn).getTime();
+      const reqEnd = new Date(checkOut).getTime();
+      const requiredGuests = parseInt(guests.replace(/\D/g, '')) || 2;
+
+      // Query all Approved/Confirmed bookings
+      const qBookings = query(
+        collection(db, "bookings"),
+        where("status", "in", ["Approved", "Confirmed"])
+      );
+      const bookingsSnapshot = await getDocs(qBookings);
+      
+      const occupiedRoomIds = new Set<string>();
+      
+      bookingsSnapshot.docs.forEach(doc => {
+        const b = doc.data();
+        const bStart = new Date(b.checkIn).getTime();
+        const bEnd = new Date(b.checkOut).getTime();
+        
+        // OVERLAP FORMULA: If (UserStart < BookingEnd) AND (UserEnd > BookingStart)
+        if (reqStart < bEnd && reqEnd > bStart) {
+          occupiedRoomIds.add(b.roomId); // This room is blocked for these dates
+        }
+      });
+
+      // 2. Fetch Ratings & Locations
       const reviewsSnapshot = await getDocs(collection(db, "hotelReviews"));
       const hotelRatings: Record<string, { total: number; count: number }> = {};
       
@@ -180,13 +206,22 @@ export default function HotelsPage() {
         }
       });
 
+      // 3. Process Rooms through the Availability Filter
       const roomsSnapshot = await getDocs(collection(db, "rooms"));
       const searchDestinationLower = destination.toLowerCase();
-
       const hotelGroups: Record<string, HotelResult> = {};
 
       roomsSnapshot.docs.forEach(doc => {
         const roomData = doc.data() as any;
+        const roomId = doc.id;
+
+        // ✨ FILTER 1: Skip if room is already occupied (Overlapping Dates)
+        if (occupiedRoomIds.has(roomId)) return;
+
+        // ✨ FILTER 2: Skip if room cannot fit the requested number of guests
+        if (roomData.maxGuests && roomData.maxGuests < requiredGuests) return;
+
+        // Filter 3: City Match
         if (destination !== "Current Location" && (!roomData.city || !searchDestinationLower.includes(roomData.city.toLowerCase()))) return;
 
         const hotelName = roomData.hotelName || "WanderHub Partner Hotel";
@@ -357,6 +392,7 @@ export default function HotelsPage() {
           <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><CreditCard className="h-5 w-5 mr-3 opacity-70" /> Expenses</Link>
           <Link href="/flights" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Plane className="h-5 w-5 mr-3 opacity-70" /> Book Flights</Link>
           <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-2xl font-bold transition-all"><BedDouble className="h-5 w-5 mr-3 text-emerald-600 dark:text-emerald-400" /> Book Hotels</Link>
+          <Link href="/history" className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><History className="h-5 w-5 mr-3 opacity-70" /> Trip History</Link>
           <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Settings className="h-5 w-5 mr-3 opacity-70" /> Settings</Link>
           
           <div className="mt-auto pt-6 border-t border-zinc-200 dark:border-zinc-800">

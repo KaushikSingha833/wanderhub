@@ -3,9 +3,9 @@ import { useState, useEffect, Suspense, useMemo } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { collection, query, where, getDocs, addDoc, doc, getDoc, orderBy, serverTimestamp, updateDoc, arrayUnion, arrayRemove, onSnapshot} from "firebase/firestore";
-import { auth, db } from "../../lib/firebase"; 
-import { useCurrency } from "../../lib/useCurrency"; 
-import { MapPin, Star, Wifi, Coffee, BedDouble, Users, Calendar, ArrowLeft, CheckCircle2, Shield, Loader2, Sparkles, X, Tv, Wind, Smartphone, ChevronLeft, ChevronRight, Image as ImageIcon, MessageSquare, ThumbsUp, ThumbsDown, Map as MapIcon, ArrowDownUp, PlaneTakeoff, CreditCard, Settings, Plane, Info, Search, Menu, ChevronDown} from "lucide-react";
+import { auth, db } from "../../lib/firebase";
+import { useCurrency } from "../../lib/useCurrency";
+import { MapPin, Star, Wifi, Coffee, BedDouble, Users, Calendar, ArrowLeft, CheckCircle2, Shield, Loader2, Sparkles, X, Tv, Wind, Smartphone, ChevronLeft, ChevronRight, Image as ImageIcon, MessageSquare, ThumbsUp, ThumbsDown, Map as MapIcon, ArrowDownUp, PlaneTakeoff, CreditCard, Settings, Plane, Info, Search, Menu, ChevronDown, AlertCircle} from "lucide-react";
 import Link from "next/link";
 
 // --- RAZORPAY SCRIPT LOADER ---
@@ -97,13 +97,18 @@ function PartnerHotelContent() {
   const [viewingPhotosFor, setViewingPhotosFor] = useState<Room | null>(null);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
+  // ✨ NEW: TRAIN BOOKING OVERLAP STATE
+  const [occupiedRoomIds, setOccupiedRoomIds] = useState<Set<string>>(new Set());
+  const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
+
   const { symbol, convert } = useCurrency();
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       if (currentUser) {
-        const qTrips = query(collection(db, "trips"), where("members", "array-contains", currentUser.uid));
+        // ✨ Added the status filter right here!
+        const qTrips = query(collection(db, "trips"), where("members", "array-contains", currentUser.uid), where("status", "==", "active"));
         onSnapshot(qTrips, (snapshot) => {
           const tripsData = snapshot.docs.map(doc => ({ id: doc.id, title: doc.data().title }));
           setTrips(tripsData);
@@ -152,10 +157,66 @@ function PartnerHotelContent() {
     if (decodedHotelName) fetchData();
   }, [decodedHotelName]);
 
+  // ✨ NEW: TRAIN BOOKING OVERLAP CHECKER
+  useEffect(() => {
+    const fetchOccupiedRooms = async () => {
+      if (!checkIn || !checkOut) {
+        setOccupiedRoomIds(new Set());
+        return;
+      }
+      setIsCheckingAvailability(true);
+      
+      try {
+        const reqStart = new Date(checkIn).getTime();
+        const reqEnd = new Date(checkOut).getTime();
+        
+        // Prevent invalid date ranges
+        if (reqStart >= reqEnd) {
+          setOccupiedRoomIds(new Set());
+          setIsCheckingAvailability(false);
+          return;
+        }
+
+        const qBookings = query(
+          collection(db, "bookings"),
+          where("hotelName", "==", decodedHotelName),
+          where("status", "in", ["Approved", "Confirmed"])
+        );
+        
+        const snapshot = await getDocs(qBookings);
+        const occupied = new Set<string>();
+
+        snapshot.docs.forEach(doc => {
+          const b = doc.data();
+          const bStart = new Date(b.checkIn).getTime();
+          const bEnd = new Date(b.checkOut).getTime();
+
+          // ✨ OVERLAP FORMULA
+          if (reqStart < bEnd && reqEnd > bStart) {
+            occupied.add(b.roomId);
+          }
+        });
+
+        setOccupiedRoomIds(occupied);
+      } catch (err) {
+        console.error("Error fetching occupied rooms:", err);
+      } finally {
+        setIsCheckingAvailability(false);
+      }
+    };
+
+    fetchOccupiedRooms();
+  }, [checkIn, checkOut, decodedHotelName]);
+
+  // ✨ UPDATED: INTEGRATE OVERLAP INTO DISPLAY LOGIC
   const displayedRooms = useMemo(() => {
     let filtered = rooms.filter(room => {
       const roomCapacity = room.maxGuests || 2; 
-      return roomCapacity >= Number(guests);
+      // 1. Capacity Check
+      if (roomCapacity < Number(guests)) return false;
+      // 2. Train Booking Overlap Check
+      if (occupiedRoomIds.has(room.id)) return false; 
+      return true;
     });
 
     if (sortBy === "price_asc") {
@@ -165,7 +226,7 @@ function PartnerHotelContent() {
     }
 
     return filtered;
-  }, [rooms, guests, sortBy]);
+  }, [rooms, guests, sortBy, occupiedRoomIds]);
 
   const averageRating = reviews.length > 0 
     ? (reviews.reduce((acc, curr) => acc + curr.rating, 0) / reviews.length).toFixed(1) 
@@ -175,13 +236,16 @@ function PartnerHotelContent() {
     if (!checkIn || !checkOut) return 1;
     const start = new Date(checkIn);
     const end = new Date(checkOut);
-    const diffTime = Math.abs(end.getTime() - start.getTime());
+    const diffTime = end.getTime() - start.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-    return diffDays === 0 ? 1 : diffDays;
+    return diffDays <= 0 ? 1 : diffDays;
   };
 
   const nights = calculateNights();
   const totalPriceInBase = selectedRoom ? selectedRoom.price * nights : 0;
+  
+  // Real-time check if selected room became occupied due to date tweaks in modal
+  const isRoomCurrentlyOccupied = selectedRoom ? occupiedRoomIds.has(selectedRoom.id) : false;
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -270,6 +334,13 @@ function PartnerHotelContent() {
     e.preventDefault();
     if (!user) { alert("Please log in to book."); router.push('/'); return; }
     if (!selectedRoom || !checkIn || !checkOut) { alert("Please fill out all dates."); return; }
+    
+    // ✨ EXTRA SAFETY CHECK: Prevent double-booking race condition
+    if (isRoomCurrentlyOccupied) {
+       alert("Sorry! This room was just booked for these dates. Please select different dates.");
+       return;
+    }
+
     if (trips.length > 0 && !selectedTripId) { alert("Please select an itinerary to attach this booking to."); return; }
 
     const isScriptLoaded = await loadRazorpayScript();
@@ -501,26 +572,33 @@ function PartnerHotelContent() {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mt-1.5">For {guests} guests from {checkIn || 'Dates TBD'}</p>
                 </div>
                 
-                <div className="relative group">
-                  <ArrowDownUp className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-hover:text-emerald-500 transition-colors pointer-events-none" />
-                  <select 
-                    value={sortBy} 
-                    onChange={(e) => setSortBy(e.target.value)}
-                    className="pl-10 pr-8 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-full text-xs font-bold uppercase tracking-widest text-zinc-900 dark:text-white shadow-sm outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer appearance-none transition-all"
-                  >
-                    <option value="recommended">Recommended</option>
-                    <option value="price_asc">Price: Low to High</option>
-                    <option value="price_desc">Price: High to Low</option>
-                  </select>
-                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+                <div className="flex items-center gap-4">
+                  {isCheckingAvailability && (
+                    <div className="flex items-center text-[10px] font-bold text-emerald-500 uppercase tracking-widest">
+                      <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> Live Syncing...
+                    </div>
+                  )}
+                  <div className="relative group">
+                    <ArrowDownUp className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-hover:text-emerald-500 transition-colors pointer-events-none" />
+                    <select 
+                      value={sortBy} 
+                      onChange={(e) => setSortBy(e.target.value)}
+                      className="pl-10 pr-8 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-full text-xs font-bold uppercase tracking-widest text-zinc-900 dark:text-white shadow-sm outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer appearance-none transition-all"
+                    >
+                      <option value="recommended">Recommended</option>
+                      <option value="price_asc">Price: Low to High</option>
+                      <option value="price_desc">Price: High to Low</option>
+                    </select>
+                    <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+                  </div>
                 </div>
               </div>
 
               {displayedRooms.length === 0 ? (
                 <div className="bg-transparent rounded-[2rem] p-16 text-center border border-dashed border-zinc-300 dark:border-zinc-800 animate-in zoom-in-95 duration-500">
                   <div className="h-16 w-16 bg-white dark:bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-4 border border-zinc-200 dark:border-zinc-800 shadow-sm"><BedDouble className="h-8 w-8 text-zinc-400" /></div>
-                  <p className="text-zinc-900 dark:text-white font-bold text-xl mb-2 tracking-tight">No rooms available for {guests} guests.</p>
-                  <p className="text-zinc-500 font-medium text-sm">Try adjusting your guest count or dates.</p>
+                  <p className="text-zinc-900 dark:text-white font-bold text-xl mb-2 tracking-tight">No rooms available for these dates.</p>
+                  <p className="text-zinc-500 font-medium text-sm">All rooms are fully booked or cannot accommodate {guests} guests. Try adjusting your dates.</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -823,6 +901,12 @@ function PartnerHotelContent() {
                 <h2 className="text-2xl font-black text-zinc-900 dark:text-white mb-2 tracking-tight">Checkout</h2>
                 <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-6 flex items-center"><Shield className="h-3.5 w-3.5 mr-1.5"/> Secured by Razorpay</p>
                 
+                {isRoomCurrentlyOccupied && (
+                  <div className="bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[10px] font-bold uppercase tracking-widest px-4 py-3 rounded-xl mb-6 flex items-center">
+                    <AlertCircle className="h-4 w-4 mr-2" /> Room is unavailable for these dates.
+                  </div>
+                )}
+
                 <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 mb-8 flex items-center gap-4">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={selectedRoom.imageUrls?.[0] || selectedRoom.imageUrl} alt="Room" className="h-16 w-16 rounded-xl object-cover shadow-sm" />
@@ -875,8 +959,8 @@ function PartnerHotelContent() {
                     </p>
                   </div>
 
-                  <button type="submit" disabled={isBookingLoading} className="w-full bg-emerald-500 text-zinc-950 py-4 rounded-full font-bold text-xs uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.2)] disabled:opacity-50 disabled:shadow-none flex justify-center items-center mt-2 active:scale-95 group">
-                    {isBookingLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><CreditCard className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" /> Pay with Razorpay</>}
+                  <button type="submit" disabled={isBookingLoading || isCheckingAvailability || isRoomCurrentlyOccupied} className={`w-full py-4 rounded-full font-bold text-xs uppercase tracking-widest transition-all shadow-[0_0_20px_rgba(16,185,129,0.2)] flex justify-center items-center mt-2 active:scale-95 group ${isRoomCurrentlyOccupied ? 'bg-zinc-200 dark:bg-zinc-800 text-zinc-400 cursor-not-allowed shadow-none' : 'bg-emerald-500 text-zinc-950 hover:bg-emerald-400 disabled:opacity-50 disabled:shadow-none'}`}>
+                    {isBookingLoading || isCheckingAvailability ? <Loader2 className="h-5 w-5 animate-spin" /> : <><CreditCard className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" /> Pay with Razorpay</>}
                   </button>
                 </form>
               </>

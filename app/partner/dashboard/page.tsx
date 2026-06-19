@@ -2,10 +2,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged } from "firebase/auth";
-import { doc, getDoc, collection, addDoc, query, where, onSnapshot, deleteDoc, updateDoc, orderBy, deleteField } from "firebase/firestore";
+import { doc, getDoc, collection, addDoc, query, where, onSnapshot, deleteDoc, updateDoc, orderBy, deleteField, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase"; 
 import { useCurrency } from "../../lib/useCurrency"; 
-import { Building2, Plus, BedDouble, Trash2, IndianRupee, Loader2, AlertTriangle, LogOut, Image as ImageIcon, CheckCircle2, TrendingUp, ShieldCheck, MapPin, AlignLeft, Tags, Inbox, Check, XCircle, Clock, Users, ArrowRightCircle, Settings, Wallet, Smartphone, Pencil, ChevronDown } from "lucide-react";
+import { Building2, Plus, BedDouble, Trash2, IndianRupee, Loader2, AlertTriangle, LogOut, Image as ImageIcon, CheckCircle2, TrendingUp, ShieldCheck, MapPin, AlignLeft, Tags, Inbox, Check, XCircle, Clock, Users, ArrowRightCircle, Settings, Wallet, Smartphone, Pencil, ChevronDown, History } from "lucide-react";
 import { signOut } from "firebase/auth";
 
 interface Room {
@@ -31,7 +31,7 @@ interface Booking {
   checkOut: string;
   guests: number;
   totalPriceBase: number;
-  status: "Pending" | "Approved" | "Confirmed" | "Declined"; 
+  status: "Pending" | "Approved" | "Confirmed" | "Declined" | "Cancelled"; 
   createdAt: any;
   transactionId?: string;
   extensionRequest?: {
@@ -220,6 +220,22 @@ export default function PartnerDashboard() {
     }
   };
 
+  // CANCEL/REVOKE CONFIRMED BOOKING
+  const handleCancelConfirmedBooking = async (bookingId: string) => {
+    if (confirm("🚨 WARNING: Are you sure you want to cancel this confirmed reservation? \n\nNote: If this is done unfairly or without valid reason, the customer can report your property to WanderHub Trust & Safety.")) {
+      try {
+        await updateDoc(doc(db, "bookings", bookingId), {
+          status: "Cancelled",
+          cancelledAt: serverTimestamp(),
+          cancelledBy: "Partner_Admin"
+        });
+      } catch (error) {
+        console.error("Error cancelling booking:", error);
+        alert("Failed to cancel booking. Please try again.");
+      }
+    }
+  };
+
   // EXTENSION HANDLERS
   const handleApproveExtension = async (booking: Booking) => {
     if (!booking.extensionRequest) return;
@@ -354,6 +370,14 @@ export default function PartnerDashboard() {
             )}
           </button>
 
+          {/* ✨ NEW TAB: ROOM STATUS & HISTORY */}
+          <button 
+            onClick={() => setActiveTab("status")}
+            className={`w-full ${activeTab === "status" ? "bg-white text-zinc-950 shadow-md" : "text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent"} px-5 py-4 rounded-2xl font-bold flex items-center cursor-pointer transition-all text-sm`}
+          >
+            <History className={`h-4 w-4 mr-3 ${activeTab === "status" ? "text-emerald-600" : ""}`} /> Status & History
+          </button>
+
           <button 
             onClick={() => setActiveTab("settings")}
             className={`w-full ${activeTab === "settings" ? "bg-white text-zinc-950 shadow-md" : "text-zinc-400 hover:text-white hover:bg-zinc-900 border border-transparent"} px-5 py-4 rounded-2xl font-bold flex items-center cursor-pointer transition-all text-sm`}
@@ -382,11 +406,13 @@ export default function PartnerDashboard() {
               <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter">
                 {activeTab === "inventory" && "Manage Inventory"}
                 {activeTab === "inbox" && "Booking Requests"}
+                {activeTab === "status" && "Room Status & History"}
                 {activeTab === "settings" && "Payment Configuration"}
               </h1>
               <p className="text-zinc-400 font-medium mt-2 text-base md:text-lg">
                 {activeTab === "inventory" && "Add and update rooms to push live to WanderHub."}
-                {activeTab === "inbox" && "Review and approve incoming reservations."}
+                {activeTab === "inbox" && "Review and manage live reservations."}
+                {activeTab === "status" && "Monitor live availability and review past guest records."}
                 {activeTab === "settings" && "Set up direct payment methods for your hotel."}
               </p>
             </div>
@@ -657,6 +683,7 @@ export default function PartnerDashboard() {
                       const isPending = booking.status === "Pending";
                       const isApproved = booking.status === "Approved" || booking.status === "Confirmed"; 
                       const isDeclined = booking.status === "Declined";
+                      const isCancelled = booking.status === "Cancelled";
 
                       const today = new Date(); today.setHours(0,0,0,0);
                       const checkInDate = new Date(booking.checkIn); checkInDate.setHours(0,0,0,0);
@@ -666,22 +693,31 @@ export default function PartnerDashboard() {
                       let liveColor = "";
                       
                       if (isApproved) {
-                        if (today < checkInDate) { liveStatus = "Upcoming Arrival"; liveColor = "text-sky-400 border-sky-500/30 bg-sky-500/10"; }
-                        else if (today >= checkInDate && today < checkOutDate) { liveStatus = "Currently Occupied"; liveColor = "text-emerald-400 border-emerald-500/30 bg-emerald-500/10"; }
-                        else if (today >= checkOutDate) { liveStatus = "Checked-Out"; liveColor = "text-zinc-400 border-zinc-700 bg-zinc-800"; }
+                        if (today < checkInDate) { 
+                          liveStatus = "Upcoming Arrival"; 
+                          liveColor = "text-sky-400 border-sky-500/30 bg-sky-500/10"; 
+                        }
+                        else if (today >= checkInDate && today < checkOutDate) { 
+                          liveStatus = "Currently Occupied"; 
+                          liveColor = "text-emerald-400 border-emerald-500/50 bg-emerald-500/20 shadow-[0_0_15px_rgba(16,185,129,0.2)]"; 
+                        }
+                        else if (today >= checkOutDate) { 
+                          liveStatus = "Checked-Out"; 
+                          liveColor = "text-zinc-400 border-zinc-700 bg-zinc-800"; 
+                        }
                       }
 
                       return (
-                        <div key={booking.id} className={`bg-zinc-950 rounded-[2rem] border ${isPending ? 'border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.1)]' : 'border-zinc-800 shadow-sm'} overflow-hidden flex flex-col transition-all group relative`}>
+                        <div key={booking.id} className={`bg-zinc-950 rounded-[2rem] border ${isPending ? 'border-amber-500/30 shadow-[0_0_20px_rgba(245,158,11,0.1)]' : isCancelled ? 'border-rose-500/20' : 'border-zinc-800 shadow-sm'} overflow-hidden flex flex-col transition-all group relative`}>
                           
                           {/* Header Bar */}
-                          <div className={`px-6 md:px-8 py-5 flex justify-between items-center ${isPending ? 'bg-amber-500/5' : 'bg-zinc-900/50'} border-b border-zinc-800`}>
+                          <div className={`px-6 md:px-8 py-5 flex justify-between items-center ${isPending ? 'bg-amber-500/5' : isCancelled ? 'bg-rose-500/5' : 'bg-zinc-900/50'} border-b border-zinc-800`}>
                             <div className="flex items-center gap-4">
                               <div className="h-12 w-12 bg-zinc-800 rounded-full flex items-center justify-center text-zinc-300 font-bold shadow-inner border border-zinc-700">
                                 {booking.customerName.charAt(0).toUpperCase()}
                               </div>
                               <div>
-                                <h4 className="font-black text-lg text-white tracking-tight">{booking.customerName}</h4>
+                                <h4 className={`font-black text-lg tracking-tight ${isCancelled ? 'text-zinc-500 line-through' : 'text-white'}`}>{booking.customerName}</h4>
                                 <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">{booking.customerEmail}</p>
                               </div>
                             </div>
@@ -693,8 +729,11 @@ export default function PartnerDashboard() {
                               
                               {isDeclined && <span className="inline-flex items-center text-rose-500 bg-rose-500/10 border border-rose-500/20 px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest"><XCircle className="h-3 w-3 mr-1.5"/> Declined</span>}
                               
+                              {isCancelled && <span className="inline-flex items-center text-rose-500 bg-rose-500/10 border border-rose-500/30 px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest"><AlertTriangle className="h-3 w-3 mr-1.5"/> Cancelled</span>}
+
                               {isApproved && liveStatus && (
                                 <span className={`inline-flex items-center px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest border ${liveColor}`}>
+                                  {liveStatus === "Currently Occupied" && <span className="relative flex h-2 w-2 mr-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span>}
                                   {liveStatus}
                                 </span>
                               )}
@@ -703,7 +742,7 @@ export default function PartnerDashboard() {
 
                           {/* Payment Reference */}
                           {booking.transactionId && booking.transactionId !== "Pending" && booking.transactionId !== "Pay at Hotel" && (
-                            <div className="bg-zinc-900/30 border-b border-zinc-800 p-5 px-6 md:px-8 flex items-center gap-4">
+                            <div className={`bg-zinc-900/30 border-b border-zinc-800 p-5 px-6 md:px-8 flex items-center gap-4 ${isCancelled ? 'opacity-50' : ''}`}>
                               <div className={`h-10 w-10 rounded-full flex items-center justify-center shrink-0 border ${booking.transactionId.startsWith('pay_') ? 'bg-sky-500/10 text-sky-400 border-sky-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'}`}>
                                 {booking.transactionId.startsWith('pay_') ? <ShieldCheck className="h-5 w-5" /> : <Smartphone className="h-5 w-5" />}
                               </div>
@@ -721,7 +760,7 @@ export default function PartnerDashboard() {
                           )}
 
                           {booking.transactionId === "Pay at Hotel" && (
-                            <div className="bg-zinc-900/30 border-b border-zinc-800 p-5 px-6 md:px-8 flex items-center gap-4">
+                            <div className={`bg-zinc-900/30 border-b border-zinc-800 p-5 px-6 md:px-8 flex items-center gap-4 ${isCancelled ? 'opacity-50' : ''}`}>
                               <div className="h-10 w-10 bg-amber-500/10 text-amber-500 border border-amber-500/20 rounded-full flex items-center justify-center shrink-0"><Clock className="h-5 w-5" /></div>
                               <div>
                                 <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-1">Payment Method</p>
@@ -731,7 +770,7 @@ export default function PartnerDashboard() {
                           )}
 
                           {/* Extension Request Alert */}
-                          {booking.extensionRequest && booking.extensionRequest.status === "Pending" && (
+                          {!isCancelled && booking.extensionRequest && booking.extensionRequest.status === "Pending" && (
                             <div className="bg-sky-950 border-b border-sky-900 p-5 px-6 md:px-8 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-5">
                               <div className="flex items-center gap-4">
                                 <div className="h-10 w-10 bg-sky-500/20 text-sky-400 border border-sky-500/30 rounded-full flex items-center justify-center shrink-0"><ArrowRightCircle className="h-5 w-5" /></div>
@@ -748,7 +787,7 @@ export default function PartnerDashboard() {
                           )}
 
                           {/* Details & Actions */}
-                          <div className="p-6 md:p-8 flex flex-col md:flex-row justify-between gap-8 items-center">
+                          <div className={`p-6 md:p-8 flex flex-col md:flex-row justify-between gap-8 items-center ${isCancelled ? 'opacity-50' : ''}`}>
                             <div className="flex-1 w-full grid grid-cols-2 md:grid-cols-4 gap-6 bg-zinc-900/50 p-5 rounded-2xl border border-zinc-800">
                               <div>
                                 <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-1.5">Room Type</p>
@@ -764,7 +803,7 @@ export default function PartnerDashboard() {
                               </div>
                               <div>
                                 <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-500 mb-1.5">Est. Revenue</p>
-                                <p className="font-black text-xl text-emerald-400 tracking-tighter">
+                                <p className={`font-black text-xl tracking-tighter ${isCancelled ? 'text-zinc-500 line-through' : 'text-emerald-400'}`}>
                                   {symbol}{convert(booking.totalPriceBase).toLocaleString(undefined, {maximumFractionDigits: 0})}
                                 </p>
                               </div>
@@ -778,12 +817,108 @@ export default function PartnerDashboard() {
                                 </button>
                               </div>
                             )}
+
+                            {/* ✨ SMART CANCEL STAY BUTTON */}
+                            {isApproved && liveStatus !== "Checked-Out" && (
+                              <div className="flex w-full md:w-auto gap-3 shrink-0">
+                                <button 
+                                  onClick={() => handleCancelConfirmedBooking(booking.id)} 
+                                  className="flex-1 md:flex-none px-6 py-4 bg-transparent text-rose-500 hover:bg-rose-500 hover:text-zinc-950 font-bold text-[10px] uppercase tracking-widest rounded-full transition-all border border-rose-500/30 active:scale-95 flex items-center justify-center"
+                                  title="Revoke access or cancel due to policy violation"
+                                >
+                                  <AlertTriangle className="h-3 w-3 mr-2" /> Cancel Stay
+                                </button>
+                              </div>
+                            )}
+
                           </div>
                         </div>
                       );
                     })}
                   </div>
                 )}
+              </div>
+            </div>
+          ) : activeTab === "status" ? (
+            // --- ✨ NEW TAB: ROOM STATUS & HISTORY ---
+            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 max-w-7xl mx-auto">
+              <div className="bg-zinc-900/40 backdrop-blur-xl p-8 md:p-12 rounded-[2.5rem] shadow-2xl border border-zinc-800 min-h-[600px]">
+                <div className="flex items-center justify-between mb-10 border-b border-zinc-800 pb-8">
+                  <h3 className="text-3xl md:text-4xl font-black text-white tracking-tighter">Room Status & History</h3>
+                  <span className="text-[10px] font-bold tracking-widest uppercase bg-zinc-800 text-zinc-400 px-4 py-2 rounded-full border border-zinc-700">{rooms.length} Rooms</span>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                  {rooms.map(room => {
+                    const roomBookings = bookings.filter(b => b.roomId === room.id);
+                    
+                    // Determine current status
+                    const today = new Date();
+                    today.setHours(0,0,0,0);
+                    
+                    const currentBooking = roomBookings.find(b => {
+                        if(b.status !== "Approved" && b.status !== "Confirmed") return false;
+                        const cin = new Date(b.checkIn); cin.setHours(0,0,0,0);
+                        const cout = new Date(b.checkOut); cout.setHours(0,0,0,0);
+                        return today >= cin && today < cout;
+                    });
+
+                    return (
+                        <div key={room.id} className="bg-zinc-950 rounded-[2rem] border border-zinc-800 overflow-hidden flex flex-col shadow-sm hover:border-zinc-700 transition-colors">
+                            <div className="p-6 border-b border-zinc-800 flex justify-between items-center bg-zinc-900/30">
+                                <div className="flex items-center gap-4">
+                                    <div className="h-16 w-16 rounded-[1rem] overflow-hidden shrink-0 border border-zinc-800 shadow-sm">
+                                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                                        <img src={room.imageUrls?.[0] || room.imageUrl || "https://images.unsplash.com/photo-1518733057094-95b53143d2a7?w=800"} alt={room.name} className="h-full w-full object-cover" />
+                                    </div>
+                                    <div>
+                                        <h4 className="font-bold text-xl text-white tracking-tight">{room.name}</h4>
+                                        {currentBooking ? (
+                                            <span className="inline-flex items-center text-rose-400 bg-rose-500/10 px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest mt-1.5 border border-rose-500/20 shadow-sm">
+                                                <span className="h-1.5 w-1.5 rounded-full bg-rose-500 mr-1.5 animate-pulse shadow-[0_0_10px_rgba(244,63,94,0.8)]"></span> Currently Occupied
+                                            </span>
+                                        ) : (
+                                            <span className="inline-flex items-center text-emerald-400 bg-emerald-500/10 px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest mt-1.5 border border-emerald-500/20 shadow-sm">
+                                                <CheckCircle2 className="h-3 w-3 mr-1" /> Available
+                                            </span>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div className="p-6 flex-1 max-h-[350px] overflow-y-auto custom-scrollbar">
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4 flex items-center"><History className="h-3.5 w-3.5 mr-1.5" /> Booking Ledger</p>
+                                {roomBookings.length === 0 ? (
+                                    <div className="text-center py-10 bg-zinc-900/30 rounded-2xl border border-dashed border-zinc-800">
+                                      <p className="text-sm font-medium text-zinc-500">No booking history for this room.</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-3">
+                                        {roomBookings.map(b => (
+                                            <div key={b.id} className="bg-zinc-900/50 p-4 rounded-xl border border-zinc-800/50 flex justify-between items-center hover:bg-zinc-900 transition-colors">
+                                                <div>
+                                                    <p className="font-bold text-sm text-white tracking-tight">{b.customerName}</p>
+                                                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mt-1">
+                                                      {new Date(b.checkIn).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})} <span className="mx-1">→</span> {new Date(b.checkOut).toLocaleDateString('en-US', {month: 'short', day: 'numeric'})}
+                                                    </p>
+                                                </div>
+                                                <div className="text-right shrink-0">
+                                                    <p className={`text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-md border inline-block ${
+                                                        b.status === "Cancelled" ? "text-rose-500 border-rose-500/20 bg-rose-500/10" : 
+                                                        b.status === "Pending" ? "text-amber-500 border-amber-500/20 bg-amber-500/10" : 
+                                                        b.status === "Declined" ? "text-zinc-400 border-zinc-700 bg-zinc-800/50" :
+                                                        "text-emerald-500 border-emerald-500/20 bg-emerald-500/10"
+                                                    }`}>{b.status}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           ) : activeTab === "settings" ? (
