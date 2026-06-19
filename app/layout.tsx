@@ -1,7 +1,9 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import ThemeListener from "./ThemeListener"; // <-- UNCOMMENTED!
+import ThemeListener from "./ThemeListener";
+import { Toaster } from "react-hot-toast";
+import LiquidBackground from "./components/LiquidBackground";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,11 +31,26 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
       suppressHydrationWarning 
     >
-      {/* suppressHydrationWarning stops Next.js from complaining about the dark class being added dynamically */}
-      <body className="min-h-full flex flex-col bg-slate-50 dark:bg-[#030712] transition-colors duration-300">
+      {/* 🚀 FIX: Changed bg-slate-50 to bg-transparent so the liquid is visible! */}
+      <body className="min-h-full flex flex-col bg-transparent transition-colors duration-300 relative">
         
-        {/* THIS NOW RUNS ON EVERY SINGLE PAGE */}
+        {/* 🚀 NEW: The Liquid Canvas sits behind everything */}
+        <LiquidBackground />
+        
         <ThemeListener /> 
+        
+        <Toaster 
+          position="top-center" 
+          toastOptions={{
+            duration: 4000,
+            style: {
+              background: '#1e293b',
+              color: '#fff',
+              borderRadius: '1rem',
+              fontWeight: '600',
+            },
+          }} 
+        />
         
         {children}
       </body>

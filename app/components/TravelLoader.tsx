@@ -1,10 +1,11 @@
 "use client";
 import { useState, useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
+import { Plane } from "lucide-react";
 
 interface TravelLoaderProps {
   messages: string[];
-  isLanding?: boolean; // Used to optionally tilt the plane during payment success
+  isLanding?: boolean; // Used to tilt the plane during payment success/arrival
 }
 
 export default function TravelLoader({ messages, isLanding = false }: TravelLoaderProps) {
@@ -20,79 +21,38 @@ export default function TravelLoader({ messages, isLanding = false }: TravelLoad
 
   return (
     <div className="flex flex-col items-center justify-center p-8 w-full max-w-md mx-auto">
-
-      {/* This is the exact CSS keyframe logic you provided from Uiverse, 
-        adapted for our Aeroplane lengths! 
-      */}
-      <style>{`
-        .plane_part {
-          stroke: currentColor;
-          transition: stroke 0.3s ease;
-        }
+      
+      {/* PREMIUM ORBITAL RADAR LOADER */}
+      <div className="relative w-32 h-32 flex items-center justify-center mb-10">
         
-        .plane_body { animation: draw80 3s ease-in-out infinite; }
-        .plane_wing { animation: draw40 3s ease-in-out infinite; }
-        .plane_tail { animation: draw30 3s ease-in-out infinite; }
-        .plane_window { animation: draw10 3s ease-in-out infinite; }
-        /* Slight delay on the wind so it trails the plane */
-        .plane_wind { animation: draw10 3s ease-in-out infinite; animation-delay: 0.15s; } 
-
-        @keyframes draw80 { 
-          from { stroke-dashoffset: 80; } 
-          33%, 67% { stroke-dashoffset: 0; } 
-          to { stroke-dashoffset: -80; } 
-        }
-        @keyframes draw40 { 
-          from { stroke-dashoffset: 40; } 
-          33%, 67% { stroke-dashoffset: 0; } 
-          to { stroke-dashoffset: -40; } 
-        }
-        @keyframes draw30 { 
-          from { stroke-dashoffset: 30; } 
-          33%, 67% { stroke-dashoffset: 0; } 
-          to { stroke-dashoffset: -30; } 
-        }
-        @keyframes draw10 { 
-          from { stroke-dashoffset: 10; } 
-          33%, 67% { stroke-dashoffset: 0; } 
-          to { stroke-dashoffset: -10; } 
-        }
-      `}</style>
-
-      {/* THE AEROPLANE SVG DRAWING */}
-      <div className={`relative w-40 h-32 flex items-center justify-center mb-6 transition-transform duration-700 ${isLanding ? 'rotate-12 translate-y-2' : '-rotate-6'}`}>
-        <svg
-          className="w-full h-auto text-indigo-600 dark:text-indigo-400 drop-shadow-xl"
-          viewBox="0 0 48 30"
-          fill="none"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        >
-          {/* Wind / Speed Trails */}
-          <line className="plane_part plane_wind" x1="8" y1="10" x2="2" y2="10" strokeDasharray="10 10" />
-          <line className="plane_part plane_wind" x1="6" y1="20" x2="0" y2="20" strokeDasharray="10 10" />
-          <line className="plane_part plane_wind" x1="12" y1="25" x2="6" y2="25" strokeDasharray="10 10" />
-
-          {/* Aeroplane Body (Fuselage) */}
-          <path className="plane_part plane_body" d="M 12,15 L 35,15 C 39,15 41,16 41,17 C 41,18 39,19 35,19 L 12,19 C 10,19 10,15 12,15 Z" strokeDasharray="80 80" />
-
-          {/* Aeroplane Tail */}
-          <path className="plane_part plane_tail" d="M 15,15 L 10,6 L 6,6 L 12,15 Z" strokeDasharray="30 30" />
-
-          {/* Top Wing */}
-          <path className="plane_part plane_wing" d="M 28,15 L 18,4 L 14,4 L 22,15" strokeDasharray="40 40" />
-
-          {/* Bottom Wing */}
-          <path className="plane_part plane_wing" d="M 26,19 L 16,29 L 12,29 L 20,19" strokeDasharray="40 40" />
-
-          {/* Passenger Windows */}
-          <line className="plane_part plane_window" x1="30" y1="17" x2="35" y2="17" strokeDasharray="10 10" />
-        </svg>
+        {/* Ambient Glowing Aura */}
+        <div className="absolute inset-0 bg-emerald-500/20 rounded-full blur-[30px] animate-pulse"></div>
+        
+        {/* Outer Spinning Orbit */}
+        <div className="absolute inset-0 rounded-full border border-zinc-200/50 dark:border-zinc-800 border-t-emerald-500 dark:border-t-emerald-500 animate-[spin_2s_linear_infinite] opacity-80"></div>
+        
+        {/* Inner Counter-Spinning Orbit */}
+        <div className="absolute inset-3 rounded-full border border-zinc-200/50 dark:border-zinc-800 border-b-teal-400 dark:border-b-teal-400 animate-[spin_3s_linear_infinite_reverse] opacity-60"></div>
+        
+        {/* Frosted Glass Core */}
+        <div className="absolute inset-6 rounded-full bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shadow-[0_0_30px_rgba(16,185,129,0.15)] z-10 overflow-hidden">
+          
+          {/* Radar Sweep Effect inside the glass */}
+          <div className="absolute inset-0 w-[200%] h-[200%] -top-[50%] -left-[50%] bg-[conic-gradient(from_0deg,transparent_70%,rgba(16,185,129,0.1)_100%)] animate-[spin_2s_linear_infinite]"></div>
+          
+          {/* Central Plane Icon */}
+          <Plane 
+            className={`h-6 w-6 text-emerald-500 dark:text-emerald-400 transition-all duration-1000 relative z-20 ${
+              isLanding ? 'rotate-[45deg] translate-y-1' : '-rotate-45 hover:scale-110'
+            }`} 
+            strokeWidth={2.5}
+          />
+        </div>
+        
       </div>
 
-      {/* STAGGERED TEXT CROSS-FADE (Using Framer Motion) */}
-      <div className="h-8 relative w-full flex justify-center">
+      {/* STAGGERED TEXT CROSS-FADE (Premium Typography) */}
+      <div className="h-10 relative w-full flex justify-center">
         <AnimatePresence mode="wait">
           <motion.p
             key={messageIndex}
@@ -100,7 +60,7 @@ export default function TravelLoader({ messages, isLanding = false }: TravelLoad
             animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
             exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
             transition={{ duration: 0.4 }}
-            className="absolute text-sm font-black text-slate-600 dark:text-slate-300 uppercase tracking-widest text-center"
+            className="absolute text-[10px] sm:text-[11px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-[0.25em] text-center w-full"
           >
             {messages[messageIndex]}
           </motion.p>

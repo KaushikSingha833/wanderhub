@@ -9,7 +9,6 @@ import {
   signOut, 
   User as FirebaseUser, 
   deleteUser,
-  // --- ✨ NEW: FIREBASE SECURITY IMPORTS ---
   EmailAuthProvider,
   reauthenticateWithCredential,
   updatePassword
@@ -43,7 +42,7 @@ export default function SettingsPage() {
   const [smsAlerts, setSmsAlerts] = useState(false);
   const [twoFactorAuth, setTwoFactorAuth] = useState(false);
   
-  // --- ✨ NEW: PASSWORD CHANGE STATE ---
+  // PASSWORD CHANGE STATE
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -111,7 +110,6 @@ export default function SettingsPage() {
           }
 
         } else {
-          // New User Setup
           const resolvedTheme = localTheme || 'System Default';
           setTheme(resolvedTheme);
           applyThemeToDocument(resolvedTheme);
@@ -180,7 +178,6 @@ export default function SettingsPage() {
     }
   };
 
-  // --- ✨ SECURE PASSWORD CHANGE ENGINE ---
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user || !user.email) return;
@@ -196,16 +193,12 @@ export default function SettingsPage() {
 
     setIsChangingPassword(true);
     try {
-      // 1. Re-authenticate to prove they own the account
       const credential = EmailAuthProvider.credential(user.email, currentPassword);
       await reauthenticateWithCredential(user, credential);
-      
-      // 2. Update the password
       await updatePassword(user, newPassword);
 
       showDialog("Success", "Your password has been successfully updated.", "info");
       
-      // 3. Clear fields on success
       setCurrentPassword("");
       setNewPassword("");
       setConfirmPassword("");
@@ -285,137 +278,139 @@ export default function SettingsPage() {
     }
   };
 
-  if (isLoading) return <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 transition-colors"><div className="animate-spin h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full"></div></div>;
+  if (isLoading) return <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950 transition-colors"><div className="animate-spin h-10 w-10 border-4 border-emerald-500 border-t-transparent rounded-full"></div></div>;
   if (!user) return null;
 
-  // ✨ NEW: Check if the user signed in with Email/Password
   const isEmailUser = user?.providerData.some(provider => provider.providerId === 'password');
 
   return (
-    <div className="flex h-screen bg-[#f8fafc] dark:bg-[#030712] font-sans text-slate-900 dark:text-slate-100 overflow-hidden transition-colors duration-300 selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors duration-300 selection:bg-emerald-500/20">
       
+      {/* MOBILE MENU BLUR */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md z-40 md:hidden transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
+        <div className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-md z-40 md:hidden transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-[#0f172a] border-r border-slate-200 dark:border-white/10 flex flex-col transform transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] print:hidden ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} md:relative md:translate-x-0`}>
-        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-white/10 shrink-0">
-          <div className="flex items-center">
-            <PlaneTakeoff className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-2" />
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-blue-500 dark:from-indigo-400 dark:to-blue-400">WanderHub</span>
+      {/* FLOATING SIDEBAR (EDITORIAL STYLE) */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col transform transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] print:hidden ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} md:relative md:translate-x-0`}>
+        <div className="h-20 flex items-center px-8 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+          <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-3 shadow-sm">
+            <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
           </div>
-          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"><X className="h-5 w-5" /></button>
+          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+          <button onClick={() => setIsMobileMenuOpen(false)} className="ml-auto md:hidden p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full transition-colors"><X className="h-5 w-5" /></button>
         </div>
-        <nav className="flex-1 px-4 py-6 overflow-y-auto custom-scrollbar flex flex-col">
-          <div className="space-y-2">
-          <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><Map className="h-5 w-5 mr-3" /> Dashboard</Link>
-          <Link href="/itineraries" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><Calendar className="h-5 w-5 mr-3" /> Itineraries</Link>
-          <Link href="/chat" className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors">
-            <MessageSquare className="h-5 w-5 mr-3" /> Group Chat
-          </Link>
-          <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><CreditCard className="h-5 w-5 mr-3" /> Expenses</Link>
-          <Link href="/flights" className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl font-semibold"><Plane className="h-5 w-5 mr-3" /> Book Flights</Link>
-          <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><BedDouble className="h-5 w-5 mr-3" /> Book Hotels</Link>
-          <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 rounded-xl font-bold shadow-sm transition-colors border border-transparent dark:border-indigo-500/20"><Settings className="h-5 w-5 mr-3" /> Settings</Link>
-        </div>
-        {/* Add the About Us link at the very end wrapped in this specific div */}
-          <div className="mt-auto pt-6">
-            <Link href="/about" className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl font-semibold transition-colors">
-              <Info className="h-5 w-5 mr-3" /> About Us
+        
+        <nav className="flex-1 px-4 py-8 overflow-y-auto custom-scrollbar flex flex-col gap-2">
+          <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Map className="h-5 w-5 mr-3 opacity-70" /> Dashboard</Link>
+          <Link href="/itineraries" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Calendar className="h-5 w-5 mr-3 opacity-70" /> Itineraries</Link>
+          <Link href="/chat" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><MessageSquare className="h-5 w-5 mr-3 opacity-70" /> Group Chat</Link>
+          <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><CreditCard className="h-5 w-5 mr-3 opacity-70" /> Expenses</Link>
+          <Link href="/flights" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Plane className="h-5 w-5 mr-3 opacity-70" /> Book Flights</Link>
+          <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><BedDouble className="h-5 w-5 mr-3 opacity-70" /> Book Hotels</Link>
+          <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-2xl font-bold transition-all"><Settings className="h-5 w-5 mr-3 text-emerald-600 dark:text-emerald-400" /> Settings</Link>
+          
+          <div className="mt-auto pt-6 border-t border-zinc-200 dark:border-zinc-800">
+            <Link href="/about" className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all">
+              <Info className="h-5 w-5 mr-3 opacity-70" /> About Us
             </Link>
           </div>
         </nav>
       </aside>
 
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none transition-colors duration-500"></div>
+        <div className="absolute top-[10%] right-[10%] w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
 
-        <div className="md:hidden h-16 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-md border-b border-slate-200 dark:border-white/10 flex items-center justify-between px-4 shrink-0 z-30 sticky top-0 transition-colors">
+        {/* MOBILE TOP BAR */}
+        <div className="md:hidden h-20 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-6 shrink-0 z-30 sticky top-0 transition-colors">
           <div className="flex items-center">
-            <PlaneTakeoff className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-2" />
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-blue-500 dark:from-indigo-400 dark:to-blue-400">WanderHub</span>
+            <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-2 shadow-sm">
+              <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
+            </div>
+            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
           </div>
-          <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
+          <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
         </div>
 
-        <header className="hidden md:flex h-20 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/10 items-center justify-between px-10 z-20 shrink-0 sticky top-0 transition-all">
+        {/* DESKTOP HEADER (MINIMALIST) */}
+        <header className="hidden md:flex h-24 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 items-center justify-between px-12 z-20 shrink-0 sticky top-0 transition-all">
           <div>
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Account Settings</h2>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">Manage your preferences and profile.</p>
+            <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Account Settings</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mt-1">Manage your preferences and profile.</p>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar">
-          <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-8 lg:gap-12 pb-24 relative z-10">
+        <main className="flex-1 overflow-y-auto p-6 md:p-12 custom-scrollbar">
+          <div className="max-w-6xl mx-auto flex flex-col md:flex-row gap-10 lg:gap-14 pb-24 relative z-10">
             
             {/* SETTINGS NAVIGATION TABS */}
             <div className="w-full md:w-64 lg:w-72 shrink-0 space-y-2">
-              <button onClick={() => setActiveTab("profile")} className={`w-full flex items-center px-5 py-4 rounded-2xl font-bold transition-all ${activeTab === "profile" ? "bg-white dark:bg-white/10 text-indigo-600 dark:text-indigo-400 shadow-md border border-slate-200 dark:border-white/10" : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-white/5 border border-transparent"}`}>
-                <User className="h-5 w-5 mr-3" /> Profile
+              <button onClick={() => setActiveTab("profile")} className={`w-full flex items-center px-6 py-4 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${activeTab === "profile" ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900"}`}>
+                <User className="h-4 w-4 mr-3" /> Profile
               </button>
-              <button onClick={() => setActiveTab("preferences")} className={`w-full flex items-center px-5 py-4 rounded-2xl font-bold transition-all ${activeTab === "preferences" ? "bg-white dark:bg-white/10 text-indigo-600 dark:text-indigo-400 shadow-md border border-slate-200 dark:border-white/10" : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-white/5 border border-transparent"}`}>
-                <Globe className="h-5 w-5 mr-3" /> Preferences
+              <button onClick={() => setActiveTab("preferences")} className={`w-full flex items-center px-6 py-4 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${activeTab === "preferences" ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900"}`}>
+                <Globe className="h-4 w-4 mr-3" /> Preferences
               </button>
-              <button onClick={() => setActiveTab("notifications")} className={`w-full flex items-center px-5 py-4 rounded-2xl font-bold transition-all ${activeTab === "notifications" ? "bg-white dark:bg-white/10 text-indigo-600 dark:text-indigo-400 shadow-md border border-slate-200 dark:border-white/10" : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-white/5 border border-transparent"}`}>
-                <Bell className="h-5 w-5 mr-3" /> Notifications
+              <button onClick={() => setActiveTab("notifications")} className={`w-full flex items-center px-6 py-4 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${activeTab === "notifications" ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900"}`}>
+                <Bell className="h-4 w-4 mr-3" /> Notifications
               </button>
-              <button onClick={() => setActiveTab("security")} className={`w-full flex items-center px-5 py-4 rounded-2xl font-bold transition-all ${activeTab === "security" ? "bg-white dark:bg-white/10 text-indigo-600 dark:text-indigo-400 shadow-md border border-slate-200 dark:border-white/10" : "text-slate-600 dark:text-slate-400 hover:bg-slate-200/50 dark:hover:bg-white/5 border border-transparent"}`}>
-                <Shield className="h-5 w-5 mr-3" /> Security
+              <button onClick={() => setActiveTab("security")} className={`w-full flex items-center px-6 py-4 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${activeTab === "security" ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-sm" : "text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900"}`}>
+                <Shield className="h-4 w-4 mr-3" /> Security
               </button>
-              <div className="pt-6 mt-6 border-t border-slate-200 dark:border-white/10">
-                <button onClick={handleLogout} className="w-full flex items-center px-5 py-4 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-2xl font-bold transition-colors border border-transparent hover:border-red-100 dark:hover:border-red-500/20 group">
-                  <LogOut className="h-5 w-5 mr-3 group-hover:-translate-x-1 transition-transform" /> Sign Out
+              <div className="pt-8 mt-8 border-t border-zinc-200 dark:border-zinc-800">
+                <button onClick={handleLogout} className="w-full flex items-center px-6 py-4 text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-full text-xs font-bold uppercase tracking-widest transition-colors group">
+                  <LogOut className="h-4 w-4 mr-3 group-hover:-translate-x-1 transition-transform" /> Sign Out
                 </button>
               </div>
             </div>
 
             {/* SETTINGS CONTENT AREA */}
             <div className="flex-1">
-              <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] border border-slate-200 dark:border-white/10 shadow-sm dark:shadow-2xl p-8 md:p-12 transition-colors duration-300">
+              <div className="bg-white dark:bg-zinc-900/50 rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm p-8 md:p-14 transition-colors duration-300">
                 
                 {/* PROFILE TAB */}
                 {activeTab === "profile" && (
-                  <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="border-b border-slate-100 dark:border-white/10 pb-6">
-                      <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Public Profile</h3>
-                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">This is how other travelers will see you in group trips.</p>
+                  <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    <div className="border-b border-zinc-100 dark:border-zinc-800 pb-6">
+                      <h3 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">Public Profile</h3>
+                      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mt-1">This is how other travelers will see you in group trips.</p>
                     </div>
                     
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 pb-8 border-b border-slate-100 dark:border-white/10">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center gap-8 pb-10 border-b border-zinc-100 dark:border-zinc-800">
                       <div className="relative group">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={user?.photoURL || "https://ui-avatars.com/api/?name=Traveler&background=e0e7ff&color=4f46e5"} alt="Profile" className="h-24 w-24 md:h-28 md:w-28 rounded-full border-4 border-white dark:border-[#0f172a] shadow-xl object-cover" />
-                        <div onClick={() => handleGoogleAlert("photo")} className="absolute inset-0 bg-black/50 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                        <img src={user?.photoURL || "https://ui-avatars.com/api/?name=Traveler&background=10b981&color=fff"} alt="Profile" className="h-28 w-28 rounded-full border border-zinc-200 dark:border-zinc-800 shadow-md object-cover" />
+                        <div onClick={() => handleGoogleAlert("photo")} className="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
                           <Camera className="h-6 w-6 text-white" />
                         </div>
                       </div>
                       <div>
-                        <p className="text-sm font-black text-slate-900 dark:text-white mb-1.5 uppercase tracking-widest">Profile Picture</p>
-                        <p className="text-xs md:text-sm font-medium text-slate-500 dark:text-slate-400 mb-4 max-w-sm leading-relaxed">Your photo is securely managed by your Google Account.</p>
-                        <button onClick={() => handleGoogleAlert("photo")} className="bg-slate-100 dark:bg-white/5 text-slate-700 dark:text-slate-300 px-5 py-2.5 rounded-xl text-xs font-bold hover:bg-slate-200 dark:hover:bg-white/10 transition-colors shadow-sm border border-slate-200 dark:border-white/10">Update on Google</button>
+                        <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-widest">Profile Picture</p>
+                        <p className="text-xs md:text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-5 max-w-sm leading-relaxed">Your photo is securely managed by your Google Account.</p>
+                        <button onClick={() => handleGoogleAlert("photo")} className="bg-transparent text-zinc-900 dark:text-white px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border border-zinc-300 dark:border-zinc-700 active:scale-95">Update on Google</button>
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                       <div className="md:col-span-2">
-                        <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 ml-1">Display Name</label>
-                        <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl p-4 outline-none font-bold text-slate-900 dark:text-white transition-all" />
+                        <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Display Name</label>
+                        <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-5 py-4 outline-none font-bold text-zinc-900 dark:text-white transition-all text-sm" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 ml-1">Email Address</label>
-                        <input type="email" value={user.email || ""} disabled className="w-full bg-slate-100 dark:bg-white/5 border border-slate-200 dark:border-transparent text-slate-400 dark:text-slate-600 rounded-2xl p-4 outline-none cursor-not-allowed font-medium" />
+                        <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Email Address</label>
+                        <input type="email" value={user.email || ""} disabled className="w-full bg-zinc-100 dark:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-800 text-zinc-400 dark:text-zinc-600 rounded-xl px-5 py-4 outline-none cursor-not-allowed font-medium text-sm" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 ml-1">Phone Number</label>
-                        <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+91 98765 43210" className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl p-4 outline-none font-bold text-slate-900 dark:text-white transition-all placeholder-slate-400 dark:placeholder-slate-600" />
+                        <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Phone Number</label>
+                        <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+91 98765 43210" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-5 py-4 outline-none font-bold text-zinc-900 dark:text-white transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-sm" />
                       </div>
                       <div>
-                        <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 ml-1">Home City</label>
-                        <input type="text" value={homeCity} onChange={(e) => setHomeCity(e.target.value)} placeholder="e.g. Mumbai, India" className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl p-4 outline-none font-bold text-slate-900 dark:text-white transition-all placeholder-slate-400 dark:placeholder-slate-600" />
+                        <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Home City</label>
+                        <input type="text" value={homeCity} onChange={(e) => setHomeCity(e.target.value)} placeholder="Mumbai, India" className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-5 py-4 outline-none font-bold text-zinc-900 dark:text-white transition-all placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-sm" />
                       </div>
                       <div className="md:col-span-2">
-                        <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 ml-1">Short Bio</label>
-                        <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell your travel buddies a bit about yourself..." className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl p-4 outline-none font-medium text-slate-900 dark:text-white transition-all h-28 resize-none placeholder-slate-400 dark:placeholder-slate-600"></textarea>
+                        <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Short Bio</label>
+                        <textarea value={bio} onChange={(e) => setBio(e.target.value)} placeholder="Tell your travel buddies a bit about yourself..." className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-5 py-4 outline-none font-medium text-zinc-900 dark:text-white transition-all h-32 resize-none placeholder:text-zinc-400 dark:placeholder:text-zinc-600 text-sm"></textarea>
                       </div>
                     </div>
                   </div>
@@ -424,42 +419,42 @@ export default function SettingsPage() {
                 {/* PREFERENCES TAB */}
                 {activeTab === "preferences" && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="border-b border-slate-100 dark:border-white/10 pb-6">
-                      <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">App Preferences</h3>
-                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Customize your WanderHub experience.</p>
+                    <div className="border-b border-zinc-100 dark:border-zinc-800 pb-6">
+                      <h3 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">App Preferences</h3>
+                      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mt-1">Customize your WanderHub experience.</p>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
-                      <div className="bg-slate-50 dark:bg-[#1e293b]/50 p-5 rounded-[1.5rem] border border-slate-200 dark:border-white/5 transition-colors">
-                        <label className="flex items-center text-sm font-black text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider"><Map className="h-4 w-4 mr-2 text-indigo-500 dark:text-indigo-400"/> Default Currency</label>
-                        <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full border border-slate-200 dark:border-white/10 rounded-xl p-4 outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-[#0f172a] shadow-sm cursor-pointer font-bold text-slate-700 dark:text-slate-300">
+                      <div className="bg-zinc-50 dark:bg-zinc-950/50 p-6 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 transition-colors group">
+                        <label className="flex items-center text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4 ml-1"><Map className="h-4 w-4 mr-2 text-zinc-400 group-hover:text-emerald-500 transition-colors"/> Default Currency</label>
+                        <select value={currency} onChange={(e) => setCurrency(e.target.value)} className="w-full border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3.5 outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-zinc-900 font-bold text-zinc-900 dark:text-white cursor-pointer text-sm">
                           <option value="INR">₹ Indian Rupee (INR)</option>
                           <option value="USD">$ US Dollar (USD)</option>
                           <option value="EUR">€ Euro (EUR)</option>
                           <option value="GBP">£ British Pound (GBP)</option>
                         </select>
                       </div>
-                      <div className="bg-slate-50 dark:bg-[#1e293b]/50 p-5 rounded-[1.5rem] border border-slate-200 dark:border-white/5 transition-colors">
-                        <label className="flex items-center text-sm font-black text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider"><Languages className="h-4 w-4 mr-2 text-indigo-500 dark:text-indigo-400"/> Language</label>
-                        <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full border border-slate-200 dark:border-white/10 rounded-xl p-4 outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-[#0f172a] shadow-sm cursor-pointer font-bold text-slate-700 dark:text-slate-300">
+                      <div className="bg-zinc-50 dark:bg-zinc-950/50 p-6 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 transition-colors group">
+                        <label className="flex items-center text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4 ml-1"><Languages className="h-4 w-4 mr-2 text-zinc-400 group-hover:text-emerald-500 transition-colors"/> Language</label>
+                        <select value={language} onChange={(e) => setLanguage(e.target.value)} className="w-full border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3.5 outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-zinc-900 font-bold text-zinc-900 dark:text-white cursor-pointer text-sm">
                           <option value="English (US)">English (US)</option>
                           <option value="English (UK)">English (UK)</option>
                           <option value="Hindi">Hindi</option>
                           <option value="Odia">Odia</option>
                         </select>
                       </div>
-                      <div className="bg-slate-50 dark:bg-[#1e293b]/50 p-5 rounded-[1.5rem] border border-slate-200 dark:border-white/5 transition-colors">
-                        <label className="flex items-center text-sm font-black text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider"><Clock className="h-4 w-4 mr-2 text-indigo-500 dark:text-indigo-400"/> Time Zone</label>
-                        <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className="w-full border border-slate-200 dark:border-white/10 rounded-xl p-4 outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-[#0f172a] shadow-sm cursor-pointer font-bold text-slate-700 dark:text-slate-300">
+                      <div className="bg-zinc-50 dark:bg-zinc-950/50 p-6 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 transition-colors group">
+                        <label className="flex items-center text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4 ml-1"><Clock className="h-4 w-4 mr-2 text-zinc-400 group-hover:text-emerald-500 transition-colors"/> Time Zone</label>
+                        <select value={timeZone} onChange={(e) => setTimeZone(e.target.value)} className="w-full border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3.5 outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-zinc-900 font-bold text-zinc-900 dark:text-white cursor-pointer text-sm">
                           <option value="UTC+05:30 Indian Standard Time">UTC+05:30 Indian Standard Time</option>
                           <option value="UTC+00:00 Greenwich Mean Time">UTC+00:00 Greenwich Mean Time</option>
                           <option value="UTC-05:00 Eastern Time">UTC-05:00 Eastern Time</option>
                         </select>
                       </div>
-                      <div className="bg-slate-50 dark:bg-[#1e293b]/50 p-5 rounded-[1.5rem] border border-slate-200 dark:border-white/5 transition-colors relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/10 rounded-full blur-[30px] -translate-y-1/2 translate-x-1/2"></div>
-                        <label className="flex items-center text-sm font-black text-slate-800 dark:text-slate-200 mb-4 uppercase tracking-wider relative z-10"><Moon className="h-4 w-4 mr-2 text-indigo-500 dark:text-indigo-400"/> App Theme</label>
-                        <select value={theme} onChange={handleThemeChange} className="w-full border border-indigo-200 dark:border-indigo-500/30 rounded-xl p-4 outline-none focus:ring-2 focus:ring-indigo-500 bg-white dark:bg-[#0f172a] shadow-md cursor-pointer font-bold text-slate-700 dark:text-indigo-300 relative z-10">
+                      <div className="bg-zinc-50 dark:bg-zinc-950/50 p-6 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 transition-colors relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/10 rounded-full blur-[30px] -translate-y-1/2 translate-x-1/2"></div>
+                        <label className="flex items-center text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-4 ml-1 relative z-10"><Moon className="h-4 w-4 mr-2 text-zinc-400 group-hover:text-emerald-500 transition-colors"/> App Theme</label>
+                        <select value={theme} onChange={handleThemeChange} className="w-full border border-emerald-500/30 rounded-xl px-4 py-3.5 outline-none focus:ring-1 focus:ring-emerald-500 bg-white dark:bg-zinc-900 font-bold text-zinc-900 dark:text-white cursor-pointer text-sm relative z-10 shadow-sm">
                           <option value="System Default">System Default</option>
                           <option value="Light Mode">Light Mode</option>
                           <option value="Dark Mode">Dark Mode</option>
@@ -472,51 +467,51 @@ export default function SettingsPage() {
                 {/* NOTIFICATIONS TAB */}
                 {activeTab === "notifications" && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="border-b border-slate-100 dark:border-white/10 pb-6">
-                      <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Communication</h3>
-                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Choose how and when we should contact you.</p>
+                    <div className="border-b border-zinc-100 dark:border-zinc-800 pb-6">
+                      <h3 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">Communication</h3>
+                      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mt-1">Choose how and when we should contact you.</p>
                     </div>
                     
-                    <div className="space-y-4 pt-2">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 border border-slate-200 dark:border-white/10 rounded-[1.5rem] bg-slate-50 dark:bg-[#1e293b]/30 shadow-sm transition-colors">
-                        <div className="flex items-center gap-5 mb-4 sm:mb-0">
-                          <div className="h-12 w-12 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 border border-indigo-200 dark:border-indigo-500/30"><Bell className="h-6 w-6"/></div>
+                    <div className="space-y-5 pt-2">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 md:p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-zinc-50 dark:bg-zinc-950/50 transition-colors">
+                        <div className="flex items-center gap-6 mb-4 sm:mb-0">
+                          <div className="h-14 w-14 bg-white dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-900 dark:text-white shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-sm"><Bell className="h-6 w-6"/></div>
                           <div>
-                            <p className="font-black text-slate-800 dark:text-slate-200 text-lg tracking-tight">Push Notifications</p>
-                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">Real-time alerts on your device for trip invites.</p>
+                            <p className="font-bold text-zinc-900 dark:text-white text-lg tracking-tight mb-1">Push Notifications</p>
+                            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Real-time alerts on your device for trip invites.</p>
                           </div>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer shrink-0 sm:ml-4">
                           <input type="checkbox" checked={pushAlerts} onChange={(e) => handlePushToggle(e.target.checked)} className="sr-only peer" />
-                          <div className="w-14 h-8 bg-slate-300 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-500 dark:peer-checked:bg-indigo-600 shadow-inner"></div>
+                          <div className="w-14 h-8 bg-zinc-300 dark:bg-zinc-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-zinc-950 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white dark:after:bg-zinc-300 after:border-zinc-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500 dark:peer-checked:bg-emerald-500 border border-transparent peer-checked:border-emerald-600"></div>
                         </label>
                       </div>
 
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 border border-slate-200 dark:border-white/10 rounded-[1.5rem] bg-slate-50 dark:bg-[#1e293b]/30 shadow-sm transition-colors">
-                        <div className="flex items-center gap-5 mb-4 sm:mb-0">
-                          <div className="h-12 w-12 bg-sky-100 dark:bg-sky-500/20 rounded-xl flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 border border-sky-200 dark:border-sky-500/30"><CreditCard className="h-6 w-6"/></div>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 md:p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-zinc-50 dark:bg-zinc-950/50 transition-colors">
+                        <div className="flex items-center gap-6 mb-4 sm:mb-0">
+                          <div className="h-14 w-14 bg-white dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-900 dark:text-white shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-sm"><CreditCard className="h-6 w-6"/></div>
                           <div>
-                            <p className="font-black text-slate-800 dark:text-slate-200 text-lg tracking-tight">Email Summaries</p>
-                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">Get a weekly email recap of your group expenses.</p>
+                            <p className="font-bold text-zinc-900 dark:text-white text-lg tracking-tight mb-1">Email Summaries</p>
+                            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Get a weekly email recap of your group expenses.</p>
                           </div>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer shrink-0 sm:ml-4">
                           <input type="checkbox" checked={emailAlerts} onChange={(e) => setEmailAlerts(e.target.checked)} className="sr-only peer" />
-                          <div className="w-14 h-8 bg-slate-300 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-500 dark:peer-checked:bg-indigo-600 shadow-inner"></div>
+                          <div className="w-14 h-8 bg-zinc-300 dark:bg-zinc-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-zinc-950 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white dark:after:bg-zinc-300 after:border-zinc-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500 dark:peer-checked:bg-emerald-500 border border-transparent peer-checked:border-emerald-600"></div>
                         </label>
                       </div>
 
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 border border-slate-200 dark:border-white/10 rounded-[1.5rem] bg-slate-50 dark:bg-[#1e293b]/30 shadow-sm transition-colors">
-                        <div className="flex items-center gap-5 mb-4 sm:mb-0">
-                          <div className="h-12 w-12 bg-emerald-100 dark:bg-emerald-500/20 rounded-xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 border border-emerald-200 dark:border-emerald-500/30"><Smartphone className="h-6 w-6"/></div>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 md:p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-zinc-50 dark:bg-zinc-950/50 transition-colors">
+                        <div className="flex items-center gap-6 mb-4 sm:mb-0">
+                          <div className="h-14 w-14 bg-white dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-900 dark:text-white shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-sm"><Smartphone className="h-6 w-6"/></div>
                           <div>
-                            <p className="font-black text-slate-800 dark:text-slate-200 text-lg tracking-tight">SMS Alerts</p>
-                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">Receive text messages for live flight status changes.</p>
+                            <p className="font-bold text-zinc-900 dark:text-white text-lg tracking-tight mb-1">SMS Alerts</p>
+                            <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Receive text messages for live flight status changes.</p>
                           </div>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer shrink-0 sm:ml-4">
                           <input type="checkbox" checked={smsAlerts} onChange={(e) => setSmsAlerts(e.target.checked)} className="sr-only peer" />
-                          <div className="w-14 h-8 bg-slate-300 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-indigo-500 dark:peer-checked:bg-indigo-600 shadow-inner"></div>
+                          <div className="w-14 h-8 bg-zinc-300 dark:bg-zinc-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-zinc-950 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white dark:after:bg-zinc-300 after:border-zinc-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500 dark:peer-checked:bg-emerald-500 border border-transparent peer-checked:border-emerald-600"></div>
                         </label>
                       </div>
                     </div>
@@ -526,52 +521,52 @@ export default function SettingsPage() {
                 {/* SECURITY TAB */}
                 {activeTab === "security" && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-                    <div className="border-b border-slate-100 dark:border-white/10 pb-6">
-                      <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Security & Access</h3>
-                      <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Keep your account and travel data safe.</p>
+                    <div className="border-b border-zinc-100 dark:border-zinc-800 pb-6">
+                      <h3 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">Security & Access</h3>
+                      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mt-1">Keep your account and travel data safe.</p>
                     </div>
 
                     <div className="pt-2 space-y-6">
-                      <div className="bg-slate-50 dark:bg-[#1e293b]/30 border border-slate-200 dark:border-white/10 rounded-[1.5rem] p-6 md:p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition-colors">
+                      <div className="bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition-colors">
                         <div>
-                          <p className="font-black text-lg text-slate-900 dark:text-white flex items-center tracking-tight mb-2"><Globe className="h-5 w-5 mr-3 text-slate-400"/> Google Authentication</p>
-                          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 leading-relaxed max-w-md">Your primary account security is managed by Google. To change external settings, visit your Google Account.</p>
+                          <p className="font-bold text-lg text-zinc-900 dark:text-white flex items-center tracking-tight mb-2"><Globe className="h-5 w-5 mr-3 text-zinc-400"/> Google Authentication</p>
+                          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-md">Your primary account security is managed by Google. To change external settings, visit your Google Account.</p>
                         </div>
-                        <button onClick={() => handleGoogleAlert("security")} className="bg-white dark:bg-white/5 border border-slate-300 dark:border-white/10 text-slate-700 dark:text-white px-6 py-3.5 rounded-xl text-sm font-bold hover:bg-slate-100 dark:hover:bg-white/10 transition-colors shrink-0 shadow-sm">Manage on Google</button>
+                        <button onClick={() => handleGoogleAlert("security")} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white px-6 py-4 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shrink-0 shadow-sm active:scale-95">Manage on Google</button>
                       </div>
 
-                      {/* ✨ NEW: CONDITIONAL SECURE PASSWORD CHANGE FORM */}
+                      {/* SECURE PASSWORD CHANGE FORM */}
                       {isEmailUser && (
-                        <div className="bg-slate-50 dark:bg-[#1e293b]/30 border border-slate-200 dark:border-white/10 rounded-[1.5rem] p-6 md:p-8 transition-colors">
-                          <div className="flex items-center gap-4 mb-6 pb-6 border-b border-slate-200 dark:border-white/5">
-                            <div className="h-12 w-12 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 border border-indigo-200 dark:border-indigo-500/30">
+                        <div className="bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-8 transition-colors">
+                          <div className="flex items-center gap-5 mb-8 pb-8 border-b border-zinc-200 dark:border-zinc-800">
+                            <div className="h-14 w-14 bg-white dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-900 dark:text-white shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-sm">
                               <KeyRound className="h-6 w-6"/>
                             </div>
                             <div>
-                              <p className="font-black text-slate-800 dark:text-white text-lg tracking-tight">Update Password</p>
-                              <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 max-w-md leading-relaxed">Securely change your WanderHub account password.</p>
+                              <p className="font-bold text-zinc-900 dark:text-white text-lg tracking-tight mb-1">Update Password</p>
+                              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 max-w-md leading-relaxed">Securely change your WanderHub account password.</p>
                             </div>
                           </div>
 
-                          <form onSubmit={handleChangePassword} className="space-y-4 max-w-xl">
+                          <form onSubmit={handleChangePassword} className="space-y-6 max-w-xl">
                             <div>
-                              <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 ml-1">Current Password</label>
+                              <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Current Password</label>
                               <div className="relative">
-                                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                                <Lock className="absolute left-5 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
                                 <input 
                                   type="password" 
                                   value={currentPassword} 
                                   onChange={(e) => setCurrentPassword(e.target.value)} 
                                   required
                                   placeholder="••••••••" 
-                                  className="w-full bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-xl pl-12 pr-4 py-3.5 outline-none font-medium text-slate-900 dark:text-white transition-all" 
+                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl pl-12 pr-5 py-4 outline-none font-medium text-sm text-zinc-900 dark:text-white transition-all placeholder:text-zinc-400" 
                                 />
                               </div>
                             </div>
                             
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                               <div>
-                                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 ml-1">New Password</label>
+                                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">New Password</label>
                                 <input 
                                   type="password" 
                                   value={newPassword} 
@@ -579,24 +574,24 @@ export default function SettingsPage() {
                                   required
                                   minLength={6}
                                   placeholder="Min. 6 characters" 
-                                  className="w-full bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-xl px-4 py-3.5 outline-none font-medium text-slate-900 dark:text-white transition-all" 
+                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-5 py-4 outline-none font-medium text-sm text-zinc-900 dark:text-white transition-all placeholder:text-zinc-400" 
                                 />
                               </div>
                               <div>
-                                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 ml-1">Confirm New Password</label>
+                                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Confirm New Password</label>
                                 <input 
                                   type="password" 
                                   value={confirmPassword} 
                                   onChange={(e) => setConfirmPassword(e.target.value)} 
                                   required
                                   placeholder="Re-type new password" 
-                                  className="w-full bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-white/10 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-xl px-4 py-3.5 outline-none font-medium text-slate-900 dark:text-white transition-all" 
+                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-5 py-4 outline-none font-medium text-sm text-zinc-900 dark:text-white transition-all placeholder:text-zinc-400" 
                                 />
                               </div>
                             </div>
 
-                            <div className="pt-2">
-                              <button type="submit" disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword} className="bg-indigo-600 text-white font-bold text-sm px-6 py-3 rounded-xl hover:bg-indigo-500 transition-all shadow-md shadow-indigo-600/20 disabled:opacity-50 flex items-center justify-center w-full sm:w-auto">
+                            <div className="pt-4">
+                              <button type="submit" disabled={isChangingPassword || !currentPassword || !newPassword || !confirmPassword} className="bg-emerald-500 text-zinc-950 font-bold text-[10px] uppercase tracking-widest px-8 py-4 rounded-full hover:bg-emerald-400 transition-all disabled:opacity-50 flex items-center justify-center w-full sm:w-auto active:scale-95 shadow-[0_0_15px_rgba(16,185,129,0.2)] disabled:shadow-none">
                                 {isChangingPassword ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
                                 {isChangingPassword ? "Updating..." : "Update Password"}
                               </button>
@@ -605,24 +600,24 @@ export default function SettingsPage() {
                         </div>
                       )}
 
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 md:p-8 border border-slate-200 dark:border-white/10 rounded-[1.5rem] bg-slate-50 dark:bg-[#1e293b]/30 shadow-sm transition-colors">
-                        <div className="flex items-center gap-5 mb-5 sm:mb-0">
-                          <div className="h-12 w-12 bg-purple-100 dark:bg-purple-500/20 rounded-xl flex items-center justify-center text-purple-600 dark:text-purple-400 shrink-0 border border-purple-200 dark:border-purple-500/30"><Shield className="h-6 w-6"/></div>
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between p-6 md:p-8 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] bg-zinc-50 dark:bg-zinc-950/50 transition-colors">
+                        <div className="flex items-center gap-6 mb-5 sm:mb-0">
+                          <div className="h-14 w-14 bg-white dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-900 dark:text-white shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-sm"><Shield className="h-6 w-6"/></div>
                           <div>
-                            <p className="font-black text-slate-800 dark:text-white text-lg tracking-tight">Two-Factor Authentication</p>
-                            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1 max-w-sm leading-relaxed">Require an extra 2FA code when joining new trips or modifying expenses.</p>
+                            <p className="font-bold text-zinc-900 dark:text-white text-lg tracking-tight mb-1">Two-Factor Authentication</p>
+                            <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 max-w-sm leading-relaxed">Require an extra 2FA code when joining new trips or modifying expenses.</p>
                           </div>
                         </div>
                         <label className="relative inline-flex items-center cursor-pointer shrink-0 sm:ml-4">
                           <input type="checkbox" checked={twoFactorAuth} onChange={(e) => setTwoFactorAuth(e.target.checked)} className="sr-only peer" />
-                          <div className="w-14 h-8 bg-slate-300 dark:bg-slate-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-purple-500 dark:peer-checked:bg-purple-600 shadow-inner"></div>
+                          <div className="w-14 h-8 bg-zinc-300 dark:bg-zinc-700 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-zinc-950 after:content-[''] after:absolute after:top-[4px] after:left-[4px] after:bg-white dark:after:bg-zinc-300 after:border-zinc-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:bg-emerald-500 dark:peer-checked:bg-emerald-500 border border-transparent peer-checked:border-emerald-600"></div>
                         </label>
                       </div>
 
-                      <div className="pt-6 mt-2 border-t border-slate-200 dark:border-white/10">
-                        <p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-4 ml-1">Danger Zone</p>
-                        <button onClick={handleDeleteAccount} className="text-red-600 dark:text-red-400 font-bold text-sm bg-red-50 dark:bg-red-500/10 hover:bg-red-100 dark:hover:bg-red-500/20 px-6 py-3.5 rounded-xl transition-colors border border-red-100 dark:border-red-500/20 w-full sm:w-auto text-center">
-                          Delete My Account Permanently
+                      <div className="pt-8 mt-4 border-t border-zinc-200 dark:border-zinc-800">
+                        <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-4 ml-1">Danger Zone</p>
+                        <button onClick={handleDeleteAccount} className="text-rose-500 font-bold text-[10px] uppercase tracking-widest bg-rose-50 dark:bg-rose-500/10 hover:bg-rose-100 dark:hover:bg-rose-500/20 px-8 py-4 rounded-full transition-colors border border-rose-100 dark:border-rose-500/20 w-full sm:w-auto text-center active:scale-95">
+                          Delete Account Permanently
                         </button>
                       </div>
                     </div>
@@ -630,18 +625,18 @@ export default function SettingsPage() {
                 )}
 
                 {/* SAVE ACTION BAR */}
-                <div className="mt-10 pt-8 border-t border-slate-100 dark:border-white/10 flex flex-col-reverse sm:flex-row items-center justify-end gap-5">
+                <div className="mt-12 pt-8 border-t border-zinc-100 dark:border-zinc-800 flex flex-col-reverse sm:flex-row items-center justify-end gap-5">
                   {saveSuccess && (
-                    <span className="flex items-center text-sm font-bold text-emerald-600 dark:text-emerald-400 animate-in fade-in slide-in-from-left-4 w-full sm:w-auto justify-center bg-emerald-50 dark:bg-emerald-500/10 px-4 py-2 rounded-lg border border-emerald-100 dark:border-emerald-500/20">
-                      <CheckCircle2 className="h-5 w-5 mr-2" /> All preferences saved!
+                    <span className="flex items-center text-xs font-bold text-emerald-600 dark:text-emerald-400 animate-in fade-in slide-in-from-left-4 w-full sm:w-auto justify-center bg-emerald-50 dark:bg-emerald-500/10 px-5 py-3 rounded-full border border-emerald-100 dark:border-emerald-500/20 uppercase tracking-widest">
+                      <CheckCircle2 className="h-4 w-4 mr-2" /> All saved
                     </span>
                   )}
                   <button 
                     onClick={handleSave} 
                     disabled={isSaving} 
-                    className="w-full sm:w-auto flex items-center justify-center bg-indigo-600 text-white px-10 py-4 rounded-2xl font-black hover:bg-indigo-700 dark:hover:bg-indigo-500 shadow-xl shadow-indigo-600/20 dark:shadow-indigo-900/30 transition-all disabled:opacity-70 text-lg sm:text-base group"
+                    className="w-full sm:w-auto flex items-center justify-center bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-10 py-4 rounded-full font-bold hover:opacity-90 transition-all disabled:opacity-50 text-[10px] uppercase tracking-widest active:scale-95 shadow-md group"
                   >
-                    {isSaving ? <Loader2 className="h-5 w-5 mr-2 animate-spin" /> : <Save className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />}
+                    {isSaving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" />}
                     {isSaving ? "Saving..." : "Save Changes"}
                   </button>
                 </div>
@@ -652,42 +647,42 @@ export default function SettingsPage() {
         </main>
       </div>
 
-      {/* --- ✨ NEW: CUSTOM ALERT DIALOG MODAL --- */}
+      {/* CUSTOM ALERT DIALOG MODAL (EDITORIAL) */}
       {dialog.isOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#0f172a] rounded-[2rem] p-8 max-w-md w-full shadow-2xl border border-slate-200 dark:border-white/10 animate-in zoom-in-95 duration-300 relative">
-            <button onClick={closeDialog} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors">
-              <X className="h-5 w-5" />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] p-8 md:p-10 max-w-md w-full shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95 duration-200 relative">
+            <button onClick={closeDialog} className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors active:scale-95">
+              <X className="h-4 w-4" />
             </button>
             
-            <div className="flex items-center gap-4 mb-4">
-              <div className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 border ${
-                dialog.type === 'danger' ? 'bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 border-red-200 dark:border-red-500/30' :
-                dialog.type === 'warning' ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 border-amber-200 dark:border-amber-500/30' :
-                'bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border-indigo-200 dark:border-indigo-500/30'
+            <div className="flex items-center gap-4 mb-6">
+              <div className={`h-14 w-14 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
+                dialog.type === 'danger' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500 border-rose-200 dark:border-rose-500/20' :
+                dialog.type === 'warning' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-500 border-amber-200 dark:border-amber-500/20' :
+                'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 border-emerald-200 dark:border-emerald-500/20'
               }`}>
                 {dialog.type === 'danger' ? <AlertTriangle className="h-6 w-6" /> : 
                  dialog.type === 'warning' ? <AlertTriangle className="h-6 w-6" /> : 
                  <Info className="h-6 w-6" />}
               </div>
-              <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">{dialog.title}</h3>
+              <h3 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">{dialog.title}</h3>
             </div>
             
-            <p className="text-slate-600 dark:text-slate-300 font-medium mb-8 leading-relaxed pl-1">
+            <p className="text-zinc-600 dark:text-zinc-400 font-medium mb-10 leading-relaxed text-sm">
               {dialog.message}
             </p>
             
-            <div className="flex flex-col sm:flex-row gap-3 justify-end mt-2">
+            <div className="flex flex-col sm:flex-row gap-3 justify-end">
               {dialog.cancelText && (
-                <button onClick={closeDialog} className="px-6 py-3 rounded-xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors w-full sm:w-auto">
+                <button onClick={closeDialog} className="px-8 py-4 rounded-full font-bold text-[10px] uppercase tracking-widest text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors w-full sm:w-auto text-center active:scale-95">
                   {dialog.cancelText}
                 </button>
               )}
               <button 
                 onClick={dialog.onConfirm || closeDialog} 
-                className={`px-6 py-3 rounded-xl font-black text-white transition-all shadow-lg w-full sm:w-auto ${
-                  dialog.type === 'danger' ? 'bg-red-600 hover:bg-red-500 shadow-red-600/20' : 
-                  'bg-indigo-600 hover:bg-indigo-500 shadow-indigo-600/20'
+                className={`px-8 py-4 rounded-full font-bold text-[10px] uppercase tracking-widest transition-all w-full sm:w-auto text-center active:scale-95 ${
+                  dialog.type === 'danger' ? 'bg-rose-500 hover:bg-rose-400 text-zinc-950 shadow-[0_0_15px_rgba(244,63,94,0.2)]' : 
+                  'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
                 }`}
               >
                 {dialog.confirmText}

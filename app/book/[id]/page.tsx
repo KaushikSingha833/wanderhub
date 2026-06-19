@@ -2,8 +2,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { doc, getDoc, addDoc, collection } from "firebase/firestore";
-import { auth, db } from "../../lib/firebase"; // Check your firebase import path!
-import { Loader2, ShieldCheck, MapPin, IndianRupee, CreditCard, Building2, CheckCircle2, Smartphone, X } from "lucide-react";
+import { auth, db } from "../../lib/firebase"; 
+import { Loader2, ShieldCheck, MapPin, IndianRupee, CreditCard, Building2, CheckCircle2, Smartphone, X, Calendar, Users, Sparkles } from "lucide-react";
 import Link from "next/link";
 
 export default function BookingCheckoutPage() {
@@ -16,7 +16,7 @@ export default function BookingCheckoutPage() {
   const [isBooking, setIsBooking] = useState(false);
   const [success, setSuccess] = useState(false);
 
-  // --- NEW: BOOKING & PAYMENT STATES ---
+  // BOOKING & PAYMENT STATES
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState(1);
@@ -26,7 +26,6 @@ export default function BookingCheckoutPage() {
   const [ownerUpiId, setOwnerUpiId] = useState("");
   const [utrNumber, setUtrNumber] = useState("");
 
-  // Fetch the specific room from Firestore based on the URL ID
   useEffect(() => {
     const fetchRoomDetails = async () => {
       try {
@@ -49,7 +48,7 @@ export default function BookingCheckoutPage() {
     if (roomId) fetchRoomDetails();
   }, [roomId, router]);
 
-  // --- NEW: DYNAMIC PRICE CALCULATION ---
+  // DYNAMIC PRICE CALCULATION
   const calculateNights = () => {
     if (!checkIn || !checkOut) return 1;
     const d1 = new Date(checkIn);
@@ -63,7 +62,7 @@ export default function BookingCheckoutPage() {
   const taxes = baseTotal * 0.12;
   const finalTotal = baseTotal + taxes;
 
-  // --- NEW: INITIATE CHECKOUT (Checks for UPI) ---
+  // INITIATE CHECKOUT (Checks for UPI)
   const handleInitiateCheckout = async () => {
     const user = auth.currentUser;
     if (!user) {
@@ -77,16 +76,14 @@ export default function BookingCheckoutPage() {
 
     setIsBooking(true);
     try {
-      // Fetch owner profile to see if they have a UPI ID saved
       const ownerRef = doc(db, "users", room.hotelOwnerId);
       const ownerSnap = await getDoc(ownerRef);
       
       if (ownerSnap.exists() && ownerSnap.data().upiId) {
         setOwnerUpiId(ownerSnap.data().upiId);
-        setShowPaymentModal(true); // Show UPI flow
+        setShowPaymentModal(true); 
         setPaymentStep("SELECT");
       } else {
-        // Fallback: Owner has no UPI, book normally as "Pay at Hotel"
         await processBooking("Pay at Hotel");
       }
     } catch (error) {
@@ -97,14 +94,14 @@ export default function BookingCheckoutPage() {
     }
   };
 
-  // --- NEW: DEEP LINK GENERATOR ---
+  // DEEP LINK GENERATOR
   const getUpiLink = () => {
     if (!room || !ownerUpiId) return "";
     const hotelNameEncoded = encodeURIComponent(room.hotelName);
     return `upi://pay?pa=${ownerUpiId}&pn=${hotelNameEncoded}&am=${finalTotal.toFixed(0)}&cu=INR`;
   };
 
-  // --- NEW: CONFIRM UTR PAYMENT ---
+  // CONFIRM UTR PAYMENT
   const handleConfirmUpiPayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (utrNumber.length < 12) {
@@ -114,7 +111,6 @@ export default function BookingCheckoutPage() {
     await processBooking(utrNumber);
   };
 
-  // Original booking logic, now safely handles the new fields for Partner Dashboard
   const processBooking = async (transactionId: string) => {
     const user = auth.currentUser;
     if (!user) return;
@@ -122,7 +118,6 @@ export default function BookingCheckoutPage() {
     setIsBooking(true);
     try {
       await addDoc(collection(db, "bookings"), {
-        // Preserved your old fields so nothing breaks
         travelerId: user.uid,
         travelerEmail: user.email,
         hotelOwnerId: room.hotelOwnerId,
@@ -131,8 +126,6 @@ export default function BookingCheckoutPage() {
         roomName: room.name,
         pricePaid: room.price,
         bookingDate: new Date(),
-        
-        // Added new fields required by the Partner Dashboard
         partnerId: room.hotelOwnerId,
         customerId: user.uid,
         customerName: user.displayName || "Traveler",
@@ -141,8 +134,8 @@ export default function BookingCheckoutPage() {
         checkOut: checkOut,
         guests: guests,
         totalPriceBase: baseTotal,
-        transactionId: transactionId, // The UPI UTR
-        status: "Pending", // Must be pending for owner to approve
+        transactionId: transactionId, 
+        status: "Pending", 
         createdAt: new Date()
       });
 
@@ -157,19 +150,24 @@ export default function BookingCheckoutPage() {
   };
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-slate-50"><Loader2 className="h-10 w-10 animate-spin text-indigo-600" /></div>;
+    return <div className="min-h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950"><Loader2 className="h-10 w-10 animate-spin text-emerald-500" /></div>;
   }
 
   if (success) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4 font-sans">
-        <div className="bg-white p-10 rounded-3xl shadow-xl max-w-md w-full text-center border border-emerald-100">
-          <CheckCircle2 className="h-20 w-20 text-emerald-500 mx-auto mb-6" />
-          <h2 className="text-3xl font-black text-slate-900 mb-2">Booking Requested!</h2>
-          <p className="text-slate-500 font-medium mb-6">
-            You have successfully requested a booking at <strong>{room.hotelName}</strong>. The hotel has been notified to verify your payment and approve your stay.
+      <div className="min-h-screen flex items-center justify-center bg-zinc-950 p-4 font-sans selection:bg-emerald-500/30">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] mix-blend-overlay pointer-events-none"></div>
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"></div>
+        
+        <div className="bg-white/10 backdrop-blur-xl p-10 md:p-14 rounded-[2.5rem] shadow-2xl max-w-md w-full text-center border border-white/10 relative z-10 animate-in zoom-in-95 duration-500">
+          <div className="h-24 w-24 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-8 shadow-[0_0_30px_rgba(16,185,129,0.4)]">
+            <CheckCircle2 className="h-12 w-12 text-zinc-950" />
+          </div>
+          <h2 className="text-3xl font-black text-white mb-4 tracking-tight">Request Sent!</h2>
+          <p className="text-zinc-400 font-medium mb-10 text-sm leading-relaxed">
+            Your booking request for <strong className="text-white">{room.hotelName}</strong> has been forwarded to management. They will verify your payment and approve your stay shortly.
           </p>
-          <Link href="/my-bookings" className="inline-block w-full bg-slate-900 text-white px-6 py-4 rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg">
+          <Link href="/my-bookings" className="inline-block w-full bg-white text-zinc-950 px-6 py-4 rounded-full font-bold text-sm uppercase tracking-widest hover:bg-zinc-200 transition-all shadow-xl active:scale-95">
             View My Bookings
           </Link>
         </div>
@@ -178,86 +176,110 @@ export default function BookingCheckoutPage() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 p-4 md:p-8 relative">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 relative selection:bg-emerald-500/30 transition-colors duration-300">
+      
+      {/* EDITORIAL HERO BANNER */}
+      <div className="relative h-[30vh] w-full bg-zinc-900 dark:bg-black overflow-hidden mb-8 md:mb-12">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.1] mix-blend-overlay pointer-events-none"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-emerald-900/40 via-zinc-900 to-zinc-950"></div>
+        <div className="absolute top-[-50%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"></div>
         
-        <div className="mb-8">
-          <button onClick={() => router.back()} className="text-sm font-bold text-indigo-600 hover:text-indigo-800 mb-4 inline-block">&larr; Back to Search</button>
-          <h1 className="text-3xl font-black text-slate-900 flex items-center">
-            <ShieldCheck className="h-8 w-8 mr-3 text-emerald-500" /> Secure Checkout
-          </h1>
+        <div className="absolute top-0 w-full p-6 md:p-10 flex justify-between items-center z-20">
+          <button onClick={() => router.back()} className="flex items-center text-xs font-bold uppercase tracking-widest text-white bg-white/10 hover:bg-white/20 backdrop-blur-md px-5 py-2.5 rounded-full transition-all border border-white/20 active:scale-95">
+            &larr; Back
+          </button>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="absolute bottom-8 left-0 w-full px-6 md:px-10 z-20 max-w-5xl mx-auto">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/20 backdrop-blur-md border border-emerald-500/30 text-emerald-400 text-[10px] font-bold uppercase tracking-widest mb-4 shadow-sm">
+            <ShieldCheck className="h-3 w-3" /> Verified Partner Secure Checkout
+          </div>
+          <h1 className="text-4xl md:text-5xl font-black text-white tracking-tighter drop-shadow-md">Confirm Your Stay</h1>
+        </div>
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 md:px-10 pb-24 relative z-30 -mt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           
-          {/* Room Summary Card */}
-          <div className="md:col-span-2">
-            <div className="bg-white rounded-3xl p-6 md:p-8 shadow-sm border border-slate-200">
-              <div className="flex items-center mb-6">
-                <div className="h-16 w-16 bg-indigo-50 rounded-2xl flex items-center justify-center mr-4">
-                  <Building2 className="h-8 w-8 text-indigo-600" />
+          {/* Room Summary Card (Bento Box) */}
+          <div className="lg:col-span-2 space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <div className="bg-white dark:bg-zinc-900/50 rounded-[2rem] p-8 md:p-10 shadow-sm border border-zinc-200 dark:border-zinc-800/50">
+              
+              <div className="flex flex-col sm:flex-row sm:items-center gap-6 mb-10 pb-8 border-b border-zinc-100 dark:border-zinc-800">
+                <div className="h-20 w-20 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center shrink-0 border border-zinc-200 dark:border-zinc-700 shadow-inner">
+                  <Building2 className="h-10 w-10 text-zinc-900 dark:text-white" />
                 </div>
                 <div>
-                  <h2 className="text-2xl font-black text-slate-900">{room.hotelName}</h2>
-                  <p className="text-slate-500 font-medium flex items-center mt-1">
-                    <MapPin className="h-4 w-4 mr-1" /> {room.city ? room.city.toUpperCase() : "Destination"}
+                  <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight mb-2">{room.hotelName}</h2>
+                  <p className="text-zinc-500 dark:text-zinc-400 font-bold text-xs uppercase tracking-widest flex items-center">
+                    <MapPin className="h-3.5 w-3.5 mr-1" /> {room.city ? room.city : "Destination"}
                   </p>
                 </div>
               </div>
 
-              <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 mb-6">
-                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-2">Room Details</h3>
-                <p className="text-xl font-bold text-slate-900 mb-2">{room.name}</p>
-                <p className="text-slate-600">{room.description || "A beautiful room reserved exclusively for WanderHub travelers."}</p>
+              <div className="bg-zinc-50 dark:bg-zinc-950 rounded-2xl p-6 border border-zinc-200 dark:border-zinc-800 mb-8">
+                <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Room Selected</h3>
+                <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight mb-2">{room.name}</p>
+                <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400 leading-relaxed italic">"{room.description || "A beautiful room reserved exclusively for WanderHub travelers."}"</p>
               </div>
 
-              <div className="bg-emerald-50 text-emerald-700 p-4 rounded-2xl border border-emerald-100 flex items-start text-sm font-medium">
-                <ShieldCheck className="h-5 w-5 mr-3 shrink-0" />
-                <p>This is a WanderHub Partner property. Your booking request is sent directly to the hotel management.</p>
+              <div className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 p-5 rounded-2xl border border-emerald-200 dark:border-emerald-500/20 flex items-start text-sm font-bold">
+                <Sparkles className="h-5 w-5 mr-3 shrink-0" />
+                <p className="leading-relaxed">This is an exclusive WanderHub Partner property. Your booking request will be routed directly to the hotel management, bypassing third-party fees.</p>
               </div>
             </div>
           </div>
 
-          {/* Payment Summary */}
-          <div className="md:col-span-1">
-            <div className="bg-slate-900 text-white rounded-3xl p-6 md:p-8 shadow-xl sticky top-8">
+          {/* Fintech Payment Summary Widget */}
+          <div className="lg:col-span-1 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-100">
+            <div className="bg-zinc-950 text-white rounded-[2.5rem] p-8 shadow-2xl sticky top-8 border border-zinc-800 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-[40px]"></div>
               
-              {/* --- NEW: DATE & GUEST INPUTS (Seamlessly injected to maintain layout) --- */}
-              <div className="mb-6 space-y-3 border-b border-slate-700 pb-6">
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">Check-in</label>
-                  <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} min={new Date().toISOString().split('T')[0]} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-white outline-none focus:border-indigo-500 [color-scheme:dark]" />
+              {/* DATE & GUEST INPUTS */}
+              <div className="mb-8 space-y-4 border-b border-zinc-800 pb-8 relative z-10">
+                <div className="relative">
+                  <label className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 ml-1">Check-in Date</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+                    <input type="date" value={checkIn} onChange={(e) => setCheckIn(e.target.value)} min={new Date().toISOString().split('T')[0]} className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-11 pr-4 py-3.5 text-sm font-bold text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all [color-scheme:dark]" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">Check-out</label>
-                  <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} min={checkIn || new Date().toISOString().split('T')[0]} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-white outline-none focus:border-indigo-500 [color-scheme:dark]" />
+                <div className="relative">
+                  <label className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 ml-1">Check-out Date</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+                    <input type="date" value={checkOut} onChange={(e) => setCheckOut(e.target.value)} min={checkIn || new Date().toISOString().split('T')[0]} className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-11 pr-4 py-3.5 text-sm font-bold text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all [color-scheme:dark]" />
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-slate-400 mb-1">Guests</label>
-                  <select value={guests} onChange={(e) => setGuests(Number(e.target.value))} className="w-full bg-slate-800 border border-slate-700 rounded-lg p-2 text-sm text-white outline-none focus:border-indigo-500">
-                    {[1,2,3,4].map(n => <option key={n} value={n}>{n} Guest{n>1?'s':''}</option>)}
-                  </select>
+                <div className="relative">
+                  <label className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-1.5 ml-1">Travelers</label>
+                  <div className="relative">
+                    <Users className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+                    <select value={guests} onChange={(e) => setGuests(Number(e.target.value))} className="w-full bg-zinc-900 border border-zinc-800 rounded-xl pl-11 pr-4 py-3.5 text-sm font-bold text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all appearance-none cursor-pointer">
+                      {[1,2,3,4,5,6].map(n => <option key={n} value={n}>{n} Guest{n>1?'s':''}</option>)}
+                    </select>
+                  </div>
                 </div>
               </div>
 
-              <h3 className="text-lg font-bold mb-6 border-b border-slate-700 pb-4">Price Summary</h3>
+              <h3 className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-5 ml-1 relative z-10">Price Summary</h3>
               
-              <div className="space-y-4 mb-6">
-                <div className="flex justify-between items-center text-slate-300">
-                  <span>{nights} Night{nights > 1 ? 's' : ''}</span>
-                  <span className="flex items-center"><IndianRupee className="h-4 w-4" />{baseTotal.toFixed(0)}</span>
+              <div className="space-y-3 mb-8 relative z-10 text-sm font-bold">
+                <div className="flex justify-between items-center text-zinc-300">
+                  <span>{nights} Night{nights > 1 ? 's' : ''} × Base</span>
+                  <span className="flex items-center"><IndianRupee className="h-3.5 w-3.5" />{baseTotal.toFixed(0)}</span>
                 </div>
-                <div className="flex justify-between items-center text-slate-300">
-                  <span>Taxes & Fees</span>
-                  <span className="flex items-center"><IndianRupee className="h-4 w-4" />{taxes.toFixed(0)}</span>
+                <div className="flex justify-between items-center text-zinc-400">
+                  <span>Taxes & Partner Fees</span>
+                  <span className="flex items-center"><IndianRupee className="h-3.5 w-3.5" />{taxes.toFixed(0)}</span>
                 </div>
               </div>
 
-              <div className="border-t border-slate-700 pt-4 mb-8">
-                <div className="flex justify-between items-center">
-                  <span className="font-bold">Total (INR)</span>
-                  <span className="text-2xl font-black text-emerald-400 flex items-center">
-                    <IndianRupee className="h-6 w-6" />
+              <div className="border-t border-zinc-800 pt-6 mb-8 relative z-10">
+                <div className="flex justify-between items-end">
+                  <span className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Total Due (INR)</span>
+                  <span className="text-3xl font-black text-white tracking-tighter flex items-center">
+                    <IndianRupee className="h-6 w-6 text-emerald-500 mr-1" />
                     {finalTotal.toFixed(0)}
                   </span>
                 </div>
@@ -266,9 +288,9 @@ export default function BookingCheckoutPage() {
               <button 
                 onClick={handleInitiateCheckout}
                 disabled={isBooking || !checkIn || !checkOut}
-                className="w-full bg-indigo-500 hover:bg-indigo-600 text-white font-bold py-4 rounded-xl shadow-lg transition-all disabled:opacity-50 flex items-center justify-center text-lg"
+                className="w-full bg-emerald-500 text-zinc-950 font-bold py-4 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:bg-emerald-400 transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center text-xs uppercase tracking-widest active:scale-95 relative z-10"
               >
-                {isBooking ? <Loader2 className="h-6 w-6 animate-spin" /> : <><CreditCard className="h-5 w-5 mr-2" /> Book Now</>}
+                {isBooking ? <Loader2 className="h-5 w-5 animate-spin" /> : <><CreditCard className="h-4 w-4 mr-2" /> Book Now</>}
               </button>
             </div>
           </div>
@@ -276,71 +298,71 @@ export default function BookingCheckoutPage() {
         </div>
       </div>
 
-      {/* --- NEW: PAYMENT MODAL --- */}
+      {/* UPI PAYMENT MODAL (FINTECH BENTO BOX) */}
       {showPaymentModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-[2rem] p-8 md:p-10 w-full max-w-md shadow-2xl relative animate-in zoom-in-95 duration-300">
-            <button onClick={() => !isBooking && setShowPaymentModal(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-900 bg-slate-100 hover:bg-slate-200 p-2 rounded-full transition-colors"><X className="h-5 w-5" /></button>
+        <div className="fixed inset-0 bg-zinc-900/60 dark:bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] p-8 md:p-10 w-full max-w-md shadow-2xl relative animate-in zoom-in-95 duration-300 border border-zinc-200 dark:border-zinc-800">
+            <button onClick={() => !isBooking && setShowPaymentModal(false)} className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-900 p-2.5 rounded-full transition-colors"><X className="h-4 w-4" /></button>
             
             {paymentStep === "SELECT" ? (
               <>
                 <div className="flex justify-center mb-6">
-                  <div className="h-16 w-16 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center shadow-inner">
+                  <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-full flex items-center justify-center shadow-inner border border-zinc-200 dark:border-zinc-800">
                     <Smartphone className="h-8 w-8" />
                   </div>
                 </div>
-                <h2 className="text-2xl font-black text-center text-slate-900 mb-2">Direct UPI Payment</h2>
-                <p className="text-sm font-medium text-center text-slate-500 mb-8">Pay directly to {room.hotelName} with zero fees.</p>
+                <h2 className="text-2xl font-black text-center text-zinc-900 dark:text-white tracking-tight mb-1">Direct UPI Transfer</h2>
+                <p className="text-sm font-medium text-center text-zinc-500 dark:text-zinc-400 mb-8">Pay directly to {room.hotelName} with zero fees.</p>
 
-                <div className="bg-slate-50 rounded-2xl p-6 text-center mb-8 border border-slate-200">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Total Due</p>
-                  <p className="text-4xl font-black text-slate-900 tracking-tighter flex items-center justify-center">
-                    <IndianRupee className="h-6 w-6 mr-1 text-slate-400" /> {finalTotal.toFixed(0)}
+                <div className="bg-zinc-50 dark:bg-zinc-900/50 rounded-[1.5rem] p-6 text-center mb-8 border border-zinc-200 dark:border-zinc-800">
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mb-2">Total Due</p>
+                  <p className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter flex items-center justify-center">
+                    <IndianRupee className="h-7 w-7 mr-1 text-emerald-500" /> {finalTotal.toFixed(0)}
                   </p>
                 </div>
 
                 <a 
                   href={getUpiLink()} 
-                  onClick={() => setTimeout(() => setPaymentStep("VERIFY"), 2500)} // Switch to verification step after clicking the link
-                  className="w-full bg-slate-900 text-white font-black py-4 rounded-xl shadow-xl hover:scale-105 transition-transform flex justify-center items-center gap-3 mb-4"
+                  onClick={() => setTimeout(() => setPaymentStep("VERIFY"), 2500)}
+                  className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 font-bold text-xs uppercase tracking-widest py-4 rounded-full shadow-lg hover:opacity-90 transition-all flex justify-center items-center mb-4 active:scale-95"
                 >
                   Pay via Any UPI App
                 </a>
                 
-                <p className="text-xs text-center text-slate-400 font-medium px-4">
-                  Clicking will open GPay, PhonePe, or Paytm on your mobile device.
+                <p className="text-[10px] text-center text-zinc-400 font-bold uppercase tracking-widest">
+                  Opens GPay, PhonePe, or Paytm automatically.
                 </p>
               </>
             ) : (
               // VERIFICATION STEP
               <form onSubmit={handleConfirmUpiPayment}>
                 <div className="flex justify-center mb-6">
-                  <div className="h-16 w-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center shadow-inner">
+                  <div className="h-16 w-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center shadow-inner border border-emerald-500/20">
                     <CheckCircle2 className="h-8 w-8" />
                   </div>
                 </div>
-                <h2 className="text-2xl font-black text-center text-slate-900 mb-2">Verify Payment</h2>
-                <p className="text-sm font-medium text-center text-slate-500 mb-8">Please enter the 12-digit UTR (Reference Number) from your UPI app.</p>
+                <h2 className="text-2xl font-black text-center text-zinc-900 dark:text-white tracking-tight mb-2">Verify Payment</h2>
+                <p className="text-sm font-medium text-center text-zinc-500 dark:text-zinc-400 mb-8">Enter the 12-digit UTR (Reference Number) from your UPI app receipt.</p>
 
-                <div className="mb-6">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Transaction ID (UTR)</label>
+                <div className="mb-8">
+                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Transaction ID (UTR)</label>
                   <input 
                     type="text" 
                     value={utrNumber} 
-                    onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, '').slice(0, 12))} // Only allow 12 digits
-                    placeholder="e.g. 123456789012" 
+                    onChange={(e) => setUtrNumber(e.target.value.replace(/\D/g, '').slice(0, 12))}
+                    placeholder="123456789012" 
                     required 
                     minLength={12}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-4 text-center font-black tracking-[0.2em] text-xl outline-none focus:border-indigo-500 transition-colors"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl p-4 text-center font-black tracking-[0.3em] text-xl outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors text-zinc-900 dark:text-white placeholder-zinc-300 dark:placeholder-zinc-700"
                   />
                 </div>
 
-                <button type="submit" disabled={isBooking || utrNumber.length < 12} className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl shadow-xl hover:bg-indigo-500 transition-all disabled:opacity-50 flex justify-center items-center">
-                  {isBooking ? <Loader2 className="h-6 w-6 animate-spin" /> : "Confirm Booking"}
+                <button type="submit" disabled={isBooking || utrNumber.length < 12} className="w-full bg-emerald-500 text-zinc-950 font-bold text-xs uppercase tracking-widest py-4 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:bg-emerald-400 transition-all disabled:opacity-50 disabled:shadow-none flex justify-center items-center mb-3 active:scale-95">
+                  {isBooking ? <Loader2 className="h-5 w-5 animate-spin" /> : "Confirm Booking"}
                 </button>
                 
-                <button type="button" onClick={() => setPaymentStep("SELECT")} className="w-full text-slate-500 text-xs font-bold py-4 mt-2 hover:text-slate-700 transition-colors">
-                  Go Back
+                <button type="button" onClick={() => setPaymentStep("SELECT")} className="w-full text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 text-[10px] font-bold uppercase tracking-widest py-3 transition-colors text-center">
+                  &larr; Go Back
                 </button>
               </form>
             )}

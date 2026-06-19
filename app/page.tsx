@@ -12,7 +12,7 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   updateProfile,
-  sendPasswordResetEmail // --- NEW: FIREBASE PASSWORD RESET IMPORT ---
+  sendPasswordResetEmail
 } from "firebase/auth";
 import { auth, db } from "./lib/firebase";
 import { Map, Calendar, CreditCard, Settings, Plus, PlaneTakeoff, Globe, Clock, User as UserIcon, Users, LogOut, BedDouble, Menu, X, ArrowRight, Trash2, Mail, Lock, AlertCircle, Receipt, Sun, ShieldCheck, Sparkles, Globe2, Building2, Smartphone, Star, Zap, ChevronRight, BarChart, Loader2, Plane, CheckCircle2, MessageSquare, Info } from "lucide-react";
@@ -62,7 +62,7 @@ export default function Home() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
 
-  // --- NEW: FORGOT PASSWORD STATE ---
+  // FORGOT PASSWORD STATE
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
   const [isResetting, setIsResetting] = useState(false);
@@ -146,7 +146,6 @@ export default function Home() {
     }
   };
 
-  // --- NEW: FIREBASE PASSWORD RESET ENGINE ---
   const handlePasswordReset = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!resetEmail) return;
@@ -254,226 +253,211 @@ export default function Home() {
     }
   };
 
-  if (isAuthLoading) return <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-[#030712]"><div className="animate-spin h-10 w-10 border-4 border-indigo-600 border-t-transparent rounded-full"></div></div>;
+  if (isAuthLoading) return <div className="h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950"><div className="animate-spin h-10 w-10 border-4 border-emerald-600 border-t-transparent rounded-full"></div></div>;
 
   // ==========================================
   // UN-AUTHENTICATED FLOW (LANDING PAGE OR LOGIN)
   // ==========================================
   if (!user) {
 
-    // 1. SHOW PRO-LEVEL LANDING PAGE
+    // 1. SHOW PREMIUM ANIMATED LANDING PAGE
     if (showLanding) {
       return (
-        <div className="min-h-screen bg-[#030712] font-sans text-white overflow-x-hidden selection:bg-indigo-500/30">
-
-          {/* --- CUSTOM CSS ANIMATIONS --- */}
+        <div className="min-h-screen bg-zinc-950 font-sans text-white selection:bg-emerald-500/30 overflow-x-hidden">
+          
           <style dangerouslySetInnerHTML={{
             __html: `
-            @keyframes fadeInUp {
-              0% { opacity: 0; transform: translateY(30px); }
-              100% { opacity: 1; transform: translateY(0); }
+            @keyframes fadeUp {
+              from { opacity: 0; transform: translateY(30px); }
+              to { opacity: 1; transform: translateY(0); }
             }
-            @keyframes float {
-              0%, 100% { transform: translateY(0px); }
-              50% { transform: translateY(-20px); }
+            @keyframes float1 {
+              0%, 100% { transform: translateY(0px) rotate(-2deg); }
+              50% { transform: translateY(-20px) rotate(1deg); }
             }
-            @keyframes floatReverse {
-              0%, 100% { transform: translateY(0px); }
-              50% { transform: translateY(20px); }
+            @keyframes float2 {
+              0%, 100% { transform: translateY(0px) rotate(3deg); }
+              50% { transform: translateY(15px) rotate(-1deg); }
             }
-            @keyframes blob {
-              0% { transform: translate(0px, 0px) scale(1); }
-              33% { transform: translate(30px, -50px) scale(1.1); }
-              66% { transform: translate(-20px, 20px) scale(0.9); }
-              100% { transform: translate(0px, 0px) scale(1); }
+            @keyframes float3 {
+              0%, 100% { transform: translateY(0px) rotate(-1deg); }
+              50% { transform: translateY(-10px) rotate(2deg); }
             }
-            .animate-fade-in-up { animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
-            .animate-float { animation: float 6s ease-in-out infinite; }
-            .animate-float-reverse { animation: floatReverse 7s ease-in-out infinite; }
-            .animate-blob { animation: blob 10s infinite; }
+            @keyframes panGrid {
+              0% { background-position: 0px 0px; }
+              100% { background-position: 64px 64px; }
+            }
+            @keyframes marquee {
+              0% { transform: translateX(0%); }
+              100% { transform: translateX(-50%); }
+            }
+            .animate-fade-up { animation: fadeUp 1s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+            .animate-grid { animation: panGrid 4s linear infinite; }
             .delay-100 { animation-delay: 100ms; }
             .delay-200 { animation-delay: 200ms; }
             .delay-300 { animation-delay: 300ms; }
-            .glass-panel { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(16px); border: 1px solid rgba(255, 255, 255, 0.05); }
           `}} />
 
-          {/* BACKGROUND EFFECTS */}
-          <div className="fixed inset-0 overflow-hidden pointer-events-none z-0">
-            <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] animate-blob"></div>
-            <div className="absolute top-[20%] right-[-10%] w-[600px] h-[600px] bg-purple-600/20 rounded-full blur-[120px] animate-blob delay-200"></div>
-            <div className="absolute bottom-[-20%] left-[20%] w-[700px] h-[700px] bg-blue-600/10 rounded-full blur-[150px] animate-blob delay-300"></div>
-            {/* Grid Pattern */}
-            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay"></div>
-            <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
+          {/* Animated Minimalist Grid Background */}
+          <div className="fixed inset-0 pointer-events-none z-0 overflow-hidden">
+            <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-emerald-900/15 rounded-full blur-[150px]"></div>
+            <div className="absolute bottom-[-20%] left-[-10%] w-[600px] h-[600px] bg-teal-900/10 rounded-full blur-[120px]"></div>
+            <div className="absolute inset-0 animate-grid" style={{ backgroundImage: 'linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px)', backgroundSize: '64px 64px' }}></div>
           </div>
 
-          {/* GLASS NAV */}
-          <nav className="fixed top-0 w-full z-50 transition-all duration-300 glass-panel border-b-0 border-white/10">
-            <div className="max-w-7xl mx-auto px-6 py-4 flex justify-between items-center">
+          {/* Floating Pill Nav */}
+          <nav className="fixed top-6 left-0 right-0 z-50 flex justify-center px-4">
+            <div className="bg-zinc-900/80 backdrop-blur-xl border border-white/10 rounded-full px-6 py-3 flex items-center justify-between w-full max-w-5xl shadow-2xl">
               <div className="flex items-center gap-3">
-                <div className="bg-gradient-to-br from-indigo-500 to-purple-600 p-2.5 rounded-xl shadow-lg shadow-indigo-500/20">
-                  <PlaneTakeoff className="h-6 w-6 text-white" />
-                </div>
-                <span className="text-2xl font-black tracking-tight text-white">WanderHub</span>
+                <div className="bg-white p-1.5 rounded-full"><PlaneTakeoff className="h-5 w-5 text-zinc-900" /></div>
+                <span className="text-xl font-bold tracking-tight text-white">WanderHub</span>
               </div>
               <div className="flex items-center gap-6">
-                <Link href="/partner/join" className="hidden md:flex text-sm font-bold text-slate-300 hover:text-white transition-colors">
+                <Link href="/partner/join" className="hidden md:block text-sm font-medium text-zinc-400 hover:text-white transition-colors">
                   Business Portal
                 </Link>
-                <button onClick={() => setShowLanding(false)} className="bg-white text-slate-900 px-6 py-2.5 rounded-full text-sm font-bold hover:bg-indigo-50 hover:scale-105 transition-all shadow-[0_0_20px_rgba(255,255,255,0.3)]">
+                <button onClick={() => setShowLanding(false)} className="bg-emerald-500 text-zinc-950 px-6 py-2 rounded-full text-sm font-bold hover:bg-emerald-400 hover:scale-105 transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)]">
                   Log In
                 </button>
               </div>
             </div>
           </nav>
 
-          {/* HERO SECTION */}
-          <header className="relative pt-40 pb-20 md:pt-52 md:pb-32 px-6 z-10">
+          {/* ANIMATED EDITORIAL HERO */}
+          <header className="relative pt-40 pb-16 md:pt-52 md:pb-24 px-6 z-10 overflow-hidden">
             <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
-
+              
               {/* Left Text */}
-              <div className="text-left">
-                <div className="animate-fade-in-up inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel text-indigo-300 text-xs font-bold mb-8 shadow-sm border border-indigo-500/30 uppercase tracking-widest">
-                  <Sparkles className="h-4 w-4 text-indigo-400" /> Version 2.0 is Live
+              <div className="text-left z-20">
+                <div className="animate-fade-up inline-flex items-center gap-2 px-4 py-2 rounded-full bg-zinc-900/50 border border-zinc-800 text-zinc-300 text-xs font-bold mb-8 uppercase tracking-widest backdrop-blur-sm">
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-400" /> Discover the new standard
                 </div>
 
-                <h1 className="animate-fade-in-up delay-100 text-5xl md:text-7xl lg:text-[5.5rem] font-black tracking-tighter text-white mb-8 leading-[1.1]">
-                  Travel planning, <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400">
-                    fully evolved.
-                  </span>
+                <h1 className="animate-fade-up delay-100 text-5xl md:text-7xl lg:text-[6.5rem] font-black tracking-tighter text-white mb-8 leading-[1.05]">
+                  Plan deeply. <br />
+                  <span className="text-zinc-500">Travel lightly.</span>
                 </h1>
 
-                <p className="animate-fade-in-up delay-200 text-lg md:text-xl text-slate-400 font-medium max-w-xl mb-10 leading-relaxed">
-                  The ultimate SaaS platform for modern travelers. Build AI itineraries, book partner hotels, split live expenses, and sync it all with your group instantly.
+                <p className="animate-fade-up delay-200 text-lg md:text-xl text-zinc-400 font-medium max-w-lg mb-12 leading-relaxed">
+                  A unified workspace for the modern traveler. Build dynamic itineraries, settle live expenses, and sync instantly with your entire group.
                 </p>
 
-                <div className="animate-fade-in-up delay-300 flex flex-col sm:flex-row items-center gap-5">
-                  <button onClick={() => setShowLanding(false)} className="w-full sm:w-auto bg-white text-slate-900 px-8 py-4 rounded-2xl text-lg font-black hover:scale-105 hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all flex items-center justify-center group">
-                    Start Planning
-                    <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                <div className="animate-fade-up delay-300 flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
+                  <button onClick={() => setShowLanding(false)} className="w-full sm:w-auto bg-white text-zinc-950 px-10 py-4 rounded-full text-lg font-bold hover:scale-105 shadow-[0_0_30px_rgba(255,255,255,0.2)] transition-all flex items-center justify-center group">
+                    Start Planning <ArrowRight className="h-5 w-5 ml-2 group-hover:translate-x-1 transition-transform" />
                   </button>
-                  <Link href="/partner/join" className="w-full sm:w-auto glass-panel text-white px-8 py-4 rounded-2xl text-lg font-bold hover:bg-white/10 transition-all flex items-center justify-center">
-                    <Building2 className="mr-2 h-5 w-5 text-indigo-400" /> List Property
+                  <Link href="/partner/join" className="w-full sm:w-auto bg-transparent border border-zinc-700 text-white px-10 py-4 rounded-full text-lg font-medium hover:bg-zinc-900 transition-all flex items-center justify-center">
+                    <Building2 className="mr-2 h-5 w-5 text-zinc-400" /> List Property
                   </Link>
-                </div>
-
-                <div className="animate-fade-in-up delay-300 mt-12 flex items-center gap-4 text-sm font-bold text-slate-500">
-                  <div className="flex -space-x-3">
-                    {[1, 2, 3, 4].map(i => <div key={i} className="w-10 h-10 rounded-full border-2 border-[#030712] bg-gradient-to-br from-indigo-400 to-purple-500"></div>)}
-                  </div>
-                  <div>
-                    <div className="flex items-center text-amber-400 mb-1">
-                      <Star className="w-4 h-4 fill-amber-400" />
-                      <Star className="w-4 h-4 fill-amber-400" />
-                      <Star className="w-4 h-4 fill-amber-400" />
-                      <Star className="w-4 h-4 fill-amber-400" />
-                      <Star className="w-4 h-4 fill-amber-400" />
-                    </div>
-                    Loved by 10,000+ travelers
-                  </div>
                 </div>
               </div>
 
-              {/* Right Floating Elements (Pro Visuals) */}
-              <div className="hidden lg:block relative h-[600px] w-full">
-
-                {/* Main Dashboard Card */}
-                <div className="absolute right-0 top-10 w-[450px] glass-panel p-6 rounded-3xl shadow-2xl animate-float border-white/10 bg-[#0f172a]/80 backdrop-blur-2xl">
-                  <div className="flex justify-between items-center mb-6">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 bg-indigo-500/20 rounded-xl flex items-center justify-center text-indigo-400"><Map className="h-5 w-5" /></div>
-                      <div>
-                        <div className="text-sm font-bold text-white">Bali Adventure</div>
-                        <div className="text-xs text-slate-400">7 Days • 4 Members</div>
-                      </div>
-                    </div>
-                    <div className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/30">Syncing</div>
-                  </div>
-                  <div className="space-y-3">
-                    <div className="h-2 w-full bg-slate-800 rounded-full overflow-hidden"><div className="h-full w-[70%] bg-indigo-500 rounded-full"></div></div>
-                    <div className="flex justify-between text-xs font-bold text-slate-500"><span>Progress</span><span>70%</span></div>
-                  </div>
-                </div>
-
-                {/* Secondary Floating Card - Expense */}
-                <div className="absolute left-0 top-[250px] w-[280px] glass-panel p-5 rounded-3xl shadow-2xl animate-float-reverse border-white/10 bg-[#0f172a]/80 backdrop-blur-2xl z-20">
-                  <div className="flex items-center gap-4 mb-4">
-                    <div className="h-12 w-12 bg-rose-500/20 rounded-xl flex items-center justify-center text-rose-400"><Receipt className="h-6 w-6" /></div>
+              {/* Right Side: Animated Floating Gallery */}
+              <div className="hidden lg:block relative h-[600px] w-full z-10 perspective-[1200px]">
+                {/* Glowing Orb Behind Cards */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-emerald-500/30 rounded-full blur-[80px]"></div>
+                
+                {/* Card 1: Main Destination */}
+                <div className="absolute top-[10%] right-[10%] w-[280px] h-[360px] rounded-3xl overflow-hidden border border-zinc-700/50 shadow-2xl animate-[float1_6s_ease-in-out_infinite] z-30 group">
+                  <img src="https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=800&q=80" alt="Paris" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/90 via-transparent to-transparent"></div>
+                  <div className="absolute bottom-5 left-5 right-5 flex justify-between items-end">
                     <div>
-                      <div className="text-sm font-bold text-white">Dinner Split</div>
-                      <div className="text-xs text-rose-400 font-bold">You owe ₹2,400</div>
+                      <p className="text-white font-bold text-lg leading-tight">Paris, France</p>
+                      <p className="text-emerald-400 text-xs font-bold uppercase tracking-wider">Group Trip</p>
                     </div>
-                  </div>
-                  <button className="w-full bg-white/5 hover:bg-white/10 text-white text-xs font-bold py-2 rounded-lg transition-colors border border-white/10">Settle Up Now</button>
-                </div>
-
-                {/* Third Floating Card - Weather */}
-                <div className="absolute right-10 bottom-10 w-[240px] glass-panel p-5 rounded-3xl shadow-2xl animate-float border-white/10 bg-[#0f172a]/80 backdrop-blur-2xl">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <div className="text-3xl font-black text-white mb-1">28°</div>
-                      <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">Ubud, Bali</div>
-                    </div>
-                    <Sun className="h-8 w-8 text-amber-400" />
+                    <div className="h-8 w-8 bg-white/20 backdrop-blur-md rounded-full border border-white/30 flex items-center justify-center text-white"><ArrowRight className="h-4 w-4 -rotate-45" /></div>
                   </div>
                 </div>
 
+                {/* Card 2: Nature/Secondary */}
+                <div className="absolute top-[35%] left-[5%] w-[240px] h-[300px] rounded-3xl overflow-hidden border border-zinc-700/50 shadow-2xl animate-[float2_8s_ease-in-out_infinite_reverse] z-20 group">
+                  <img src="https://images.unsplash.com/photo-1533929736458-ca588d08c8be?w=800&q=80" alt="Nature" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 filter saturate-50 group-hover:saturate-100" />
+                </div>
+
+                {/* Card 3: Small Element */}
+                <div className="absolute bottom-[5%] right-[25%] w-[200px] h-[200px] rounded-3xl overflow-hidden border border-zinc-700/50 shadow-2xl animate-[float3_7s_ease-in-out_infinite_1s] z-40 group">
+                  <img src="https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=800&q=80" alt="Desert" className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                  <div className="absolute top-4 left-4 bg-zinc-950/80 backdrop-blur-md px-3 py-1 rounded-full border border-zinc-700 flex items-center text-xs font-bold text-white shadow-lg"><Clock className="h-3 w-3 mr-1.5 text-zinc-400"/> Syncing</div>
+                </div>
               </div>
             </div>
           </header>
 
-          {/* BENTO BOX FEATURES GRID */}
-          <section className="py-24 relative z-10 bg-[#030712]">
-            <div className="max-w-7xl mx-auto px-6">
-
-              <div className="text-center mb-20">
-                <h2 className="text-4xl md:text-5xl font-black text-white mb-6 tracking-tight">The ultimate <span className="text-indigo-400">travel operating system.</span></h2>
-                <p className="text-slate-400 text-lg font-medium max-w-2xl mx-auto">Stop managing 15 open tabs. WanderHub unites bookings, mapping, weather, and finances into one stunning dashboard.</p>
+          {/* INFINITE MARQUEE STRIP */}
+          <div className="w-full overflow-hidden border-y border-zinc-800/50 bg-zinc-900/20 py-4 mb-24 relative z-20">
+            <div className="flex w-[200%] animate-[marquee_20s_linear_infinite]">
+              <div className="flex w-1/2 justify-around items-center text-zinc-500 font-bold tracking-[0.2em] uppercase text-xs">
+                <span>✦ AI-Engineered Routing</span>
+                <span>✦ Live Expense Splitting</span>
+                <span>✦ Hybrid Aggregator</span>
+                <span>✦ Smart Climate Intel</span>
+                <span>✦ Real-time Group Sync</span>
               </div>
+              <div className="flex w-1/2 justify-around items-center text-zinc-500 font-bold tracking-[0.2em] uppercase text-xs">
+                <span>✦ AI-Engineered Routing</span>
+                <span>✦ Live Expense Splitting</span>
+                <span>✦ Hybrid Aggregator</span>
+                <span>✦ Smart Climate Intel</span>
+                <span>✦ Real-time Group Sync</span>
+              </div>
+            </div>
+          </div>
 
-              {/* Grid Layout */}
+          {/* EDITORIAL BENTO GRID */}
+          <section className="py-12 relative z-10">
+            <div className="max-w-6xl mx-auto px-6">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-
-                {/* Bento Card 1 - Large */}
-                <div className="md:col-span-2 glass-panel p-8 md:p-12 rounded-[2rem] hover:bg-white/[0.04] transition-colors group relative overflow-hidden">
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl group-hover:bg-indigo-500/20 transition-all"></div>
-                  <div className="h-14 w-14 bg-indigo-500/20 rounded-2xl flex items-center justify-center mb-8 border border-indigo-500/30">
-                    <Map className="h-7 w-7 text-indigo-400" />
+                
+                {/* Large Map Card */}
+                <div className="md:col-span-2 bg-zinc-900/40 backdrop-blur-sm border border-zinc-800/50 p-10 md:p-14 rounded-[2rem] flex flex-col justify-between overflow-hidden relative group hover:border-zinc-700 transition-colors duration-500">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 group-hover:bg-emerald-500/15 rounded-full blur-3xl transition-all duration-700"></div>
+                  <div className="relative z-10">
+                    <div className="h-14 w-14 bg-zinc-800 rounded-full flex items-center justify-center mb-8 border border-zinc-700 text-emerald-400 group-hover:scale-110 group-hover:bg-emerald-500/10 transition-all duration-300">
+                      <Map className="h-6 w-6" />
+                    </div>
+                    <h3 className="text-3xl font-bold text-white mb-4 tracking-tight">AI-Engineered Routing</h3>
+                    <p className="text-zinc-400 text-lg font-medium leading-relaxed max-w-md">Input your destinations. Our system generates a geographically optimized, day-by-day travel map instantly.</p>
                   </div>
-                  <h3 className="text-3xl font-black text-white mb-4">AI-Powered Itineraries</h3>
-                  <p className="text-slate-400 text-lg font-medium leading-relaxed max-w-md">Input your destination and dates. Our AI generates a perfectly optimized, day-by-day travel map instantly.</p>
                 </div>
 
-                {/* Bento Card 2 - Small */}
-                <div className="glass-panel p-8 md:p-10 rounded-[2rem] hover:bg-white/[0.04] transition-colors group relative overflow-hidden">
-                  <div className="h-14 w-14 bg-rose-500/20 rounded-2xl flex items-center justify-center mb-8 border border-rose-500/30">
-                    <Receipt className="h-7 w-7 text-rose-400" />
+                {/* Small Expense Card */}
+                <div className="bg-zinc-900/40 backdrop-blur-sm border border-zinc-800/50 p-10 rounded-[2rem] flex flex-col justify-between relative overflow-hidden group hover:border-zinc-700 transition-colors duration-500">
+                  <div className="absolute bottom-0 right-0 w-40 h-40 bg-rose-500/5 group-hover:bg-rose-500/15 rounded-full blur-3xl transition-all duration-700"></div>
+                  <div className="relative z-10">
+                    <div className="h-14 w-14 bg-zinc-800 rounded-full flex items-center justify-center mb-8 border border-zinc-700 text-rose-400 group-hover:scale-110 group-hover:bg-rose-500/10 transition-all duration-300">
+                      <Receipt className="h-6 w-6" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-4 tracking-tight">Live Split</h3>
+                    <p className="text-zinc-400 font-medium leading-relaxed">Log expenses on the go. We track who owes who, down to the last cent.</p>
                   </div>
-                  <h3 className="text-2xl font-black text-white mb-4">Live Split</h3>
-                  <p className="text-slate-400 font-medium leading-relaxed">Log expenses on the go. We calculate exactly who owes who, down to the last cent.</p>
                 </div>
 
-                {/* Bento Card 3 - Small */}
-                <div className="glass-panel p-8 md:p-10 rounded-[2rem] hover:bg-white/[0.04] transition-colors group relative overflow-hidden">
-                  <div className="h-14 w-14 bg-amber-500/20 rounded-2xl flex items-center justify-center mb-8 border border-amber-500/30">
-                    <Sun className="h-7 w-7 text-amber-400" />
+                {/* Small Weather Card */}
+                <div className="bg-zinc-900/40 backdrop-blur-sm border border-zinc-800/50 p-10 rounded-[2rem] flex flex-col justify-between relative overflow-hidden group hover:border-zinc-700 transition-colors duration-500">
+                  <div className="absolute top-0 left-0 w-40 h-40 bg-amber-500/5 group-hover:bg-amber-500/15 rounded-full blur-3xl transition-all duration-700"></div>
+                  <div className="relative z-10">
+                    <div className="h-14 w-14 bg-zinc-800 rounded-full flex items-center justify-center mb-8 border border-zinc-700 text-amber-400 group-hover:scale-110 group-hover:bg-amber-500/10 transition-all duration-300">
+                      <Sun className="h-6 w-6" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-white mb-4 tracking-tight">Smart Climate</h3>
+                    <p className="text-zinc-400 font-medium leading-relaxed">Integrated API forecasting ensures you never pack a swimsuit for a storm.</p>
                   </div>
-                  <h3 className="text-2xl font-black text-white mb-4">Smart Weather</h3>
-                  <p className="text-slate-400 font-medium leading-relaxed">Integrated API forecasting ensures you never pack a swimsuit for a thunderstorm.</p>
                 </div>
 
-                {/* Bento Card 4 - Large */}
-                <div className="md:col-span-2 glass-panel p-8 md:p-12 rounded-[2rem] hover:bg-white/[0.04] transition-colors group relative overflow-hidden">
-                  <div className="absolute bottom-0 right-0 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl group-hover:bg-emerald-500/20 transition-all"></div>
-                  <div className="h-14 w-14 bg-emerald-500/20 rounded-2xl flex items-center justify-center mb-8 border border-emerald-500/30">
-                    <BedDouble className="h-7 w-7 text-emerald-400" />
+                {/* Large Hotel Card */}
+                <div className="md:col-span-2 bg-zinc-900/40 backdrop-blur-sm border border-zinc-800/50 p-10 md:p-14 rounded-[2rem] flex flex-col justify-between relative overflow-hidden group hover:border-zinc-700 transition-colors duration-500">
+                  <div className="absolute bottom-0 right-0 w-64 h-64 bg-teal-500/5 group-hover:bg-teal-500/15 rounded-full blur-3xl transition-all duration-700"></div>
+                  <div className="relative z-10">
+                    <div className="h-14 w-14 bg-zinc-800 rounded-full flex items-center justify-center mb-8 border border-zinc-700 text-teal-400 group-hover:scale-110 group-hover:bg-teal-500/10 transition-all duration-300">
+                      <BedDouble className="h-6 w-6" />
+                    </div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <h3 className="text-3xl font-bold text-white tracking-tight">Hybrid Aggregator</h3>
+                      <span className="bg-teal-500/10 text-teal-400 px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border border-teal-500/20">Exclusive</span>
+                    </div>
+                    <p className="text-zinc-400 text-lg font-medium leading-relaxed max-w-md">Compare standard Booking.com listings directly alongside verified, exclusive WanderHub Hotel Partners.</p>
                   </div>
-                  <div className="flex items-center gap-3 mb-4">
-                    <h3 className="text-3xl font-black text-white">Hybrid Aggregator</h3>
-                    <span className="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full text-xs font-bold border border-emerald-500/30">B2B</span>
-                  </div>
-                  <p className="text-slate-400 text-lg font-medium leading-relaxed max-w-md">Compare millions of standard Booking.com listings directly alongside verified, exclusive WanderHub Hotel Partners.</p>
                 </div>
 
               </div>
@@ -481,12 +465,11 @@ export default function Home() {
           </section>
 
           {/* BOTTOM CTA */}
-          <section className="py-32 relative z-10 border-t border-white/5">
-            <div className="absolute inset-0 bg-gradient-to-b from-transparent to-indigo-950/50 pointer-events-none"></div>
-            <div className="max-w-4xl mx-auto px-6 text-center relative z-20">
-              <Globe2 className="h-20 w-20 mx-auto mb-8 text-indigo-500 animate-float" />
-              <h2 className="text-5xl md:text-7xl font-black mb-8 tracking-tight">Your next adventure <br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400">starts right here.</span></h2>
-              <button onClick={() => setShowLanding(false)} className="inline-flex bg-white text-slate-900 px-10 py-5 rounded-full text-xl font-black hover:scale-105 transition-all shadow-[0_0_40px_rgba(255,255,255,0.2)]">
+          <section className="py-32 relative z-10 border-t border-zinc-800/50 mt-12">
+            <div className="max-w-4xl mx-auto px-6 text-center">
+              <Globe2 className="h-16 w-16 mx-auto mb-8 text-zinc-600" />
+              <h2 className="text-5xl md:text-6xl font-black mb-10 tracking-tighter text-white">Your adventure begins.</h2>
+              <button onClick={() => setShowLanding(false)} className="inline-flex bg-emerald-500 text-zinc-950 px-10 py-5 rounded-full text-lg font-bold hover:bg-emerald-400 hover:scale-105 transition-all shadow-[0_0_30px_rgba(16,185,129,0.2)]">
                 Create Free Account
               </button>
             </div>
@@ -495,135 +478,142 @@ export default function Home() {
       );
     }
 
-    // 2. SHOW EXISTING LOGIN FORM
+    // 2. SPLIT-SCREEN EDITORIAL LOGIN FORM
     return (
-      <div className="flex min-h-screen items-center justify-center bg-[#030712] p-4 font-sans relative overflow-hidden">
-
-        {/* Background Effects matching landing page */}
-        <div className="absolute top-[-10%] left-[-10%] w-[500px] h-[500px] bg-indigo-600/20 rounded-full blur-[120px] animate-pulse"></div>
-        <div className="absolute bottom-[-10%] right-[-10%] w-[500px] h-[500px] bg-purple-600/20 rounded-full blur-[120px] animate-pulse delay-1000"></div>
-        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 mix-blend-overlay pointer-events-none"></div>
-
-        <button onClick={() => setShowLanding(true)} className="absolute top-6 left-6 text-slate-400 hover:text-white font-bold flex items-center bg-white/5 backdrop-blur-md px-4 py-2 rounded-xl border border-white/10 transition-all z-20">
-          ← Back to Home
-        </button>
-
-        <div className="bg-[#0f172a]/80 backdrop-blur-2xl p-8 md:p-10 rounded-[2.5rem] shadow-2xl max-w-md w-full border border-white/10 relative z-10 my-8">
-
-          <div className="h-20 w-20 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-3xl flex items-center justify-center text-white mx-auto mb-6 shadow-lg shadow-indigo-500/20 rotate-3 hover:rotate-6 transition-transform">
-            <PlaneTakeoff className="h-10 w-10 -rotate-3" />
-          </div>
-
-          <h2 className="text-3xl font-black text-white mb-2 text-center tracking-tight">
-            {isLoginMode ? "Welcome Back" : "Create Account"}
-          </h2>
-          <p className="text-slate-400 font-medium mb-8 text-center">
-            {isLoginMode ? "Sign in to access your itinerary." : "Start planning your next adventure."}
-          </p>
-
-          {authError && (
-            <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-bold rounded-xl flex items-center text-left">
-              <AlertCircle className="h-5 w-5 mr-2 shrink-0" /> {authError}
+      <div className="flex min-h-screen bg-zinc-950 font-sans selection:bg-emerald-500/30">
+        
+        {/* Left Side: Cinematic Image (Hidden on mobile) */}
+        <div className="hidden lg:flex lg:w-1/2 relative bg-zinc-900 items-center justify-center overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img 
+            src="https://images.unsplash.com/photo-1506012787146-f92b2d7d6d96?w=1200&q=80" 
+            alt="Travel Landscape" 
+            className="absolute inset-0 w-full h-full object-cover opacity-60"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/20 to-zinc-950"></div>
+          
+          <div className="relative z-10 p-16 max-w-xl text-left mr-auto">
+            <div className="bg-white/10 backdrop-blur-md p-3 rounded-2xl inline-block mb-8 border border-white/10">
+              <PlaneTakeoff className="h-8 w-8 text-white" />
             </div>
-          )}
+            <h2 className="text-5xl font-black text-white tracking-tighter leading-tight mb-6">
+              The world is waiting. <br/><span className="text-emerald-400">Plan it right.</span>
+            </h2>
+            <p className="text-zinc-300 text-lg font-medium leading-relaxed">
+              Join thousands of modern explorers who have upgraded their travel workflow with WanderHub.
+            </p>
+          </div>
+        </div>
 
-          <form onSubmit={handleEmailAuth} className="space-y-4 text-left">
-            {!isLoginMode && (
-              <div>
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Full Name</label>
-                <div className="relative">
-                  <UserIcon className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-500" />
+        {/* Right Side: Clean Form */}
+        <div className="w-full lg:w-1/2 flex items-center justify-center p-6 md:p-12 relative bg-zinc-950">
+          
+          <button onClick={() => setShowLanding(true)} className="absolute top-8 right-8 text-zinc-500 hover:text-white font-medium flex items-center px-4 py-2 rounded-full hover:bg-zinc-900 transition-all text-sm border border-transparent hover:border-zinc-800">
+            <X className="h-4 w-4 mr-2" /> Cancel
+          </button>
+
+          <div className="w-full max-w-md">
+            <h2 className="text-3xl font-black text-white mb-2 tracking-tight">
+              {isLoginMode ? "Welcome back." : "Create account."}
+            </h2>
+            <p className="text-zinc-400 font-medium mb-10 text-sm">
+              {isLoginMode ? "Enter your details to sign in to your workspace." : "Start organizing your next adventure today."}
+            </p>
+
+            {authError && (
+              <div className="mb-6 p-4 bg-red-500/10 border border-red-500/30 text-red-400 text-sm font-medium rounded-xl flex items-center">
+                <AlertCircle className="h-5 w-5 mr-3 shrink-0" /> {authError}
+              </div>
+            )}
+
+            <form onSubmit={handleEmailAuth} className="space-y-5">
+              {!isLoginMode && (
+                <div>
+                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Full Name</label>
                   <input
                     type="text"
                     value={authName}
                     onChange={(e) => setAuthName(e.target.value)}
                     required={!isLoginMode}
-                    placeholder="e.g., Kaushik Singha"
-                    className="w-full pl-11 pr-4 py-3 bg-[#1e293b] text-white border border-white/10 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none font-medium transition-all placeholder-slate-500"
+                    placeholder="Jane Doe"
+                    className="w-full px-4 py-3.5 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none font-medium transition-all placeholder-zinc-600"
                   />
                 </div>
-              </div>
-            )}
+              )}
 
-            <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Email Address</label>
-              <div className="relative">
-                <Mail className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-500" />
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Email Address</label>
                 <input
                   type="email"
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
                   required
-                  placeholder="you@example.com"
-                  className="w-full pl-11 pr-4 py-3 bg-[#1e293b] text-white border border-white/10 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none font-medium transition-all placeholder-slate-500"
+                  placeholder="name@example.com"
+                  className="w-full px-4 py-3.5 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none font-medium transition-all placeholder-zinc-600"
                 />
               </div>
-            </div>
 
-            <div>
-              {/* ✨ NEW: Forgot Password Button Area */}
-              <div className="flex justify-between items-center mb-2">
-                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Password</label>
-                {isLoginMode && (
-                  <button type="button" onClick={() => setIsForgotModalOpen(true)} className="text-xs font-bold text-indigo-400 hover:text-indigo-300 transition-colors">Forgot Password?</button>
-                )}
-              </div>
-              <div className="relative">
-                <Lock className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-500" />
+              <div>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Password</label>
+                  {isLoginMode && (
+                    <button type="button" onClick={() => setIsForgotModalOpen(true)} className="text-xs font-medium text-emerald-400 hover:text-emerald-300 transition-colors">Forgot password?</button>
+                  )}
+                </div>
                 <input
                   type="password"
                   value={authPassword}
                   onChange={(e) => setAuthPassword(e.target.value)}
                   required
                   placeholder="••••••••"
-                  className="w-full pl-11 pr-4 py-3 bg-[#1e293b] text-white border border-white/10 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none font-medium transition-all placeholder-slate-500"
+                  className="w-full px-4 py-3.5 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none font-medium transition-all placeholder-zinc-600"
                 />
               </div>
+
+              <button type="submit" disabled={authLoading} className="w-full bg-emerald-500 text-zinc-950 font-bold py-4 rounded-xl hover:bg-emerald-400 transition-all disabled:opacity-50 mt-6 active:scale-[0.98]">
+                {authLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : (isLoginMode ? "Sign In" : "Create Account")}
+              </button>
+            </form>
+
+            <div className="flex items-center my-8">
+              <hr className="flex-1 border-zinc-800" />
+              <span className="px-4 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Or</span>
+              <hr className="flex-1 border-zinc-800" />
             </div>
 
-            <button type="submit" disabled={authLoading} className="w-full bg-indigo-600 text-white font-bold py-3.5 rounded-xl hover:bg-indigo-500 shadow-xl transition-all disabled:opacity-50 mt-2">
-              {authLoading ? "Please wait..." : (isLoginMode ? "Sign In" : "Sign Up")}
+            <button onClick={handleGoogleSignIn} type="button" className="w-full flex items-center justify-center bg-transparent border border-zinc-800 text-white font-medium py-4 rounded-xl hover:bg-zinc-900 transition-all active:scale-[0.98]">
+              <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" /><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" /><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" /><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" /></svg>
+              Continue with Google
             </button>
-          </form>
 
-          <div className="flex items-center my-6">
-            <hr className="flex-1 border-white/10" />
-            <span className="px-4 text-xs font-bold text-slate-500 uppercase">Or continue with</span>
-            <hr className="flex-1 border-white/10" />
+            <p className="mt-8 text-sm font-medium text-zinc-500 text-center">
+              {isLoginMode ? "Don't have an account? " : "Already have an account? "}
+              <button onClick={() => { setIsLoginMode(!isLoginMode); setAuthError(""); }} className="text-white font-bold hover:underline">
+                {isLoginMode ? "Sign up" : "Log in"}
+              </button>
+            </p>
           </div>
-
-          <button onClick={handleGoogleSignIn} type="button" className="w-full flex items-center justify-center bg-[#1e293b] border border-white/10 text-white font-bold py-3.5 rounded-xl hover:bg-slate-800 transition-all shadow-sm">
-            <svg className="w-5 h-5 mr-3" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4" /><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853" /><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" /><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" /></svg>
-            Google
-          </button>
-
-          <p className="mt-8 text-sm font-medium text-slate-400 text-center">
-            {isLoginMode ? "Don't have an account? " : "Already have an account? "}
-            <button onClick={() => { setIsLoginMode(!isLoginMode); setAuthError(""); }} className="text-indigo-400 font-bold hover:text-indigo-300">
-              {isLoginMode ? "Sign up here" : "Log in here"}
-            </button>
-          </p>
         </div>
 
-        {/* ✨ NEW: FORGOT PASSWORD MODAL */}
+        {/* FORGOT PASSWORD MODAL */}
         {isForgotModalOpen && (
-          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
-            <div className="bg-[#0f172a] rounded-[2.5rem] p-8 max-w-sm w-full shadow-2xl border border-white/10 relative animate-in zoom-in-95 duration-300">
-              <button onClick={() => { setIsForgotModalOpen(false); setResetMessage(""); }} className="absolute top-6 right-6 text-slate-500 hover:text-white transition-colors">
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
+            <div className="bg-zinc-950 rounded-[2rem] p-8 max-w-sm w-full shadow-2xl border border-zinc-800 relative animate-in zoom-in-95 duration-200">
+              <button onClick={() => { setIsForgotModalOpen(false); setResetMessage(""); }} className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors">
                 <X className="h-5 w-5" />
               </button>
               
-              <div className="h-16 w-16 bg-indigo-500/20 rounded-2xl flex items-center justify-center text-indigo-400 mb-6 border border-indigo-500/30 rotate-3 mx-auto">
-                <Lock className="h-8 w-8 -rotate-3" />
+              <div className="h-14 w-14 bg-zinc-900 rounded-full flex items-center justify-center text-zinc-300 mb-6 border border-zinc-800 mx-auto">
+                <Lock className="h-6 w-6" />
               </div>
               
-              <h3 className="text-2xl font-black text-white text-center tracking-tight mb-2">Reset Password</h3>
-              <p className="text-sm font-medium text-slate-400 text-center mb-6 leading-relaxed">
-                Enter your email address and we'll send you a secure link to reset your password.
+              <h3 className="text-xl font-bold text-white text-center tracking-tight mb-2">Reset Password</h3>
+              <p className="text-sm font-medium text-zinc-400 text-center mb-8">
+                Enter your email address and we'll send you a link to reset your password.
               </p>
 
               {resetMessage && (
-                <div className={`mb-6 p-4 text-sm font-bold rounded-xl flex items-start text-left border ${resetMessage.startsWith("Error:") ? "bg-red-500/10 text-red-400 border-red-500/30" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"}`}>
+                <div className={`mb-6 p-4 text-sm font-medium rounded-xl flex items-start text-left border ${resetMessage.startsWith("Error:") ? "bg-red-500/10 text-red-400 border-red-500/30" : "bg-emerald-500/10 text-emerald-400 border-emerald-500/30"}`}>
                   {resetMessage.startsWith("Error:") ? <AlertCircle className="h-5 w-5 mr-2 shrink-0 mt-0.5" /> : <CheckCircle2 className="h-5 w-5 mr-2 shrink-0 mt-0.5" />}
                   {resetMessage.replace("Error: ", "")}
                 </div>
@@ -631,17 +621,16 @@ export default function Home() {
 
               <form onSubmit={handlePasswordReset}>
                 <div className="relative mb-6">
-                  <Mail className="absolute left-3.5 top-3.5 h-5 w-5 text-slate-500" />
                   <input 
                     type="email" 
                     value={resetEmail} 
                     onChange={(e) => setResetEmail(e.target.value)} 
-                    placeholder="you@example.com" 
+                    placeholder="name@example.com" 
                     required
-                    className="w-full pl-11 pr-4 py-3 bg-[#1e293b] text-white border border-white/10 rounded-xl focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 outline-none font-medium transition-all placeholder-slate-500"
+                    className="w-full px-4 py-3.5 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none font-medium transition-all placeholder-zinc-600"
                   />
                 </div>
-                <button type="submit" disabled={isResetting || !resetEmail} className="w-full bg-indigo-600 text-white font-black py-3.5 rounded-xl hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20 disabled:opacity-50 flex justify-center items-center">
+                <button type="submit" disabled={isResetting || !resetEmail} className="w-full bg-white text-zinc-950 font-bold py-3.5 rounded-xl hover:bg-zinc-200 transition-all disabled:opacity-50 flex justify-center items-center active:scale-[0.98]">
                   {isResetting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Send Reset Link"}
                 </button>
               </form>
@@ -654,42 +643,40 @@ export default function Home() {
   }
 
   // ==========================================
-  // AUTHENTICATED FLOW (DASHBOARD WITH DARK MODE CLASSES)
+  // AUTHENTICATED FLOW (DASHBOARD)
   // ==========================================
   return (
-    <div className="flex h-screen bg-[#f8fafc] dark:bg-[#030712] font-sans text-slate-900 dark:text-slate-100 overflow-hidden transition-colors duration-300 selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors duration-300 selection:bg-emerald-500/20">
 
       {/* MOBILE MENU BLUR */}
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md z-40 md:hidden transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
+        <div className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-md z-40 md:hidden transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
-      {/* SIDEBAR */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-[#0f172a] border-r border-slate-200 dark:border-white/10 flex flex-col transform transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] print:hidden ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0`}>
-        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-white/10 shrink-0">
-          <div className="flex items-center">
-            <PlaneTakeoff className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-2" />
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-blue-400">WanderHub</span>
+      {/* FLOATING SIDEBAR (EDITORIAL STYLE) */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col transform transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] print:hidden ${isMobileMenuOpen ? "translate-x-0" : "-translate-x-full"} md:relative md:translate-x-0`}>
+        <div className="h-20 flex items-center px-8 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+          <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-3 shadow-sm">
+            <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
           </div>
-          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"><X className="h-5 w-5" /></button>
+          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+          <button onClick={() => setIsMobileMenuOpen(false)} className="ml-auto md:hidden p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full transition-colors"><X className="h-5 w-5" /></button>
         </div>
-        {/* ADD 'flex flex-col' TO THE NAV CLASS */}
-        <nav className="flex-1 px-4 py-6 overflow-y-auto custom-scrollbar flex flex-col">
-          <div className="space-y-2">
-            <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 rounded-xl font-bold shadow-sm transition-colors border border-transparent dark:border-indigo-500/20"><Map className="h-5 w-5 mr-3" /> Dashboard</Link>
-            <Link href="/itineraries" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><Calendar className="h-5 w-5 mr-3" /> Itineraries</Link>
-            <Link href="/chat" className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors">
-              <MessageSquare className="h-5 w-5 mr-3" /> Group Chat
-            </Link>
-            <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><CreditCard className="h-5 w-5 mr-3" /> Expenses</Link>
-            <Link href="/flights" className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl font-semibold"><Plane className="h-5 w-5 mr-3" /> Book Flights</Link>
-            <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><BedDouble className="h-5 w-5 mr-3" /> Book Hotels</Link>
-            <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><Settings className="h-5 w-5 mr-3" /> Settings</Link>
-          </div>
-          {/* Add the About Us link at the very end wrapped in this specific div */}
-          <div className="mt-auto pt-6">
-            <Link href="/about" className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl font-semibold transition-colors">
-              <Info className="h-5 w-5 mr-3" /> About Us
+        
+        <nav className="flex-1 px-4 py-8 overflow-y-auto custom-scrollbar flex flex-col gap-2">
+          <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-2xl font-bold transition-all"><Map className="h-5 w-5 mr-3 text-emerald-600 dark:text-emerald-400" /> Dashboard</Link>
+          <Link href="/itineraries" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Calendar className="h-5 w-5 mr-3 opacity-70" /> Itineraries</Link>
+          <Link href="/chat" className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all">
+            <MessageSquare className="h-5 w-5 mr-3 opacity-70" /> Group Chat
+          </Link>
+          <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><CreditCard className="h-5 w-5 mr-3 opacity-70" /> Expenses</Link>
+          <Link href="/flights" className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Plane className="h-5 w-5 mr-3 opacity-70" /> Book Flights</Link>
+          <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><BedDouble className="h-5 w-5 mr-3 opacity-70" /> Book Hotels</Link>
+          <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Settings className="h-5 w-5 mr-3 opacity-70" /> Settings</Link>
+          
+          <div className="mt-auto pt-6 border-t border-zinc-200 dark:border-zinc-800">
+            <Link href="/about" className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all">
+              <Info className="h-5 w-5 mr-3 opacity-70" /> About Us
             </Link>
           </div>
         </nav>
@@ -698,135 +685,149 @@ export default function Home() {
       <div className="flex-1 flex flex-col h-screen overflow-hidden">
 
         {/* MOBILE TOP BAR */}
-        <div className="md:hidden h-16 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-md border-b border-slate-200 dark:border-white/10 flex items-center justify-between px-4 shrink-0 z-30 sticky top-0 transition-colors">
+        <div className="md:hidden h-20 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-6 shrink-0 z-30 sticky top-0 transition-colors">
           <div className="flex items-center">
-            <PlaneTakeoff className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-2" />
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-blue-500 dark:from-indigo-400 dark:to-blue-400">WanderHub</span>
+            <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-2 shadow-sm">
+              <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
+            </div>
+            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full border border-slate-200 dark:border-white/10 bg-indigo-50 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-300 font-bold uppercase text-sm shadow-sm">
+            <div className="h-8 w-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-900 dark:text-white font-bold text-sm">
               {user.displayName?.charAt(0) || "U"}
             </div>
-            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
+            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
           </div>
         </div>
 
-        {/* DESKTOP HEADER */}
-        <header className="hidden md:flex h-20 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/10 items-center justify-between px-10 z-20 shrink-0 sticky top-0 transition-all">
-          <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Mission Control</h2>
-
-          <div className="flex items-center gap-3">
-            <button onClick={() => setIsJoinModalOpen(true)} className="flex items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 text-slate-700 dark:text-slate-300 px-4 py-2.5 rounded-xl font-bold hover:bg-slate-50 dark:hover:bg-white/10 transition-all shadow-sm text-sm group">
-              <Users className="h-4 w-4 mr-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors" /> Join Trip
+        {/* DESKTOP HEADER (MINIMALIST) */}
+        <header className="hidden md:flex h-24 items-center justify-end px-12 z-20 shrink-0 sticky top-0 transition-all">
+          <div className="flex items-center gap-5">
+            <button onClick={() => setIsJoinModalOpen(true)} className="flex items-center text-zinc-500 dark:text-zinc-400 px-4 py-2 rounded-full font-bold hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all text-sm active:scale-95">
+              <Users className="h-4 w-4 mr-2" /> Join Trip
             </button>
-            <button onClick={() => setIsModalOpen(true)} className="flex items-center bg-slate-900 dark:bg-indigo-600 text-white px-5 py-2.5 rounded-xl font-bold hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-all shadow-md hover:shadow-indigo-500/20 text-sm group">
+            <button onClick={() => setIsModalOpen(true)} className="flex items-center bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-6 py-2.5 rounded-full font-bold hover:opacity-90 transition-all shadow-sm text-sm active:scale-95">
               <Plus className="h-4 w-4 mr-2" /> New Trip
             </button>
 
-            <div className="flex items-center gap-3 ml-5 pl-5 border-l border-slate-200 dark:border-white/10">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-500/20 dark:to-purple-500/20 text-indigo-700 dark:text-indigo-300 font-black flex items-center justify-center text-sm shadow-sm border border-indigo-200/50 dark:border-indigo-500/30">
+            <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800 mx-2"></div>
+
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold flex items-center justify-center text-sm shadow-inner">
                 {user.displayName?.charAt(0) || "U"}
               </div>
-              <button onClick={() => signOut(auth)} className="text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors bg-white dark:bg-white/5 hover:bg-red-50 dark:hover:bg-red-500/10 border border-slate-200 dark:border-white/10 p-2.5 rounded-xl shadow-sm" title="Log Out">
-                <LogOut className="h-4 w-4" />
+              <button onClick={() => signOut(auth)} className="text-zinc-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-500/10" title="Log Out">
+                <LogOut className="h-5 w-5" />
               </button>
             </div>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar relative z-10">
-          <div className="max-w-6xl mx-auto pb-24">
+        <main className="flex-1 overflow-y-auto p-6 md:p-12 custom-scrollbar relative z-10">
+          <div className="max-w-[1200px] mx-auto pb-24">
 
-            {/* WELCOME BANNER */}
-            <div className="mb-10 mt-2 md:mt-0 bg-gradient-to-r from-indigo-900 via-slate-900 to-purple-900 dark:from-indigo-950 dark:via-[#0f172a] dark:to-purple-950 rounded-[2rem] p-8 md:p-12 text-white shadow-xl relative overflow-hidden animate-in fade-in slide-in-from-top-4 duration-700">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/20 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2"></div>
-              <div className="absolute bottom-0 left-0 w-48 h-48 bg-purple-500/20 rounded-full blur-[80px] translate-y-1/2 -translate-x-1/2"></div>
-
-              <div className="relative z-10">
-                <h1 className="text-3xl md:text-5xl font-black tracking-tight mb-3">Welcome back, {user.displayName?.split(" ")[0] || "Traveler"}! 👋</h1>
-                <p className="text-indigo-100/80 text-base md:text-lg font-medium max-w-2xl">Here is what is happening with your upcoming adventures.</p>
-              </div>
+            {/* EDITORIAL WELCOME AREA */}
+            <div className="mb-16 mt-4 md:mt-0 animate-in fade-in slide-in-from-bottom-4 duration-700">
+              <p className="text-zinc-500 dark:text-zinc-400 font-bold tracking-widest uppercase text-[11px] mb-3">Overview</p>
+              <h1 className="text-4xl md:text-6xl font-black text-zinc-900 dark:text-white tracking-tighter leading-tight">
+                Welcome back,<br/>{user.displayName?.split(" ")[0] || "Traveler"}.
+              </h1>
             </div>
 
-            {/* QUICK STATS ROW */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-5 md:gap-6 mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
-              <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[1.5rem] border border-slate-200 dark:border-white/10 shadow-sm flex items-center gap-5 hover:shadow-md transition-all hover:-translate-y-1">
-                <div className="h-14 w-14 bg-sky-50 dark:bg-sky-500/10 rounded-2xl flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0 border border-sky-100 dark:border-sky-500/20"><Globe className="h-7 w-7" /></div>
-                <div><p className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-1">Your Trips</p><p className="text-3xl font-black text-slate-900 dark:text-white tracking-tighter">{trips.length}</p></div>
-              </div>
-
-              <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[1.5rem] border border-slate-200 dark:border-white/10 shadow-sm flex items-center gap-5 cursor-pointer hover:border-emerald-300 dark:hover:border-emerald-500/50 hover:shadow-emerald-500/10 transition-all hover:-translate-y-1 group" onClick={() => setIsJoinModalOpen(true)}>
-                <div className="h-14 w-14 bg-emerald-50 dark:bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0 border border-emerald-100 dark:border-emerald-500/20 group-hover:scale-110 transition-transform"><Users className="h-7 w-7" /></div>
-                <div><p className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Join a trip</p><p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Have an invite code?</p></div>
-              </div>
-
-              <div className="bg-white dark:bg-[#0f172a] p-6 rounded-[1.5rem] border border-slate-200 dark:border-white/10 shadow-sm flex items-center gap-5 cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:shadow-indigo-500/10 transition-all hover:-translate-y-1 group sm:col-span-2 md:col-span-1" onClick={() => setIsModalOpen(true)}>
-                <div className="h-14 w-14 bg-indigo-50 dark:bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0 border border-indigo-100 dark:border-indigo-500/20 border-dashed group-hover:scale-110 transition-transform"><Plus className="h-7 w-7" /></div>
-                <div><p className="text-lg font-black text-slate-900 dark:text-white tracking-tight">Plan new trip</p><p className="text-xs font-semibold text-slate-500 dark:text-slate-400 mt-0.5">Draft an itinerary</p></div>
-              </div>
-            </div>
-
-            <div className="flex justify-between items-end mb-8 px-2 md:px-0">
-              <h2 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Your Destinations</h2>
-            </div>
-
-            {/* TRIPS GRID */}
-            {isLoading ? (
-              <div className="flex justify-center py-20"><div className="animate-spin h-10 w-10 border-4 border-indigo-600 dark:border-indigo-400 border-t-transparent rounded-full"></div></div>
-            ) : trips.length === 0 ? (
-              <div className="text-center py-24 bg-white dark:bg-[#0f172a] rounded-[2rem] border border-dashed border-slate-300 dark:border-slate-700 shadow-sm animate-in zoom-in-95 duration-500">
-                <div className="h-20 w-20 bg-slate-50 dark:bg-[#1e293b] rounded-full flex items-center justify-center mx-auto mb-6">
-                  <Map className="h-10 w-10 text-slate-300 dark:text-slate-500" />
+            {/* QUICK STATS (CLEAN BOXES) */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-16 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100">
+              <div className="bg-white dark:bg-zinc-900/50 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 shadow-sm flex flex-col justify-between h-36">
+                <div className="flex justify-between items-start">
+                  <div className="h-10 w-10 bg-zinc-50 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-900 dark:text-white"><Globe className="h-5 w-5" /></div>
                 </div>
-                <h3 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">No trips found</h3>
-                <p className="text-slate-500 dark:text-slate-400 font-medium mt-2 mb-8">Create or join a trip to get started.</p>
-                <button onClick={() => setIsModalOpen(true)} className="bg-slate-900 dark:bg-indigo-600 text-white px-8 py-3.5 rounded-xl font-bold shadow-lg hover:bg-indigo-600 dark:hover:bg-indigo-500 transition-colors">Start Planning</button>
+                <div>
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Your Trips</p>
+                  <p className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">{trips.length}</p>
+                </div>
+              </div>
+
+              <div className="bg-white dark:bg-zinc-900/50 p-6 rounded-3xl border border-zinc-200 dark:border-zinc-800/50 shadow-sm flex flex-col justify-between h-36 cursor-pointer hover:border-zinc-300 dark:hover:border-zinc-700 transition-all group" onClick={() => setIsJoinModalOpen(true)}>
+                <div className="flex justify-between items-start">
+                  <div className="h-10 w-10 bg-zinc-50 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-900 dark:text-white group-hover:scale-110 transition-transform"><Users className="h-5 w-5" /></div>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Invite Code</p>
+                  <p className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight">Join a trip</p>
+                </div>
+              </div>
+
+              <div className="bg-zinc-900 dark:bg-white p-6 rounded-3xl shadow-lg flex flex-col justify-between h-36 cursor-pointer hover:opacity-90 transition-all group" onClick={() => setIsModalOpen(true)}>
+                <div className="flex justify-between items-start">
+                  <div className="h-10 w-10 bg-white/10 dark:bg-zinc-900/10 rounded-full flex items-center justify-center text-white dark:text-zinc-900 group-hover:scale-110 transition-transform"><Plus className="h-5 w-5" /></div>
+                </div>
+                <div>
+                  <p className="text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest mb-1">Draft Itinerary</p>
+                  <p className="text-xl font-bold text-white dark:text-zinc-900 tracking-tight">Plan new trip</p>
+                </div>
+              </div>
+            </div>
+
+            {/* TRIPS SECTION HEADER */}
+            <div className="flex justify-between items-end mb-8">
+              <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Your Destinations</h2>
+            </div>
+
+            {/* TRIPS GRID (FLOATING PILL DESIGN) */}
+            {isLoading ? (
+              <div className="flex justify-center py-20"><div className="animate-spin h-8 w-8 border-4 border-zinc-900 dark:border-white border-t-transparent rounded-full"></div></div>
+            ) : trips.length === 0 ? (
+              <div className="text-center py-32 bg-transparent rounded-3xl border border-dashed border-zinc-300 dark:border-zinc-800 animate-in zoom-in-95 duration-500">
+                <div className="h-16 w-16 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+                  <Map className="h-6 w-6 text-zinc-400 dark:text-zinc-500" />
+                </div>
+                <h3 className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight">No trips found</h3>
+                <p className="text-zinc-500 dark:text-zinc-400 font-medium mt-2 mb-8 text-sm">Create or join a trip to get started.</p>
+                <button onClick={() => setIsModalOpen(true)} className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-8 py-3 rounded-full font-bold shadow-md hover:opacity-90 transition-opacity active:scale-95 text-sm">Start Planning</button>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
                 {trips.map((trip) => (
-                  <div key={trip.id} onClick={() => router.push(`/trips/${trip.id}`)} className="group bg-white dark:bg-[#0f172a] rounded-[2rem] border border-slate-200 dark:border-white/10 overflow-hidden shadow-sm hover:shadow-xl hover:shadow-indigo-500/10 hover:-translate-y-2 transition-all cursor-pointer flex flex-col relative">
+                  <div key={trip.id} onClick={() => router.push(`/trips/${trip.id}`)} className="group relative h-96 rounded-[2rem] overflow-hidden shadow-sm hover:shadow-2xl hover:shadow-zinc-500/20 dark:hover:shadow-black/50 hover:-translate-y-2 transition-all duration-500 cursor-pointer bg-zinc-200 dark:bg-zinc-800">
+                    
+                    {/* Full Cover Image */}
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={trip.imageUrl || getTripImage(trip.id)} alt={trip.title} className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
+                    
+                    {/* Dark Gradient Overlay */}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-500"></div>
 
-                    {/* Floating Date Badge */}
-                    <div className="absolute top-4 left-4 z-20 bg-white/95 dark:bg-black/80 backdrop-blur-sm px-3 py-1.5 rounded-lg text-xs font-black text-slate-900 dark:text-white flex items-center shadow-md border border-slate-200/50 dark:border-white/10">
-                      <Calendar className="h-3.5 w-3.5 mr-1.5 text-indigo-600 dark:text-indigo-400" />
-                      {new Date(trip.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                    </div>
+                    {/* Top Right Admin Button */}
+                    {trip.adminId === user.uid && (
+                      <button
+                        onClick={(e) => handleDeleteTrip(e, trip.id, trip.title)}
+                        className="absolute top-5 right-5 h-10 w-10 bg-white/10 hover:bg-red-500/90 backdrop-blur-md border border-white/20 text-white rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 shadow-lg scale-90 group-hover:scale-100"
+                        title="Delete Trip"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
 
-                    <div className="absolute top-4 right-4 z-20 bg-slate-900/90 dark:bg-indigo-600/90 backdrop-blur-sm px-3 py-1.5 rounded-full text-[10px] font-black text-white uppercase tracking-widest shadow-md">
-                      Upcoming
-                    </div>
-
-                    <div className="h-48 md:h-56 bg-slate-200 dark:bg-slate-800 relative overflow-hidden shrink-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={trip.imageUrl || getTripImage(trip.id)} alt={trip.title} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out" />
-                      <div className="absolute inset-0 bg-gradient-to-t from-slate-900/90 via-slate-900/20 to-transparent opacity-80 group-hover:opacity-90 transition-opacity"></div>
-                      <h3 className="absolute bottom-5 left-6 right-6 text-2xl font-black text-white line-clamp-1 truncate drop-shadow-lg tracking-tight">{trip.title}</h3>
-                    </div>
-
-                    <div className="p-6 flex-1 flex flex-col justify-between bg-white dark:bg-[#0f172a] relative z-10">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center text-slate-500 dark:text-slate-400 font-semibold text-sm bg-slate-50 dark:bg-white/5 px-3 py-1.5 rounded-lg border border-slate-100 dark:border-white/5">
-                          <Users className="h-4 w-4 mr-2 text-indigo-400 dark:text-indigo-500" /> {trip.members?.length || 1} {trip.members?.length === 1 ? 'Traveler' : 'Travelers'}
-                        </div>
-
+                    {/* Floating Pill Info Box */}
+                    <div className="absolute bottom-5 left-5 right-5 bg-white/10 dark:bg-black/20 backdrop-blur-xl border border-white/20 p-5 rounded-3xl flex justify-between items-center shadow-2xl transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                      <div className="min-w-0 pr-4">
+                        <h3 className="text-xl font-bold text-white truncate drop-shadow-md mb-1.5">{trip.title}</h3>
                         <div className="flex items-center gap-3">
-                          {trip.adminId === user.uid && (
-                            <button
-                              onClick={(e) => handleDeleteTrip(e, trip.id, trip.title)}
-                              className="p-2 text-slate-300 dark:text-slate-500 hover:text-white hover:bg-red-500 dark:hover:bg-red-500/80 rounded-xl transition-all border border-transparent hover:border-red-600 dark:hover:border-red-500/50 shadow-sm opacity-0 group-hover:opacity-100"
-                              title="Delete Trip"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
-                          )}
-
-                          <div className="h-10 w-10 bg-indigo-50 dark:bg-indigo-500/20 rounded-xl flex items-center justify-center group-hover:bg-indigo-600 dark:group-hover:bg-indigo-500 group-hover:text-white text-indigo-600 dark:text-indigo-400 transition-colors shadow-sm">
-                            <ArrowRight className="h-5 w-5" />
-                          </div>
+                          <span className="flex items-center text-white/90 text-xs font-bold">
+                            <Calendar className="h-3.5 w-3.5 mr-1 opacity-80" /> {new Date(trip.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                          </span>
+                          <span className="h-1 w-1 bg-white/50 rounded-full"></span>
+                          <span className="flex items-center text-white/90 text-xs font-bold">
+                            <Users className="h-3.5 w-3.5 mr-1 opacity-80" /> {trip.members?.length || 1}
+                          </span>
                         </div>
                       </div>
+                      
+                      {/* Enter Button */}
+                      <div className="h-12 w-12 shrink-0 bg-white text-zinc-900 rounded-full flex items-center justify-center shadow-lg group-hover:bg-emerald-500 group-hover:text-zinc-950 transition-colors duration-300">
+                        <ArrowRight className="h-5 w-5" />
+                      </div>
                     </div>
+
                   </div>
                 ))}
               </div>
@@ -835,40 +836,35 @@ export default function Home() {
         </main>
       </div>
 
-      {/* CREATE TRIP MODAL */}
+      {/* CREATE TRIP MODAL (MINIMAL) */}
       {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-8 md:p-10 w-full max-w-lg shadow-2xl relative animate-in zoom-in-95 duration-300 border border-slate-200 dark:border-white/10">
-            <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="absolute top-6 right-6 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 p-2.5 rounded-full transition-colors">✕</button>
+        <div className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white dark:bg-zinc-950 rounded-[2rem] p-8 md:p-10 w-full max-w-lg shadow-2xl relative animate-in zoom-in-95 duration-200 border border-zinc-200 dark:border-zinc-800">
+            <button onClick={() => !isSubmitting && setIsModalOpen(false)} className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-900 p-2 rounded-full transition-colors"><X className="h-5 w-5" /></button>
 
-            <div className="flex items-center mb-8">
-              <div className="h-14 w-14 bg-indigo-100 dark:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mr-4 border border-indigo-200 dark:border-indigo-500/30">
-                <PlaneTakeoff className="h-7 w-7" />
-              </div>
-              <div>
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Plan New Trip</h2>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">Where are we going?</p>
-              </div>
+            <div className="mb-8">
+              <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Plan New Trip</h2>
+              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mt-1">Set the dates. We'll handle the rest.</p>
             </div>
 
             <form onSubmit={handleCreateTrip} className="flex flex-col gap-6">
               <div>
-                <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Destination / Title</label>
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Summer in Tokyo" className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl p-4 outline-none font-bold text-slate-900 dark:text-white transition-all placeholder-slate-300 dark:placeholder-slate-600 text-lg" required />
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Destination / Title</label>
+                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Summer in Tokyo" className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 dark:focus:border-zinc-600 focus:ring-1 focus:ring-zinc-400 rounded-xl p-4 outline-none font-bold text-zinc-900 dark:text-white transition-all placeholder-zinc-400 text-lg" required />
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">Start Date</label>
-                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl p-4 outline-none font-bold text-slate-900 dark:text-white transition-all cursor-pointer dark:[color-scheme:dark]" required />
+                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">Start Date</label>
+                  <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 rounded-xl p-4 outline-none font-bold text-zinc-900 dark:text-white transition-all cursor-pointer dark:[color-scheme:dark]" required />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2">End Date</label>
-                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 focus:border-indigo-500 dark:focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-2xl p-4 outline-none font-bold text-slate-900 dark:text-white transition-all cursor-pointer dark:[color-scheme:dark]" required />
+                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">End Date</label>
+                  <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 rounded-xl p-4 outline-none font-bold text-zinc-900 dark:text-white transition-all cursor-pointer dark:[color-scheme:dark]" required />
                 </div>
               </div>
-              <div className="flex justify-end gap-3 mt-6 pt-6 border-t border-slate-100 dark:border-white/10">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-4 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-2xl font-bold transition-colors w-full sm:w-auto">Cancel</button>
-                <button type="submit" disabled={isSubmitting} className="px-8 py-4 text-white bg-slate-900 dark:bg-indigo-600 hover:bg-indigo-600 dark:hover:bg-indigo-500 rounded-2xl shadow-xl hover:shadow-indigo-500/30 dark:shadow-indigo-900/30 font-black transition-all w-full sm:w-auto disabled:opacity-70 flex justify-center items-center">
+              <div className="flex justify-end gap-3 mt-4 pt-6">
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl font-bold transition-colors w-full sm:w-auto">Cancel</button>
+                <button type="submit" disabled={isSubmitting} className="px-8 py-3.5 text-white dark:text-zinc-950 bg-zinc-900 dark:bg-white hover:opacity-90 rounded-xl font-bold transition-all w-full sm:w-auto disabled:opacity-50 flex justify-center items-center active:scale-95">
                   {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Create Trip"}
                 </button>
               </div>
@@ -877,28 +873,31 @@ export default function Home() {
         </div>
       )}
 
-      {/* JOIN TRIP MODAL */}
+      {/* JOIN TRIP MODAL (MINIMAL) */}
       {isJoinModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[60]">
-          <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-8 md:p-12 w-full max-w-sm shadow-2xl relative text-center animate-in zoom-in-95 duration-300 border border-slate-200 dark:border-white/10">
-            <button onClick={() => !isSubmitting && setIsJoinModalOpen(false)} className="absolute top-6 right-6 text-slate-400 dark:text-slate-500 hover:text-slate-900 dark:hover:text-white bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 p-2.5 rounded-full transition-colors">✕</button>
-            <div className="h-20 w-20 bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-100 dark:border-emerald-500/20 rounded-[2rem] flex items-center justify-center text-emerald-500 dark:text-emerald-400 mx-auto mb-6 shadow-sm rotate-3"><Users className="h-10 w-10" /></div>
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-3 tracking-tight">Join a Trip</h2>
-            <p className="text-slate-500 dark:text-slate-400 font-medium mb-8">Enter the 6-character code shared by your friend to sync up.</p>
+        <div className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white dark:bg-zinc-950 rounded-[2rem] p-8 md:p-12 w-full max-w-sm shadow-2xl relative text-center animate-in zoom-in-95 duration-200 border border-zinc-200 dark:border-zinc-800">
+            <button onClick={() => !isSubmitting && setIsJoinModalOpen(false)} className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-900 p-2 rounded-full transition-colors"><X className="h-5 w-5" /></button>
+            
+            <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center text-zinc-900 dark:text-white mx-auto mb-6 shadow-sm"><Users className="h-6 w-6" /></div>
+            
+            <h2 className="text-2xl font-black text-zinc-900 dark:text-white mb-2 tracking-tight">Join a Trip</h2>
+            <p className="text-zinc-500 dark:text-zinc-400 font-medium mb-8 text-sm">Enter the 6-character code shared by your friend.</p>
+            
             <form onSubmit={handleJoinTrip} className="flex flex-col gap-6">
               <div>
                 <input
                   type="text"
                   value={joinCode}
                   onChange={(e) => setJoinCode(e.target.value.toUpperCase())}
-                  placeholder="e.g., X7B9K2"
+                  placeholder="X7B9K2"
                   maxLength={6}
-                  className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/20 dark:focus:ring-emerald-500/20 rounded-2xl p-5 text-center text-4xl font-black tracking-[0.3em] uppercase outline-none transition-all placeholder-slate-300 dark:placeholder-slate-600 text-slate-900 dark:text-white"
+                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:border-zinc-400 focus:ring-1 focus:ring-zinc-400 rounded-xl p-5 text-center text-3xl font-black tracking-[0.4em] uppercase outline-none transition-all placeholder-zinc-300 dark:placeholder-zinc-700 text-zinc-900 dark:text-white"
                   required
                 />
               </div>
-              <button type="submit" disabled={isSubmitting} className="w-full bg-slate-900 dark:bg-emerald-600 hover:bg-emerald-500 dark:hover:bg-emerald-500 text-white py-5 rounded-2xl shadow-xl hover:shadow-emerald-500/30 dark:shadow-emerald-900/30 font-black transition-all text-lg disabled:opacity-70 flex justify-center items-center">
-                {isSubmitting ? <Loader2 className="h-6 w-6 animate-spin" /> : "Join Adventure"}
+              <button type="submit" disabled={isSubmitting} className="w-full bg-emerald-500 text-zinc-950 py-4 rounded-xl font-bold transition-all text-base disabled:opacity-50 flex justify-center items-center active:scale-95 hover:bg-emerald-400">
+                {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Join Adventure"}
               </button>
             </form>
           </div>

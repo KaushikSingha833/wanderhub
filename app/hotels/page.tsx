@@ -5,7 +5,7 @@ import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { collection, getDocs, query, where, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../lib/firebase"; 
 import { useCurrency } from "../lib/useCurrency"; 
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Search, MapPin, Star, Wifi, Coffee, ExternalLink, BedDouble, Menu, X, Sparkles, Users, Loader2, Plane, ArrowDownUp, LocateFixed, CheckCircle2, MessageSquare, Info } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Search, MapPin, Star, Wifi, Coffee, ExternalLink, BedDouble, Menu, X, Sparkles, Users, Loader2, Plane, ArrowDownUp, LocateFixed, CheckCircle2, MessageSquare, Info, ChevronDown } from "lucide-react";
 
 // --- HAVERSINE DISTANCE FORMULA ---
 function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -334,110 +334,111 @@ export default function HotelsPage() {
   });
 
   return (
-    <div className="flex h-screen bg-[#f8fafc] dark:bg-[#030712] font-sans text-slate-900 dark:text-slate-100 overflow-hidden transition-colors duration-300 selection:bg-indigo-100 selection:text-indigo-900">
+    <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors duration-300 selection:bg-emerald-500/20">
       
       {isMobileMenuOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 dark:bg-black/60 backdrop-blur-md z-40 md:hidden transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
+        <div className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-md z-40 md:hidden transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-[#0f172a] border-r border-slate-200 dark:border-white/10 flex flex-col transform transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] print:hidden ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} md:relative md:translate-x-0`}>
-        <div className="h-16 flex items-center justify-between px-6 border-b border-slate-200 dark:border-white/10 shrink-0">
-          <div className="flex items-center">
-            <PlaneTakeoff className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-2" />
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-blue-500 dark:from-indigo-400 dark:to-blue-400">WanderHub</span>
+      {/* FLOATING SIDEBAR (EDITORIAL STYLE) */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col transform transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] print:hidden ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} md:relative md:translate-x-0`}>
+        <div className="h-20 flex items-center px-8 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+          <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-3 shadow-sm">
+            <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
           </div>
-          <button onClick={() => setIsMobileMenuOpen(false)} className="md:hidden p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white bg-slate-50 dark:bg-white/5 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"><X className="h-5 w-5" /></button>
+          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+          <button onClick={() => setIsMobileMenuOpen(false)} className="ml-auto md:hidden p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full transition-colors"><X className="h-5 w-5" /></button>
         </div>
-        {/* ADD 'flex flex-col' TO THE NAV CLASS */}
-        <nav className="flex-1 px-4 py-6 overflow-y-auto custom-scrollbar flex flex-col">
-          <div className="space-y-2">
-          <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><Map className="h-5 w-5 mr-3" /> Dashboard</Link>
-          <Link href="/itineraries" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><Calendar className="h-5 w-5 mr-3" /> Itineraries</Link>
-          <Link href="/chat" className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors">
-            <MessageSquare className="h-5 w-5 mr-3" /> Group Chat
-          </Link>
-          <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><CreditCard className="h-5 w-5 mr-3" /> Expenses</Link>
-          <Link href="/flights" className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl font-semibold"><Plane className="h-5 w-5 mr-3" /> Book Flights</Link>
-          <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-700 dark:text-indigo-400 rounded-xl font-bold shadow-sm transition-colors border border-transparent dark:border-indigo-500/20"><BedDouble className="h-5 w-5 mr-3" /> Book Hotels</Link>
-          <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 hover:text-slate-900 dark:hover:text-white rounded-xl font-semibold transition-colors"><Settings className="h-5 w-5 mr-3" /> Settings</Link>
-        </div>
-        {/* Add the About Us link at the very end wrapped in this specific div */}
-          <div className="mt-auto pt-6">
-            <Link href="/about" className="flex items-center px-4 py-3 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-white/5 rounded-xl font-semibold transition-colors">
-              <Info className="h-5 w-5 mr-3" /> About Us
+        
+        <nav className="flex-1 px-4 py-8 overflow-y-auto custom-scrollbar flex flex-col gap-2">
+          <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Map className="h-5 w-5 mr-3 opacity-70" /> Dashboard</Link>
+          <Link href="/itineraries" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Calendar className="h-5 w-5 mr-3 opacity-70" /> Itineraries</Link>
+          <Link href="/chat" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><MessageSquare className="h-5 w-5 mr-3 opacity-70" /> Group Chat</Link>
+          <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><CreditCard className="h-5 w-5 mr-3 opacity-70" /> Expenses</Link>
+          <Link href="/flights" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Plane className="h-5 w-5 mr-3 opacity-70" /> Book Flights</Link>
+          <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-2xl font-bold transition-all"><BedDouble className="h-5 w-5 mr-3 text-emerald-600 dark:text-emerald-400" /> Book Hotels</Link>
+          <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Settings className="h-5 w-5 mr-3 opacity-70" /> Settings</Link>
+          
+          <div className="mt-auto pt-6 border-t border-zinc-200 dark:border-zinc-800">
+            <Link href="/about" className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all">
+              <Info className="h-5 w-5 mr-3 opacity-70" /> About Us
             </Link>
           </div>
         </nav>
       </aside>
 
+      {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
-        <div className="absolute top-[-10%] right-[-5%] w-[500px] h-[500px] bg-indigo-500/5 dark:bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none transition-colors duration-500"></div>
+        <div className="absolute top-[10%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
 
-        <div className="md:hidden h-16 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-md border-b border-slate-200 dark:border-white/10 flex items-center justify-between px-4 shrink-0 z-30 sticky top-0 transition-colors">
+        {/* MOBILE TOP BAR */}
+        <div className="md:hidden h-20 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-6 shrink-0 z-30 sticky top-0 transition-colors">
           <div className="flex items-center">
-            <PlaneTakeoff className="h-6 w-6 text-indigo-600 dark:text-indigo-400 mr-2" />
-            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-blue-500 dark:from-indigo-400 dark:to-blue-400">WanderHub</span>
+            <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-2 shadow-sm">
+              <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
+            </div>
+            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/my-bookings" className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"><Calendar className="h-6 w-6 text-indigo-500" /></Link>
-            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
+            <Link href="/my-bookings" className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-colors"><Calendar className="h-5 w-5 text-emerald-500" /></Link>
+            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
           </div>
         </div>
 
-        <header className="hidden md:flex h-20 bg-white/80 dark:bg-[#0f172a]/80 backdrop-blur-xl border-b border-slate-200 dark:border-white/10 items-center justify-between px-10 z-20 shrink-0 sticky top-0 transition-all">
+        {/* DESKTOP HEADER (MINIMALIST) */}
+        <header className="hidden md:flex h-24 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 items-center justify-between px-12 z-20 shrink-0 sticky top-0 transition-all">
           <div>
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white tracking-tight">Hotel Search</h2>
-            <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">Find the perfect stay for your trip.</p>
+            <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Hotel Search</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mt-1">Find the perfect stay for your trip.</p>
           </div>
-          <Link href="/my-bookings" className="flex items-center bg-white dark:bg-white/5 border border-slate-200 dark:border-white/10 hover:border-indigo-300 dark:hover:border-indigo-500/50 hover:shadow-md transition-all px-5 py-2.5 rounded-xl font-bold text-slate-700 dark:text-slate-200 text-sm group">
-            <Calendar className="h-4 w-4 mr-2 text-indigo-500 group-hover:scale-110 transition-transform" /> My Bookings
+          <Link href="/my-bookings" className="flex items-center bg-transparent border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all px-6 py-3 rounded-full font-bold text-zinc-900 dark:text-white text-xs uppercase tracking-widest active:scale-95">
+            <Calendar className="h-4 w-4 mr-2 text-emerald-500" /> My Bookings
           </Link>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar relative z-10">
+        <main className="flex-1 overflow-y-auto p-4 md:p-12 custom-scrollbar relative z-10">
           <div className="max-w-6xl mx-auto pb-24">
             
-            <div className="relative rounded-[2rem] p-8 md:p-12 mb-12 shadow-xl border border-indigo-500/10 dark:border-white/5">
-              <div className="absolute inset-0 overflow-hidden rounded-[2rem] pointer-events-none">
-                <div className="absolute inset-0 bg-gradient-to-br from-indigo-900 via-blue-900 to-slate-900 dark:from-indigo-950 dark:via-[#0f172a] dark:to-purple-950"></div>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="https://images.unsplash.com/photo-1542314831-c6a4d1409a54?w=1200&q=80" alt="Luxury Hotel" className="absolute inset-0 w-full h-full object-cover opacity-20 mix-blend-overlay" />
-                <div className="absolute top-[-50%] right-[-10%] w-[500px] h-[500px] bg-indigo-500/30 rounded-full blur-[80px]"></div>
-              </div>
+            {/* EDITORIAL HERO SEARCH SECTION */}
+            <div className="relative rounded-[2.5rem] p-8 md:p-14 mb-14 shadow-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-950 overflow-hidden">
+              <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] mix-blend-overlay pointer-events-none"></div>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="https://images.unsplash.com/photo-1542314831-c6a4d1409a54?w=1200&q=80" alt="Luxury Hotel" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity filter grayscale-[0.5]" />
+              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent"></div>
               
               <div className="relative z-10 animate-in fade-in slide-in-from-top-4 duration-700">
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-xs font-bold mb-6 shadow-sm">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-300" /> Best Price Guarantee
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 backdrop-blur-md border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-widest mb-6 shadow-sm">
+                  <Sparkles className="h-3 w-3" /> Best Price Guarantee
                 </div>
-                <h1 className="text-3xl md:text-5xl font-black text-white mb-3 tracking-tight drop-shadow-md">Where are you heading?</h1>
-                <p className="text-sky-100 mb-10 text-base md:text-lg font-medium max-w-2xl">Compare millions of properties globally, including exclusive WanderHub Partners.</p>
+                <h1 className="text-4xl md:text-6xl font-black text-white mb-4 tracking-tighter drop-shadow-md leading-tight">Where are you heading?</h1>
+                <p className="text-zinc-400 mb-12 text-sm md:text-base font-medium max-w-2xl">Compare millions of properties globally, including verified exclusive WanderHub Partners.</p>
 
-                <form onSubmit={handleSearchHotels} className="bg-white/10 backdrop-blur-xl p-2 rounded-[1.5rem] shadow-2xl flex flex-col md:flex-row gap-2 border border-white/20">
-                  <div className="flex-1 flex items-center px-5 py-3 md:py-4 border-b md:border-b-0 md:border-r border-white/20 bg-white/5 rounded-xl md:rounded-none md:rounded-l-xl hover:bg-white/10 transition-colors group relative z-50">
-                    <MapPin className="h-5 w-5 text-indigo-300 mr-3 shrink-0 group-hover:scale-110 transition-transform" />
+                <form onSubmit={handleSearchHotels} className="bg-white/10 backdrop-blur-xl p-3 rounded-[2rem] shadow-2xl flex flex-col lg:flex-row gap-3 border border-white/10">
+                  <div className="flex-1 flex items-center px-5 py-4 border-b lg:border-b-0 lg:border-r border-white/10 bg-black/20 rounded-2xl lg:rounded-none lg:rounded-l-2xl hover:bg-black/30 transition-colors group relative z-50">
+                    <MapPin className="h-5 w-5 text-zinc-400 mr-3 shrink-0 group-hover:text-white transition-colors" />
                     <div className="flex-1 min-w-0 pr-10">
-                      <label className="block text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-0.5">Destination</label>
+                      <label className="block text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Destination</label>
                       <input 
                         type="text" 
                         value={destination} 
                         onChange={(e) => { setDestination(e.target.value); setShowSuggestions(true); }} 
                         onFocus={() => { if (destination.trim().length >= 3) setShowSuggestions(true); }}
                         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
-                        className="w-full bg-transparent border-none outline-none text-white font-bold placeholder-white/40 truncate text-lg" 
+                        className="w-full bg-transparent border-none outline-none text-white font-bold placeholder-zinc-500 truncate text-base" 
                         placeholder="City or Hotel Name" required autoComplete="off"
                       />
                     </div>
-                    <button type="button" onClick={handleNearMeClick} className="absolute right-3 top-1/2 -translate-y-1/2 p-2 bg-indigo-500/20 hover:bg-indigo-500/40 border border-indigo-400/30 text-indigo-100 rounded-xl transition-all shadow-sm flex items-center" title="Find Hotels Near Me">
-                      {isLocating ? <Loader2 className="h-5 w-5 animate-spin" /> : <LocateFixed className="h-5 w-5" />}
+                    <button type="button" onClick={handleNearMeClick} className="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-full transition-all shadow-sm flex items-center" title="Find Hotels Near Me">
+                      {isLocating ? <Loader2 className="h-4 w-4 animate-spin" /> : <LocateFixed className="h-4 w-4" />}
                     </button>
                     {showSuggestions && (suggestions.length > 0 || isFetchingSuggestions) && (
-                      <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-[#1e293b]/95 backdrop-blur-2xl border border-indigo-500/30 rounded-xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[100]">
+                      <div className="absolute top-[calc(100%+8px)] left-0 w-full bg-zinc-900/95 backdrop-blur-2xl border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden animate-in fade-in slide-in-from-top-2 duration-200 z-[100]">
                         {isFetchingSuggestions ? (
-                          <div className="px-4 py-4 text-indigo-300 text-sm font-bold flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin mr-2" /> Searching...</div>
+                          <div className="px-5 py-5 text-zinc-400 text-xs font-bold uppercase tracking-widest flex items-center justify-center"><Loader2 className="h-4 w-4 animate-spin mr-2" /> Searching...</div>
                         ) : (
                           suggestions.map((s, i) => (
-                            <div key={i} onClick={() => handleSuggestionClick(s)} className="px-5 py-3.5 hover:bg-indigo-500/20 cursor-pointer text-sm font-bold text-white border-b border-white/5 last:border-0 truncate flex items-center transition-colors">
-                              <MapPin className="h-4 w-4 mr-3 text-indigo-400 shrink-0" /><span className="truncate">{s.display_name}</span>
+                            <div key={i} onClick={() => handleSuggestionClick(s)} className="px-5 py-4 hover:bg-white/5 cursor-pointer text-sm font-bold text-white border-b border-zinc-800 last:border-0 truncate flex items-center transition-colors">
+                              <MapPin className="h-4 w-4 mr-3 text-zinc-500 shrink-0" /><span className="truncate">{s.display_name}</span>
                             </div>
                           ))
                         )}
@@ -445,27 +446,27 @@ export default function HotelsPage() {
                     )}
                   </div>
 
-                  <div className="flex-1 flex items-center px-5 py-3 md:py-4 border-b md:border-b-0 md:border-r border-white/20 bg-white/5 rounded-xl md:rounded-none hover:bg-white/10 transition-colors gap-4 group">
-                    <div className="flex-1"><label className="block text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-0.5">Check-In</label><input type="date" value={checkIn} onChange={(e)=>setCheckIn(e.target.value)} className="w-full bg-transparent border-none outline-none text-white font-bold cursor-pointer [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert text-sm" required /></div>
-                    <div className="w-px h-8 bg-white/20"></div>
-                    <div className="flex-1"><label className="block text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-0.5">Check-Out</label><input type="date" value={checkOut} onChange={(e)=>setCheckOut(e.target.value)} className="w-full bg-transparent border-none outline-none text-white font-bold cursor-pointer [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert text-sm" required /></div>
+                  <div className="flex-1 flex items-center px-5 py-4 border-b lg:border-b-0 lg:border-r border-white/10 bg-black/20 rounded-2xl lg:rounded-none hover:bg-black/30 transition-colors gap-4 group">
+                    <div className="flex-1"><label className="block text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Check-In</label><input type="date" value={checkIn} onChange={(e)=>setCheckIn(e.target.value)} className="w-full bg-transparent border-none outline-none text-white font-bold cursor-pointer [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert text-sm" required /></div>
+                    <div className="w-px h-10 bg-white/10"></div>
+                    <div className="flex-1"><label className="block text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Check-Out</label><input type="date" value={checkOut} onChange={(e)=>setCheckOut(e.target.value)} className="w-full bg-transparent border-none outline-none text-white font-bold cursor-pointer [&::-webkit-calendar-picker-indicator]:filter [&::-webkit-calendar-picker-indicator]:invert text-sm" required /></div>
                   </div>
 
-                  <div className="flex-1 flex items-center px-3 py-3 md:py-2 bg-white/5 rounded-xl md:rounded-none md:rounded-r-xl hover:bg-white/10 transition-colors group">
-                    <div className="flex-1 px-2 relative">
-                      <label className="block text-[10px] font-black text-indigo-200 uppercase tracking-widest mb-0.5 flex items-center"><Users className="h-3 w-3 mr-1"/> Guests</label>
+                  <div className="flex-[0.8] flex items-center px-3 py-3 lg:py-2 bg-black/20 rounded-2xl lg:rounded-none lg:rounded-r-2xl hover:bg-black/30 transition-colors group">
+                    <div className="flex-1 px-3 relative">
+                      <label className="block text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center"><Users className="h-3 w-3 mr-1"/> Guests</label>
                       <div className="relative">
-                        <select value={guests} onChange={(e)=>setGuests(e.target.value)} className="w-full bg-transparent border-none outline-none text-white font-bold cursor-pointer text-base appearance-none pr-6">
-                          <option value="1" className="text-slate-900 dark:text-white dark:bg-[#0f172a]">1 Guest</option>
-                          <option value="2" className="text-slate-900 dark:text-white dark:bg-[#0f172a]">2 Guests</option>
-                          <option value="3" className="text-slate-900 dark:text-white dark:bg-[#0f172a]">3 Guests</option>
-                          <option value="4" className="text-slate-900 dark:text-white dark:bg-[#0f172a]">4+ Guests</option>
+                        <select value={guests} onChange={(e)=>setGuests(e.target.value)} className="w-full bg-transparent border-none outline-none text-white font-bold cursor-pointer text-sm appearance-none pr-6">
+                          <option value="1" className="text-zinc-900 dark:text-white dark:bg-zinc-900">1 Guest</option>
+                          <option value="2" className="text-zinc-900 dark:text-white dark:bg-zinc-900">2 Guests</option>
+                          <option value="3" className="text-zinc-900 dark:text-white dark:bg-zinc-900">3 Guests</option>
+                          <option value="4" className="text-zinc-900 dark:text-white dark:bg-zinc-900">4+ Guests</option>
                         </select>
-                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="absolute right-0 top-1/2 -translate-y-1/2 text-white/70 pointer-events-none"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                        <ChevronDown className="absolute right-0 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 pointer-events-none" />
                       </div>
                     </div>
-                    <button type="submit" disabled={isSearching} className="ml-2 bg-indigo-500 hover:bg-indigo-400 text-white px-6 md:px-8 py-3.5 md:py-4 rounded-xl shadow-lg shadow-indigo-500/30 transition-all disabled:opacity-70 shrink-0 font-black flex items-center justify-center group-hover:scale-[1.02]">
-                      {isSearching ? <Loader2 className="h-5 w-5 animate-spin" /> : <><Search className="h-5 w-5 mr-2" /> Search</>}
+                    <button type="submit" disabled={isSearching} className="ml-2 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 px-6 lg:px-8 py-3.5 rounded-xl shadow-[0_0_15px_rgba(16,185,129,0.3)] transition-all disabled:opacity-50 shrink-0 font-bold text-xs uppercase tracking-widest flex items-center justify-center group-hover:scale-[1.02] active:scale-95">
+                      {isSearching ? <Loader2 className="h-4 w-4 animate-spin" /> : <><Search className="h-4 w-4 mr-2" /> Search</>}
                     </button>
                   </div>
                 </form>
@@ -474,104 +475,104 @@ export default function HotelsPage() {
 
             {!hasSearched ? (
                <div className="text-center py-16 md:py-24 animate-in zoom-in-95 duration-500">
-                 <div className="h-24 w-24 bg-white dark:bg-[#0f172a] rounded-[2rem] shadow-sm border border-slate-100 dark:border-white/10 flex items-center justify-center mx-auto mb-6 rotate-3"><BedDouble className="h-10 w-10 text-indigo-400" /></div>
-                 <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Ready to book?</h3>
-                 <p className="text-slate-500 dark:text-slate-400 font-medium mt-3 text-lg">Enter your destination to compare prices across the web.</p>
+                 <div className="h-20 w-20 bg-zinc-100 dark:bg-zinc-900 rounded-full border border-zinc-200 dark:border-zinc-800 flex items-center justify-center mx-auto mb-6 shadow-sm"><BedDouble className="h-8 w-8 text-zinc-400" /></div>
+                 <h3 className="text-2xl md:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">Ready to book?</h3>
+                 <p className="text-zinc-500 dark:text-zinc-400 font-medium mt-2 text-sm">Enter your destination to compare prices across the web.</p>
                </div>
             ) : isSearching ? (
                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
                  {[1,2,3,4,5,6,7,8].map(i => (
-                   <div key={i} className="bg-white dark:bg-[#0f172a] rounded-3xl border border-slate-100 dark:border-white/5 shadow-sm overflow-hidden flex flex-col animate-pulse">
-                     <div className="h-56 bg-slate-200 dark:bg-slate-800"></div>
-                     <div className="p-5 flex-1 flex flex-col"><div className="h-6 w-3/4 bg-slate-200 dark:bg-slate-800 rounded-lg mb-3"></div><div className="h-4 w-1/2 bg-slate-200 dark:bg-slate-800 rounded-lg mb-6"></div><div className="flex gap-2 mb-auto"><div className="h-6 w-16 bg-slate-100 dark:bg-slate-800 rounded-md"></div><div className="h-6 w-16 bg-slate-100 dark:bg-slate-800 rounded-md"></div></div><div className="mt-6 pt-4 border-t border-slate-100 dark:border-white/5 flex justify-between items-end"><div className="h-8 w-20 bg-slate-200 dark:bg-slate-800 rounded-lg"></div><div className="h-10 w-24 bg-slate-200 dark:bg-slate-800 rounded-xl"></div></div></div>
+                   <div key={i} className="bg-white dark:bg-zinc-900/50 rounded-[2rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm overflow-hidden flex flex-col animate-pulse">
+                     <div className="h-64 bg-zinc-200 dark:bg-zinc-800"></div>
+                     <div className="p-6 flex-1 flex flex-col"><div className="h-6 w-3/4 bg-zinc-200 dark:bg-zinc-800 rounded-full mb-3"></div><div className="h-4 w-1/2 bg-zinc-200 dark:bg-zinc-800 rounded-full mb-6"></div><div className="flex gap-2 mb-auto"><div className="h-6 w-16 bg-zinc-100 dark:bg-zinc-800 rounded-md"></div><div className="h-6 w-16 bg-zinc-100 dark:bg-zinc-800 rounded-md"></div></div><div className="mt-6 pt-4 border-t border-zinc-100 dark:border-zinc-800/50 flex justify-between items-end"><div className="h-8 w-20 bg-zinc-200 dark:bg-zinc-800 rounded-full"></div><div className="h-10 w-24 bg-zinc-200 dark:bg-zinc-800 rounded-full"></div></div></div>
                    </div>
                  ))}
                </div>
             ) : (
               <div className="space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                <div className="flex flex-col md:flex-row md:justify-between md:items-end px-2 md:px-0 border-b border-slate-200 dark:border-white/10 pb-4 gap-4">
+                <div className="flex flex-col md:flex-row md:justify-between md:items-end px-2 md:px-0 border-b border-zinc-200 dark:border-zinc-800 pb-4 gap-4">
                   <div>
-                    <h3 className="text-2xl md:text-3xl font-black text-slate-900 dark:text-white tracking-tight">Top deals for {destination}</h3>
-                    <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-1">Showing the best available rates for your dates.</p>
+                    <h3 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Top deals for {destination}</h3>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mt-1.5">Showing the best available rates.</p>
                   </div>
                   <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                    <div className="relative">
-                      <ArrowDownUp className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                      <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="pl-9 pr-8 py-2 bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer appearance-none">
+                    <div className="relative group">
+                      <ArrowDownUp className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-hover:text-emerald-500 transition-colors pointer-events-none" />
+                      <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className="pl-10 pr-8 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-full text-xs font-bold uppercase tracking-widest text-zinc-900 dark:text-white shadow-sm outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer appearance-none transition-all">
                         <option value="recommended">Recommended</option>
                         <option value="price_asc">Price: Low to High</option>
                         <option value="price_desc">Price: High to Low</option>
                         {userLocation && <option value="distance">Distance: Nearest First</option>}
                       </select>
+                      <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
                     </div>
-                    <span className="text-sm font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-500/10 border border-transparent dark:border-indigo-500/20 px-4 py-2 rounded-xl w-max">{displayedHotels.length} properties found</span>
+                    <span className="text-[10px] font-bold text-zinc-900 dark:text-white bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 px-4 py-2.5 rounded-full uppercase tracking-widest w-max shadow-sm">{displayedHotels.length} properties</span>
                   </div>
                 </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
                   {displayedHotels.map(hotel => (
-                    <div key={hotel.id} className={`bg-white dark:bg-[#0f172a] rounded-[2rem] border ${hotel.isExclusive ? 'border-purple-300 shadow-purple-100/50 dark:border-purple-500/30 dark:shadow-purple-900/30' : 'border-slate-200 dark:border-white/10'} shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden flex flex-col group relative hover:-translate-y-2`}>
+                    <div key={hotel.id} className={`bg-white dark:bg-zinc-900/40 rounded-[2rem] border ${hotel.isExclusive ? 'border-emerald-500/50 shadow-emerald-500/10' : 'border-zinc-200 dark:border-zinc-800/50'} shadow-sm hover:shadow-2xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-300 overflow-hidden flex flex-col group relative hover:-translate-y-2`}>
                       
                       {hotel.isExclusive && (
-                        <div className="absolute top-4 right-4 bg-white/90 dark:bg-black/80 backdrop-blur-md text-purple-700 dark:text-purple-400 px-3.5 py-1.5 rounded-xl text-[10px] font-black flex items-center shadow-lg z-10 uppercase tracking-widest border border-purple-200 dark:border-purple-500/30">
-                          <Sparkles className="h-3 w-3 mr-1.5 text-purple-500 dark:text-purple-400" /> WanderHub Partner
+                        <div className="absolute top-4 right-4 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center shadow-lg z-10 border border-emerald-500/30">
+                          <Sparkles className="h-3 w-3 mr-1.5 text-emerald-500" /> WanderHub Partner
                         </div>
                       )}
 
-                      <div className="h-56 bg-slate-200 dark:bg-slate-800 relative overflow-hidden">
+                      <div className="h-64 bg-zinc-200 dark:bg-zinc-800 relative overflow-hidden">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={hotel.imageUrl} alt={hotel.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-in-out" />
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300"></div>
-                        <div className="absolute bottom-4 left-4 bg-white/90 dark:bg-black/80 backdrop-blur-md px-2.5 py-1.5 rounded-lg text-xs font-black text-slate-800 dark:text-white flex items-center shadow-sm border border-white/50 dark:border-white/10">
-                          <Star className="h-3.5 w-3.5 mr-1 text-amber-500 fill-amber-500" /> {hotel.rating} <span className="text-slate-400 font-medium ml-1">({hotel.reviews})</span>
+                        <img src={hotel.imageUrl} alt={hotel.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
+                        <div className="absolute bottom-5 left-5 bg-white/20 dark:bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-bold text-white flex items-center shadow-md border border-white/20">
+                          <Star className="h-3 w-3 mr-1 text-white fill-white" /> {hotel.rating} <span className="text-zinc-300 font-medium ml-1">({hotel.reviews})</span>
                         </div>
                       </div>
 
-                      <div className="p-5 md:p-6 flex-1 flex flex-col">
-                        <h4 className="font-black text-xl text-slate-900 dark:text-white line-clamp-1 mb-1 tracking-tight" title={hotel.name}>{hotel.name}</h4>
+                      <div className="p-6 flex-1 flex flex-col">
+                        <h4 className="font-bold text-xl text-zinc-900 dark:text-white line-clamp-1 mb-2 tracking-tight" title={hotel.name}>{hotel.name}</h4>
                         
                         <div className="flex items-center gap-2 mb-4">
-                          <p className="text-sm font-medium text-slate-500 dark:text-slate-400 flex items-center truncate max-w-[50%]"><MapPin className="h-3.5 w-3.5 mr-1.5 shrink-0 text-slate-400"/> {hotel.location}</p>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 flex items-center truncate max-w-[50%]"><MapPin className="h-3.5 w-3.5 mr-1.5 shrink-0 text-zinc-400"/> {hotel.location}</p>
                           {hotel.distance !== undefined && (
-                            <span className="bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded flex items-center shrink-0">
+                            <span className="bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 text-[9px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full flex items-center shrink-0">
                               <LocateFixed className="h-3 w-3 mr-1" /> {hotel.distance.toFixed(1)} km
                             </span>
                           )}
                         </div>
                         
                         <div className="flex flex-wrap gap-2 mb-4">
-                          <span className="bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-300 text-xs font-semibold px-2.5 py-1 rounded-md flex items-center"><Wifi className="h-3 w-3 mr-1.5 text-slate-400"/> WiFi</span>
-                          <span className="bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-300 text-xs font-semibold px-2.5 py-1 rounded-md flex items-center"><Coffee className="h-3 w-3 mr-1.5 text-slate-400"/> Breakfast</span>
+                          <span className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full flex items-center"><Wifi className="h-3 w-3 mr-1.5 text-zinc-500"/> WiFi</span>
+                          <span className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full flex items-center"><Coffee className="h-3 w-3 mr-1.5 text-zinc-500"/> Breakfast</span>
                         </div>
 
-                        {/* ✨ NEW UI: Dedicated Row for Buttons to prevent overlapping */}
-                        <div className="mt-auto pt-5 border-t border-slate-100 dark:border-white/5 flex flex-col gap-4">
+                        <div className="mt-auto pt-5 border-t border-zinc-100 dark:border-zinc-800 flex flex-col gap-4">
                           
                           <div className="flex items-end justify-between min-w-0 gap-4">
                             <div className="min-w-0">
-                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Starting from</p>
-                              <p className="text-xl md:text-2xl font-black text-slate-900 dark:text-white tracking-tighter truncate" title={`${symbol}${convert(hotel.pricePerNight).toLocaleString()}`}>
+                              <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Starting from</p>
+                              <p className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter truncate" title={`${symbol}${convert(hotel.pricePerNight).toLocaleString()}`}>
                                 {symbol}{convert(hotel.pricePerNight).toLocaleString(undefined, {maximumFractionDigits: 0})}
-                                <span className="text-xs md:text-sm font-medium text-slate-500 tracking-normal ml-1">/night</span>
+                                <span className="text-xs font-medium text-zinc-500 tracking-normal ml-1">/night</span>
                               </p>
                             </div>
-                            <p className="text-[10px] font-semibold text-slate-400 text-right shrink-0">
-                              Provided by<br/><span className="font-bold text-slate-600 dark:text-slate-300">{hotel.provider}</span>
+                            <p className="text-[9px] font-bold text-zinc-400 text-right shrink-0 uppercase tracking-widest">
+                              Provided by<br/><span className="font-black text-zinc-600 dark:text-zinc-300">{hotel.provider}</span>
                             </p>
                           </div>
                           
-                          <div className="flex items-center gap-3 w-full mt-1">
+                          <div className="flex items-center gap-3 w-full mt-2">
                             {userTrips.length > 0 && (
                               <button 
                                 onClick={() => { setHotelToSuggest(hotel); setSuggestModalOpen(true); }}
-                                className="bg-indigo-50 dark:bg-indigo-500/10 hover:bg-indigo-100 dark:hover:bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-500/30 h-12 w-12 rounded-xl transition-all flex items-center justify-center shadow-sm hover:scale-105 shrink-0"
+                                className="bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-900 dark:text-white border border-zinc-200 dark:border-zinc-700 h-12 w-12 rounded-full transition-all flex items-center justify-center shadow-sm hover:scale-105 shrink-0 active:scale-95"
                                 title="Suggest to Group"
                               >
                                 <Sparkles className="h-5 w-5" />
                               </button>
                             )}
-                            <Link href={hotel.bookingUrl} target={hotel.isExclusive ? "_self" : "_blank"} rel="noopener noreferrer" className={`${hotel.isExclusive ? 'bg-gradient-to-br from-purple-600 to-indigo-600 text-white shadow-purple-500/30' : 'bg-slate-900 dark:bg-indigo-600 text-white shadow-slate-900/20 dark:shadow-indigo-900/30'} h-12 rounded-xl text-sm font-black transition-all flex-1 flex items-center justify-center shadow-lg hover:scale-[1.02] whitespace-nowrap`}>
-                              {hotel.isExclusive ? 'View Rooms' : 'View Availability'} <ExternalLink className="h-4 w-4 ml-2" />
+                            <Link href={hotel.bookingUrl} target={hotel.isExclusive ? "_self" : "_blank"} rel="noopener noreferrer" className={`${hotel.isExclusive ? 'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-[0_0_15px_rgba(16,185,129,0.2)]' : 'bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 shadow-md'} h-12 rounded-full text-xs font-bold uppercase tracking-widest transition-all flex-1 flex items-center justify-center hover:opacity-90 active:scale-95 whitespace-nowrap`}>
+                              {hotel.isExclusive ? 'View Rooms' : 'Availability'} <ExternalLink className="h-3.5 w-3.5 ml-2" />
                             </Link>
                           </div>
 
@@ -588,57 +589,58 @@ export default function HotelsPage() {
       </div>
 
       {suggestModalOpen && hotelToSuggest && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#0f172a] rounded-[2rem] p-8 max-w-md w-full shadow-2xl border border-slate-200 dark:border-white/10 animate-in zoom-in-95 duration-300 relative">
-            <button onClick={() => setSuggestModalOpen(false)} className="absolute top-6 right-6 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors"><X className="h-5 w-5" /></button>
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-950 rounded-[2rem] p-8 max-w-md w-full shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95 duration-200 relative">
+            <button onClick={() => setSuggestModalOpen(false)} className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-900 p-2.5 rounded-full transition-colors"><X className="h-4 w-4" /></button>
             
-            <div className="flex items-center gap-4 mb-6">
-              <div className="h-12 w-12 bg-indigo-100 dark:bg-indigo-500/20 rounded-xl flex items-center justify-center shrink-0 border border-indigo-200 dark:border-indigo-500/30">
-                <Sparkles className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+            <div className="flex items-center gap-4 mb-8">
+              <div className="h-12 w-12 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center shrink-0 shadow-sm border border-zinc-800 dark:border-zinc-200">
+                <Sparkles className="h-5 w-5 text-white dark:text-zinc-900" />
               </div>
               <div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white tracking-tight">Suggest Hotel</h3>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400 mt-0.5">Let your group vote on this stay.</p>
+                <h3 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Suggest Hotel</h3>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mt-0.5">Push to Voting Room</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-[#1e293b]/50 rounded-xl border border-slate-100 dark:border-white/5 mb-6">
+            <div className="flex items-center gap-4 p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 mb-8">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={hotelToSuggest.imageUrl} alt="" className="h-14 w-14 rounded-lg object-cover" />
+              <img src={hotelToSuggest.imageUrl} alt="" className="h-16 w-16 rounded-xl object-cover shadow-sm" />
               <div className="min-w-0">
-                <h4 className="font-bold text-slate-900 dark:text-white truncate text-sm">{hotelToSuggest.name}</h4>
-                <p className="text-xs text-slate-500 truncate">{hotelToSuggest.location}</p>
+                <h4 className="font-bold text-zinc-900 dark:text-white truncate text-base">{hotelToSuggest.name}</h4>
+                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 truncate mt-1">{hotelToSuggest.location}</p>
               </div>
             </div>
 
             {suggestSuccess ? (
-              <div className="py-6 flex flex-col items-center justify-center text-center animate-in zoom-in duration-300">
-                <div className="h-16 w-16 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mb-4 border border-emerald-200 dark:border-emerald-500/30">
+              <div className="py-8 flex flex-col items-center justify-center text-center animate-in zoom-in duration-300">
+                <div className="h-16 w-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mb-4 border border-emerald-500/20">
                   <CheckCircle2 className="h-8 w-8" />
                 </div>
-                <h3 className="text-lg font-black text-slate-900 dark:text-white">Sent to Group!</h3>
-                <p className="text-sm font-medium text-slate-500 mt-1">Open the Trip Dashboard to start swiping.</p>
+                <h3 className="text-xl font-black text-zinc-900 dark:text-white">Sent to Group!</h3>
+                <p className="text-sm font-medium text-zinc-500 mt-1">Open the Trip Dashboard to start swiping.</p>
               </div>
             ) : (
               <form onSubmit={handleSuggestToGroup} className="space-y-6">
-                <div>
-                  <label className="block text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-2 ml-1">Select Trip</label>
+                <div className="relative group">
+                  <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Select Target Trip</label>
                   <select 
                     value={selectedTripId} 
                     onChange={(e) => setSelectedTripId(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 rounded-xl px-4 py-3.5 outline-none font-bold text-slate-900 dark:text-white transition-all cursor-pointer"
+                    className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl px-5 py-4 outline-none font-bold text-zinc-900 dark:text-white transition-all cursor-pointer appearance-none shadow-sm text-sm"
                     required
                   >
                     {userTrips.map(trip => (
                       <option key={trip.id} value={trip.id}>{trip.title}</option>
                     ))}
                   </select>
+                  <ChevronDown className="absolute right-4 bottom-4 h-5 w-5 text-zinc-400 pointer-events-none group-hover:text-emerald-500 transition-colors" />
                 </div>
 
                 <div className="flex flex-col sm:flex-row gap-3 pt-2">
-                  <button type="button" onClick={() => setSuggestModalOpen(false)} className="px-6 py-3.5 rounded-xl font-bold text-slate-600 dark:text-slate-300 bg-slate-100 dark:bg-white/5 hover:bg-slate-200 dark:hover:bg-white/10 transition-colors w-full sm:w-auto text-center">Cancel</button>
-                  <button type="submit" disabled={isSuggesting || !selectedTripId} className="px-6 py-3.5 rounded-xl font-black text-white bg-indigo-600 hover:bg-indigo-500 shadow-lg shadow-indigo-600/20 transition-all flex-1 flex items-center justify-center disabled:opacity-50">
-                    {isSuggesting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Push to Voting Room"}
+                  <button type="button" onClick={() => setSuggestModalOpen(false)} className="px-6 py-4 rounded-full font-bold text-xs uppercase tracking-widest text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors w-full sm:w-auto text-center active:scale-95">Cancel</button>
+                  <button type="submit" disabled={isSuggesting || !selectedTripId} className="px-6 py-4 rounded-full font-bold text-xs uppercase tracking-widest text-zinc-950 bg-emerald-500 hover:bg-emerald-400 shadow-[0_0_15px_rgba(16,185,129,0.2)] transition-all flex-1 flex items-center justify-center disabled:opacity-50 active:scale-95 group">
+                    {isSuggesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <><MessageSquare className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" /> Push to Group</>}
                   </button>
                 </div>
               </form>

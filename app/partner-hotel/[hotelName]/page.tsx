@@ -2,10 +2,11 @@
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { collection, query, where, getDocs, addDoc, doc, getDoc, orderBy, serverTimestamp, updateDoc, arrayUnion, arrayRemove, onSnapshot } from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, doc, getDoc, orderBy, serverTimestamp, updateDoc, arrayUnion, arrayRemove, onSnapshot} from "firebase/firestore";
 import { auth, db } from "../../lib/firebase"; 
 import { useCurrency } from "../../lib/useCurrency"; 
-import { MapPin, Star, Wifi, Coffee, BedDouble, Users, Calendar, ArrowLeft, CheckCircle2, Shield, Loader2, Sparkles, X, Tv, Wind, Smartphone, ChevronLeft, ChevronRight, Image as ImageIcon, MessageSquare, ThumbsUp, ThumbsDown, Map as MapIcon, ArrowDownUp } from "lucide-react";
+import { MapPin, Star, Wifi, Coffee, BedDouble, Users, Calendar, ArrowLeft, CheckCircle2, Shield, Loader2, Sparkles, X, Tv, Wind, Smartphone, ChevronLeft, ChevronRight, Image as ImageIcon, MessageSquare, ThumbsUp, ThumbsDown, Map as MapIcon, ArrowDownUp, PlaneTakeoff, CreditCard, Settings, Plane, Info, Search, Menu, ChevronDown} from "lucide-react";
+import Link from "next/link";
 
 // --- RAZORPAY SCRIPT LOADER ---
 const loadRazorpayScript = () => {
@@ -30,7 +31,6 @@ interface Room {
   ownerId: string;
   maxGuests?: number;
   amenities?: string[];
-  // ✨ ADDED FOR SAFETY
   latitude?: number;
   longitude?: number;
 }
@@ -72,8 +72,8 @@ function PartnerHotelContent() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [rooms, setRooms] = useState<Room[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
-  // ✨ NEW: HOTEL MAP COORDINATES STATE
   const [hotelCoords, setHotelCoords] = useState<{lat: number, lng: number} | null>(null);
 
   const [trips, setTrips] = useState<any[]>([]);
@@ -124,7 +124,6 @@ function PartnerHotelContent() {
         })) as Room[];
         setRooms(fetchedRooms);
 
-        // ✨ NEW: Fetch Hotel Owner's Coordinates for Google Maps
         const qHotel = query(collection(db, "users"), where("hotelName", "==", decodedHotelName), where("role", "==", "hotel_partner"));
         const snapshotHotel = await getDocs(qHotel);
         if (!snapshotHotel.empty) {
@@ -308,7 +307,7 @@ function PartnerHotelContent() {
           email: user.email || "",
           contact: "9999999999", 
         },
-        theme: { color: "#4f46e5" },
+        theme: { color: "#10b981" }, // Emerald color
       };
 
       const paymentObject = new (window as any).Razorpay(options);
@@ -383,350 +382,413 @@ function PartnerHotelContent() {
     setCurrentPhotoIndex((prev) => prev === 0 ? viewingPhotosFor.imageUrls!.length - 1 : prev - 1);
   };
 
-  if (isLoading) return <div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-[#030712]"><Loader2 className="h-10 w-10 animate-spin text-indigo-600" /></div>;
+  if (isLoading) return <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950"><Loader2 className="h-10 w-10 animate-spin text-emerald-500" /></div>;
 
   const hotelCity = rooms.length > 0 ? rooms[0].city : "Unknown Location";
   const heroImage = rooms.length > 0 ? (rooms[0].imageUrls?.[0] || rooms[0].imageUrl) : "https://images.unsplash.com/photo-1542314831-c6a4d1409a54?w=1200&q=80";
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] dark:bg-[#030712] font-sans text-slate-900 dark:text-slate-100 pb-24 selection:bg-indigo-100 selection:text-indigo-900 transition-colors duration-300">
+    <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors duration-300 selection:bg-emerald-500/20">
       
-      {/* HERO BANNER SECTION */}
-      <div className="relative h-[40vh] md:h-[50vh] w-full bg-slate-900 dark:bg-black overflow-hidden">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={heroImage} alt={decodedHotelName} className="absolute inset-0 w-full h-full object-cover opacity-60 dark:opacity-40" />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#f8fafc] dark:from-[#030712] via-slate-900/40 dark:via-black/60 to-transparent"></div>
-        
-        <div className="absolute top-0 w-full p-6 flex justify-between items-center z-20">
-          <button onClick={() => router.back()} className="flex items-center text-sm font-bold text-white bg-black/20 hover:bg-black/40 backdrop-blur-md px-4 py-2 rounded-full transition-all border border-white/10">
-            <ArrowLeft className="h-4 w-4 mr-2" /> Back to Search
-          </button>
-        </div>
+      {/* MOBILE MENU BLUR */}
+      {isMobileMenuOpen && (
+        <div className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-md z-40 md:hidden transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
+      )}
 
-        <div className="absolute bottom-12 md:bottom-16 left-0 w-full px-6 md:px-12 z-20 max-w-6xl mx-auto">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 dark:bg-black/30 backdrop-blur-md border border-white/20 text-white text-xs font-bold shadow-sm uppercase tracking-widest">
-              <Sparkles className="h-3.5 w-3.5 text-amber-300" /> Exclusive Partner
-            </div>
-            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/90 text-slate-900 text-xs font-black shadow-lg">
-              <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" /> 
-              {averageRating} <span className="font-medium text-slate-500 ml-1">({reviews.length} Reviews)</span>
-            </div>
+      {/* FLOATING SIDEBAR (EDITORIAL STYLE) */}
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col transform transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] print:hidden ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} md:relative md:translate-x-0`}>
+        <div className="h-20 flex items-center px-8 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
+          <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-3 shadow-sm">
+            <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
           </div>
-
-          <h1 className="text-4xl md:text-6xl font-black text-white tracking-tight drop-shadow-lg mb-2">{decodedHotelName}</h1>
+          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+          <button onClick={() => setIsMobileMenuOpen(false)} className="ml-auto md:hidden p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full transition-colors"><X className="h-5 w-5" /></button>
+        </div>
+        
+        <nav className="flex-1 px-4 py-8 overflow-y-auto custom-scrollbar flex flex-col gap-2">
+          <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><MapIcon className="h-5 w-5 mr-3 opacity-70" /> Dashboard</Link>
+          <Link href="/itineraries" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Calendar className="h-5 w-5 mr-3 opacity-70" /> Itineraries</Link>
+          <Link href="/chat" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><MessageSquare className="h-5 w-5 mr-3 opacity-70" /> Group Chat</Link>
+          <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><CreditCard className="h-5 w-5 mr-3 opacity-70" /> Expenses</Link>
+          <Link href="/flights" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Plane className="h-5 w-5 mr-3 opacity-70" /> Book Flights</Link>
+          <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-2xl font-bold transition-all"><BedDouble className="h-5 w-5 mr-3 text-emerald-600 dark:text-emerald-400" /> Book Hotels</Link>
+          <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Settings className="h-5 w-5 mr-3 opacity-70" /> Settings</Link>
           
-          <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-6 mt-2">
-            <p className="text-white/80 font-bold flex items-center text-lg"><MapPin className="h-5 w-5 mr-2" /> {hotelCity}</p>
-            
-            {/* ✨ NEW: SHOW LOCATION IN GOOGLE MAPS BUTTON */}
-            {hotelCoords && (
-              <a 
-                href={`https://www.google.com/maps/search/?api=1&query=${hotelCoords.lat},${hotelCoords.lng}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center text-sm font-bold text-white bg-white/20 hover:bg-white/30 backdrop-blur-md px-4 py-2 rounded-full transition-all border border-white/20 shadow-lg w-max"
-              >
-                <MapIcon className="h-4 w-4 mr-2" /> Show on Map
-              </a>
-            )}
+          <div className="mt-auto pt-6 border-t border-zinc-200 dark:border-zinc-800">
+            <Link href="/about" className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all">
+              <Info className="h-5 w-5 mr-3 opacity-70" /> About Us
+            </Link>
+          </div>
+        </nav>
+      </aside>
+
+      {/* MAIN CONTENT AREA */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
+        <div className="absolute top-[10%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
+
+        {/* MOBILE TOP BAR */}
+        <div className="md:hidden h-20 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-6 shrink-0 z-30 sticky top-0 transition-colors">
+          <div className="flex items-center">
+            <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-2 shadow-sm">
+              <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
+            </div>
+            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/hotels" className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-colors"><Search className="h-5 w-5" /></Link>
+            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-6xl mx-auto px-4 md:px-8 -mt-8 relative z-30">
-        
-        {/* ROOMS GRID */}
-        <div className="mb-16">
-          <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4">
-            <h2 className="text-2xl font-black text-slate-900 dark:text-white">Available Rooms</h2>
-            
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <ArrowDownUp className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                <select 
-                  value={sortBy} 
-                  onChange={(e) => setSortBy(e.target.value)}
-                  className="pl-9 pr-8 py-2 bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-200 shadow-sm outline-none focus:ring-2 focus:ring-indigo-500/20 cursor-pointer appearance-none"
-                >
-                  <option value="recommended">Recommended</option>
-                  <option value="price_asc">Price: Low to High</option>
-                  <option value="price_desc">Price: High to Low</option>
-                </select>
+        {/* DESKTOP HEADER (MINIMALIST) */}
+        <header className="hidden md:flex h-24 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 items-center justify-between px-12 z-20 shrink-0 sticky top-0 transition-all">
+          <div>
+            <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Property Details</h2>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mt-1">Review rooms and availability.</p>
+          </div>
+          <Link href="/hotels" className="flex items-center bg-transparent border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all px-6 py-3 rounded-full font-bold text-zinc-900 dark:text-white text-xs uppercase tracking-widest active:scale-95">
+            <ArrowLeft className="h-4 w-4 mr-2 text-zinc-500" /> Back to Search
+          </Link>
+        </header>
+
+        <main className="flex-1 overflow-y-auto custom-scrollbar relative z-10">
+          
+          {/* EDITORIAL HERO BANNER */}
+          <div className="relative h-[40vh] md:h-[50vh] w-full bg-zinc-900 dark:bg-black overflow-hidden mb-8 md:mb-12 border-b border-zinc-800">
+            <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] mix-blend-overlay pointer-events-none"></div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={heroImage} alt={decodedHotelName} className="absolute inset-0 w-full h-full object-cover opacity-50 dark:opacity-40 filter grayscale-[0.2]" />
+            <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent"></div>
+            <div className="absolute top-[-50%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"></div>
+
+            <div className="absolute bottom-10 left-0 w-full px-6 md:px-12 z-20 max-w-7xl mx-auto">
+              <div className="flex flex-wrap items-center gap-3 mb-4">
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 backdrop-blur-md border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-widest shadow-sm">
+                  <Sparkles className="h-3 w-3" /> Exclusive Partner
+                </div>
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold uppercase tracking-widest shadow-sm">
+                  <Star className="h-3.5 w-3.5 fill-white text-white" /> 
+                  {averageRating} <span className="font-medium text-zinc-300 ml-1">({reviews.length} Reviews)</span>
+                </div>
               </div>
-            </div>
-          </div>
 
-          {displayedRooms.length === 0 ? (
-            <div className="bg-white dark:bg-[#0f172a] rounded-[2rem] p-12 text-center border border-slate-200 dark:border-white/10">
-              <BedDouble className="h-12 w-12 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-900 dark:text-white font-black text-xl mb-2">No rooms available for {guests} guests.</p>
-              <p className="text-slate-500 font-bold">Try adjusting your guest count or check back later.</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {displayedRooms.map(room => (
-                <div key={room.id} className="bg-white dark:bg-[#0f172a] rounded-[2rem] border border-slate-200 dark:border-white/10 shadow-sm overflow-hidden flex flex-col hover:shadow-xl transition-all hover:-translate-y-1">
-                  <div className="h-48 relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={room.imageUrls?.[0] || room.imageUrl || "https://images.unsplash.com/photo-1518733057094-95b53143d2a7?w=800"} alt={room.name} className="w-full h-full object-cover" />
-                    
-                    <div className="absolute top-4 left-4 bg-white/90 dark:bg-black/80 backdrop-blur-md px-3 py-1.5 rounded-lg text-xs font-black text-slate-800 dark:text-white flex items-center">
-                      <Users className="h-3.5 w-3.5 mr-1.5 text-indigo-500" /> Up to {room.maxGuests || 2} Guests
-                    </div>
-
-                    {room.imageUrls && room.imageUrls.length > 1 && (
-                      <div className="absolute bottom-4 right-4 bg-black/70 backdrop-blur-md text-white text-[10px] font-black px-2.5 py-1.5 rounded-lg flex items-center">
-                        <ImageIcon className="h-3 w-3 mr-1" /> {room.imageUrls.length} Photos
-                      </div>
-                    )}
-                  </div>
-                  <div className="p-6 flex-1 flex flex-col">
-                    <h3 className="font-black text-xl text-slate-900 dark:text-white mb-4">{room.name}</h3>
-                    <div className="flex flex-wrap gap-2 mb-6">
-                      <span className="bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-300 text-xs font-semibold px-2.5 py-1.5 rounded-md flex items-center"><Wifi className="h-3 w-3 mr-1.5"/> Free WiFi</span>
-                      <span className="bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-300 text-xs font-semibold px-2.5 py-1.5 rounded-md flex items-center"><Tv className="h-3 w-3 mr-1.5"/> Smart TV</span>
-                      <span className="bg-slate-50 dark:bg-white/5 border border-slate-100 dark:border-white/5 text-slate-600 dark:text-slate-300 text-xs font-semibold px-2.5 py-1.5 rounded-md flex items-center"><Wind className="h-3 w-3 mr-1.5"/> AC</span>
-                    </div>
-                    
-                    <div className="mt-auto pt-5 border-t border-slate-100 dark:border-white/5 flex flex-col gap-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Price</p>
-                          <p className="text-2xl font-black text-slate-900 dark:text-white tracking-tighter truncate">
-                            {symbol}{convert(room.price).toLocaleString(undefined, {maximumFractionDigits: 0})}
-                            <span className="text-xs font-medium text-slate-500 tracking-normal ml-1">/night</span>
-                          </p>
-                        </div>
-                        <button 
-                          onClick={() => { 
-                            if(!user) { alert("Please log in to book."); router.push('/'); return; }
-                            setSelectedRoom(room); setPaymentStep("FORM"); 
-                          }} 
-                          className="bg-slate-900 dark:bg-indigo-600 text-white px-5 py-3 rounded-xl text-sm font-black transition-all shadow-lg hover:scale-105 shrink-0"
-                        >
-                          Book Now
-                        </button>
-                      </div>
-
-                      {room.imageUrls && room.imageUrls.length > 1 && (
-                        <button 
-                          onClick={() => { setViewingPhotosFor(room); setCurrentPhotoIndex(0); }}
-                          className="w-full bg-slate-50 dark:bg-white/5 text-slate-600 dark:text-slate-300 hover:text-indigo-600 dark:hover:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-500/10 py-3 rounded-xl text-sm font-bold transition-colors flex items-center justify-center border border-slate-200 dark:border-white/10"
-                        >
-                          <ImageIcon className="h-4 w-4 mr-2" /> View Room Gallery
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* PUBLIC REVIEWS & RATINGS SECTION */}
-        <div className="border-t border-slate-200 dark:border-white/10 pt-16">
-          <div className="flex items-center justify-between mb-8">
-            <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight flex items-center">
-              Guest Reviews <span className="ml-3 bg-indigo-100 text-indigo-600 text-sm px-3 py-1 rounded-full">{reviews.length}</span>
-            </h2>
-          </div>
-
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-            {/* Left: Write a Review Form */}
-            <div className="lg:col-span-1">
-              <div className="bg-white dark:bg-[#0f172a] rounded-[2rem] p-8 border border-slate-200 dark:border-white/10 shadow-sm sticky top-10">
-                <div className="h-14 w-14 bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 rounded-2xl flex items-center justify-center mb-6">
-                  <MessageSquare className="h-7 w-7" />
-                </div>
-                <h3 className="text-xl font-black text-slate-900 dark:text-white mb-2">Write a Review</h3>
-                <p className="text-slate-500 dark:text-slate-400 text-sm font-medium mb-6">Share your experience at {decodedHotelName} with other travelers.</p>
-
-                {!user ? (
-                  <div className="bg-slate-50 dark:bg-[#1e293b] p-6 rounded-2xl text-center border border-slate-100 dark:border-white/5">
-                    <p className="text-sm font-bold text-slate-600 dark:text-slate-300 mb-4">You must be logged in to leave a review.</p>
-                    <button onClick={() => router.push('/')} className="w-full bg-slate-900 dark:bg-white text-white dark:text-black font-black py-3 rounded-xl transition-all hover:scale-105">Sign In</button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSubmitReview}>
-                    <div className="mb-5">
-                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Overall Rating</label>
-                      <div className="flex gap-2">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            type="button"
-                            onClick={() => setNewRating(star)}
-                            className="focus:outline-none transition-transform hover:scale-110"
-                          >
-                            <Star className={`h-8 w-8 ${star <= newRating ? 'fill-amber-400 text-amber-400' : 'fill-slate-100 text-slate-200 dark:fill-slate-800 dark:text-slate-700'}`} />
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="mb-6">
-                      <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-3">Your Comment</label>
-                      <textarea 
-                        value={newComment}
-                        onChange={(e) => setNewComment(e.target.value)}
-                        placeholder="How was the cleanliness, staff, and location?"
-                        required
-                        rows={4}
-                        className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-2xl p-4 outline-none font-medium text-slate-700 dark:text-slate-200 resize-none focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 transition-all placeholder:text-slate-400"
-                      />
-                    </div>
-                    
-                    <button type="submit" disabled={isSubmittingReview || !newComment.trim()} className="w-full bg-indigo-600 text-white font-black py-4 rounded-xl shadow-xl hover:bg-indigo-500 hover:shadow-indigo-500/30 transition-all disabled:opacity-50 flex justify-center items-center">
-                      {isSubmittingReview ? <Loader2 className="h-5 w-5 animate-spin" /> : "Post Public Review"}
-                    </button>
-                  </form>
+              <h1 className="text-4xl md:text-6xl font-black text-white tracking-tighter drop-shadow-md mb-3 leading-tight">{decodedHotelName}</h1>
+              
+              <div className="flex flex-col sm:flex-row sm:items-center gap-4 mt-2">
+                <p className="text-zinc-300 font-bold flex items-center text-sm md:text-base"><MapPin className="h-4 w-4 mr-2 text-emerald-500" /> {hotelCity}</p>
+                
+                {hotelCoords && (
+                  <a 
+                    href={`https://www.google.com/maps/search/?api=1&query=${hotelCoords.lat},${hotelCoords.lng}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center text-[10px] font-bold text-white uppercase tracking-widest bg-white/10 hover:bg-white/20 backdrop-blur-md px-5 py-2.5 rounded-full transition-all border border-white/20 shadow-sm w-max active:scale-95"
+                  >
+                    <MapIcon className="h-3.5 w-3.5 mr-2" /> Show on Map
+                  </a>
                 )}
               </div>
             </div>
+          </div>
 
-            {/* Right: Public Review Feed */}
-            <div className="lg:col-span-2">
-              {reviews.length === 0 ? (
-                <div className="text-center py-20 bg-slate-50 dark:bg-white/5 rounded-[2.5rem] border border-dashed border-slate-200 dark:border-white/10">
-                  <Star className="h-12 w-12 text-slate-300 dark:text-slate-600 mx-auto mb-4" />
-                  <h4 className="text-xl font-bold text-slate-900 dark:text-white tracking-tight mb-2">No reviews yet</h4>
-                  <p className="text-slate-500 dark:text-slate-400 font-medium">Be the first to share your thoughts about this hotel.</p>
+          <div className="max-w-7xl mx-auto px-4 md:px-12 pb-24 relative z-30">
+            
+            {/* ROOMS GRID */}
+            <div className="mb-20">
+              <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-4">
+                <div>
+                  <h2 className="text-2xl md:text-3xl font-black text-zinc-900 dark:text-white tracking-tight">Available Rooms</h2>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mt-1.5">For {guests} guests from {checkIn || 'Dates TBD'}</p>
+                </div>
+                
+                <div className="relative group">
+                  <ArrowDownUp className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-hover:text-emerald-500 transition-colors pointer-events-none" />
+                  <select 
+                    value={sortBy} 
+                    onChange={(e) => setSortBy(e.target.value)}
+                    className="pl-10 pr-8 py-2.5 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-full text-xs font-bold uppercase tracking-widest text-zinc-900 dark:text-white shadow-sm outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer appearance-none transition-all"
+                  >
+                    <option value="recommended">Recommended</option>
+                    <option value="price_asc">Price: Low to High</option>
+                    <option value="price_desc">Price: High to Low</option>
+                  </select>
+                  <ChevronDown className="absolute right-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 pointer-events-none" />
+                </div>
+              </div>
+
+              {displayedRooms.length === 0 ? (
+                <div className="bg-transparent rounded-[2rem] p-16 text-center border border-dashed border-zinc-300 dark:border-zinc-800 animate-in zoom-in-95 duration-500">
+                  <div className="h-16 w-16 bg-white dark:bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-4 border border-zinc-200 dark:border-zinc-800 shadow-sm"><BedDouble className="h-8 w-8 text-zinc-400" /></div>
+                  <p className="text-zinc-900 dark:text-white font-bold text-xl mb-2 tracking-tight">No rooms available for {guests} guests.</p>
+                  <p className="text-zinc-500 font-medium text-sm">Try adjusting your guest count or dates.</p>
                 </div>
               ) : (
-                <div className="space-y-6">
-                  {reviews.map((review) => {
-                    const upvotes = review.upvotedBy?.length || 0;
-                    const downvotes = review.downvotedBy?.length || 0;
-                    const hasUpvoted = user && review.upvotedBy?.includes(user.uid);
-                    const hasDownvoted = user && review.downvotedBy?.includes(user.uid);
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {displayedRooms.map(room => (
+                    <div key={room.id} className="bg-white dark:bg-zinc-900/40 rounded-[2rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm overflow-hidden flex flex-col hover:shadow-2xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-500 group relative hover:-translate-y-2">
+                      <div className="h-56 relative overflow-hidden">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={room.imageUrls?.[0] || room.imageUrl || "https://images.unsplash.com/photo-1518733057094-95b53143d2a7?w=800"} alt={room.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
+                        
+                        <div className="absolute top-4 left-4 bg-white/90 dark:bg-black/60 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-widest text-zinc-900 dark:text-white flex items-center border border-white/20 shadow-sm">
+                          <Users className="h-3 w-3 mr-1.5 text-emerald-500" /> Up to {room.maxGuests || 2} Guests
+                        </div>
 
-                    return (
-                      <div key={review.id} className="bg-white dark:bg-[#0f172a] p-6 md:p-8 rounded-[2rem] border border-slate-200 dark:border-white/10 shadow-sm flex flex-col">
-                        <div className="flex justify-between items-start mb-4">
-                          <div className="flex items-center gap-4">
-                            <div className="h-12 w-12 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-full flex items-center justify-center text-white font-black text-lg shadow-inner">
-                              {review.userName.charAt(0).toUpperCase()}
-                            </div>
+                        {room.imageUrls && room.imageUrls.length > 1 && (
+                          <div className="absolute bottom-4 right-4 bg-black/60 backdrop-blur-md text-white text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full flex items-center border border-white/20">
+                            <ImageIcon className="h-3 w-3 mr-1.5" /> {room.imageUrls.length} Photos
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-6 md:p-8 flex-1 flex flex-col">
+                        <h3 className="font-black text-2xl text-zinc-900 dark:text-white mb-5 tracking-tight">{room.name}</h3>
+                        <div className="flex flex-wrap gap-2 mb-6">
+                          <span className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full flex items-center"><Wifi className="h-3 w-3 mr-1.5 text-zinc-500"/> Free WiFi</span>
+                          <span className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full flex items-center"><Tv className="h-3 w-3 mr-1.5 text-zinc-500"/> Smart TV</span>
+                          <span className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full flex items-center"><Wind className="h-3 w-3 mr-1.5 text-zinc-500"/> AC</span>
+                        </div>
+                        
+                        <div className="mt-auto pt-6 border-t border-zinc-100 dark:border-zinc-800 flex flex-col gap-4">
+                          <div className="flex items-end justify-between">
                             <div>
-                              <p className="font-black text-slate-900 dark:text-white">{review.userName}</p>
-                              <p className="text-xs font-bold text-slate-400">
-                                {review.createdAt?.toMillis ? new Date(review.createdAt.toMillis()).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : "Just now"}
+                              <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-1">Price</p>
+                              <p className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter truncate">
+                                {symbol}{convert(room.price).toLocaleString(undefined, {maximumFractionDigits: 0})}
+                                <span className="text-xs font-medium text-zinc-500 tracking-normal ml-1">/night</span>
                               </p>
                             </div>
-                          </div>
-                          <div className="flex gap-0.5 bg-amber-50 dark:bg-amber-500/10 px-3 py-1.5 rounded-full border border-amber-100 dark:border-amber-500/20">
-                            {[...Array(5)].map((_, i) => (
-                              <Star key={i} className={`h-4 w-4 ${i < review.rating ? 'fill-amber-400 text-amber-400' : 'fill-transparent text-amber-200 dark:text-amber-900'}`} />
-                            ))}
-                          </div>
-                        </div>
-                        <p className="text-slate-600 dark:text-slate-300 leading-relaxed font-medium pl-16 flex-1">{review.comment}</p>
-                        
-                        <div className="ml-16 mt-4 flex items-center gap-6 pt-4 border-t border-slate-100 dark:border-white/5">
-                          <div className="flex items-center gap-4">
                             <button 
-                              onClick={() => handleVote(review.id, 'upvote')}
-                              className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${hasUpvoted ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
+                              onClick={() => { 
+                                if(!user) { alert("Please log in to book."); router.push('/'); return; }
+                                setSelectedRoom(room); setPaymentStep("FORM"); 
+                              }} 
+                              className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-6 py-3.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all shadow-md hover:opacity-90 active:scale-95 shrink-0"
                             >
-                              <ThumbsUp className={`h-4 w-4 ${hasUpvoted ? 'fill-current' : ''}`} />
-                              {upvotes > 0 && upvotes}
-                            </button>
-                            <button 
-                              onClick={() => handleVote(review.id, 'downvote')}
-                              className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${hasDownvoted ? 'text-red-600 dark:text-red-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-                            >
-                              <ThumbsDown className={`h-4 w-4 ${hasDownvoted ? 'fill-current' : ''}`} />
-                              {downvotes > 0 && downvotes}
+                              Book Now
                             </button>
                           </div>
-                          
-                          <button 
-                            onClick={() => setReplyingTo(replyingTo === review.id ? null : review.id)}
-                            className={`flex items-center gap-1.5 text-xs font-bold transition-colors ${replyingTo === review.id ? 'text-indigo-600 dark:text-indigo-400' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-300'}`}
-                          >
-                            <MessageSquare className="h-4 w-4" /> Reply
-                          </button>
+
+                          {room.imageUrls && room.imageUrls.length > 1 && (
+                            <button 
+                              onClick={() => { setViewingPhotosFor(room); setCurrentPhotoIndex(0); }}
+                              className="w-full bg-transparent text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-zinc-100 dark:hover:bg-zinc-800 py-3.5 rounded-full text-[10px] uppercase tracking-widest font-bold transition-colors flex items-center justify-center border border-zinc-200 dark:border-zinc-700 active:scale-95 mt-2"
+                            >
+                              <ImageIcon className="h-4 w-4 mr-2" /> View Room Gallery
+                            </button>
+                          )}
                         </div>
-
-                        {replyingTo === review.id && (
-                          <div className="ml-16 mt-4 animate-in fade-in slide-in-from-top-2 duration-200">
-                            <form onSubmit={(e) => handleSubmitReply(e, review.id)} className="flex gap-3">
-                              <input 
-                                type="text" 
-                                value={replyText}
-                                onChange={(e) => setReplyText(e.target.value)}
-                                placeholder="Write a reply..."
-                                className="flex-1 bg-slate-50 dark:bg-white/5 border border-slate-200 dark:border-white/10 rounded-xl px-4 py-3 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 transition-all dark:text-white font-medium"
-                                required
-                              />
-                              <button type="submit" disabled={isSubmittingReply} className="bg-slate-900 dark:bg-indigo-600 text-white px-5 py-3 rounded-xl text-sm font-bold hover:bg-slate-800 dark:hover:bg-indigo-500 transition-colors disabled:opacity-50 flex items-center justify-center">
-                                {isSubmittingReply ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post"}
-                              </button>
-                            </form>
-                          </div>
-                        )}
-
-                        {review.replies && review.replies.length > 0 && (
-                          <div className="ml-16 mt-5 space-y-3">
-                            {review.replies.map(reply => (
-                              <div key={reply.id} className="bg-slate-50 dark:bg-white/5 p-4 rounded-2xl border border-slate-100 dark:border-white/5">
-                                <div className="flex items-center justify-between mb-1.5">
-                                  <div className="flex items-center gap-2.5">
-                                    <div className="h-6 w-6 bg-gradient-to-br from-indigo-100 to-purple-100 dark:from-indigo-500/20 dark:to-purple-500/20 rounded-md flex items-center justify-center text-indigo-700 dark:text-indigo-300 font-black text-[10px] border border-indigo-200/50 dark:border-indigo-500/30">
-                                      {reply.userName.charAt(0).toUpperCase()}
-                                    </div>
-                                    <p className="font-bold text-sm text-slate-900 dark:text-white">{reply.userName}</p>
-                                  </div>
-                                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                                    {new Date(reply.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                                  </span>
-                                </div>
-                                <p className="text-sm text-slate-600 dark:text-slate-300 font-medium pl-[34px] leading-relaxed">{reply.text}</p>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-
                       </div>
-                    );
-                  })}
+                    </div>
+                  ))}
                 </div>
               )}
             </div>
-          </div>
-        </div>
 
+            {/* PUBLIC REVIEWS & RATINGS SECTION */}
+            <div className="border-t border-zinc-200 dark:border-zinc-800 pt-16">
+              <div className="flex items-center justify-between mb-10">
+                <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight flex items-center">
+                  Guest Reviews <span className="ml-4 bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300 text-sm font-bold px-4 py-1.5 rounded-full">{reviews.length}</span>
+                </h2>
+              </div>
+
+              <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
+                {/* Left: Write a Review Form */}
+                <div className="xl:col-span-1">
+                  <div className="bg-white dark:bg-zinc-900/50 rounded-[2rem] p-8 md:p-10 border border-zinc-200 dark:border-zinc-800/50 shadow-sm sticky top-32">
+                    <div className="h-12 w-12 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-full flex items-center justify-center mb-6 shadow-sm border border-zinc-200 dark:border-zinc-700">
+                      <MessageSquare className="h-5 w-5" />
+                    </div>
+                    <h3 className="text-xl font-bold text-zinc-900 dark:text-white mb-2 tracking-tight">Write a Review</h3>
+                    <p className="text-zinc-500 dark:text-zinc-400 text-sm font-medium mb-8">Share your experience at {decodedHotelName} with other travelers.</p>
+
+                    {!user ? (
+                      <div className="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-2xl text-center border border-zinc-200 dark:border-zinc-800">
+                        <p className="text-sm font-bold text-zinc-500 dark:text-zinc-400 mb-4">You must be logged in to leave a review.</p>
+                        <button onClick={() => router.push('/')} className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 font-bold py-3.5 rounded-full text-xs uppercase tracking-widest transition-all hover:opacity-90 active:scale-95 shadow-md">Sign In</button>
+                      </div>
+                    ) : (
+                      <form onSubmit={handleSubmitReview}>
+                        <div className="mb-6">
+                          <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Overall Rating</label>
+                          <div className="flex gap-2">
+                            {[1, 2, 3, 4, 5].map((star) => (
+                              <button
+                                key={star}
+                                type="button"
+                                onClick={() => setNewRating(star)}
+                                className="focus:outline-none transition-transform hover:scale-110 active:scale-95"
+                              >
+                                <Star className={`h-8 w-8 ${star <= newRating ? 'fill-amber-400 text-amber-400 drop-shadow-sm' : 'fill-zinc-100 text-zinc-200 dark:fill-zinc-800 dark:text-zinc-700'}`} />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                        
+                        <div className="mb-8">
+                          <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Your Comment</label>
+                          <textarea 
+                            value={newComment}
+                            onChange={(e) => setNewComment(e.target.value)}
+                            placeholder="How was the cleanliness, staff, and location?"
+                            required
+                            rows={4}
+                            className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-5 outline-none font-medium text-sm text-zinc-900 dark:text-white resize-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all placeholder:text-zinc-500"
+                          />
+                        </div>
+                        
+                        <button type="submit" disabled={isSubmittingReview || !newComment.trim()} className="w-full bg-emerald-500 text-zinc-950 font-bold text-xs uppercase tracking-widest py-4 rounded-full shadow-[0_0_15px_rgba(16,185,129,0.2)] hover:bg-emerald-400 transition-all disabled:opacity-50 disabled:shadow-none flex justify-center items-center active:scale-95">
+                          {isSubmittingReview ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post Public Review"}
+                        </button>
+                      </form>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right: Public Review Feed */}
+                <div className="xl:col-span-2">
+                  {reviews.length === 0 ? (
+                    <div className="text-center py-24 bg-transparent rounded-[2rem] border border-dashed border-zinc-300 dark:border-zinc-800">
+                      <Star className="h-10 w-10 text-zinc-300 dark:text-zinc-600 mx-auto mb-4" />
+                      <h4 className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight mb-2">No reviews yet</h4>
+                      <p className="text-zinc-500 dark:text-zinc-400 font-medium text-sm">Be the first to share your thoughts about this hotel.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {reviews.map((review) => {
+                        const upvotes = review.upvotedBy?.length || 0;
+                        const downvotes = review.downvotedBy?.length || 0;
+                        const hasUpvoted = user && review.upvotedBy?.includes(user.uid);
+                        const hasDownvoted = user && review.downvotedBy?.includes(user.uid);
+
+                        return (
+                          <div key={review.id} className="bg-white dark:bg-zinc-900/40 p-6 md:p-8 rounded-[2rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm flex flex-col transition-colors hover:border-zinc-300 dark:hover:border-zinc-700">
+                            <div className="flex justify-between items-start mb-6">
+                              <div className="flex items-center gap-4">
+                                <div className="h-12 w-12 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-900 dark:text-white font-bold text-lg shadow-inner border border-zinc-200 dark:border-zinc-700">
+                                  {review.userName.charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <p className="font-bold text-zinc-900 dark:text-white tracking-tight">{review.userName}</p>
+                                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400 mt-0.5">
+                                    {review.createdAt?.toMillis ? new Date(review.createdAt.toMillis()).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : "Just now"}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="flex gap-0.5 bg-zinc-50 dark:bg-zinc-950 px-3 py-1.5 rounded-full border border-zinc-200 dark:border-zinc-800">
+                                {[...Array(5)].map((_, i) => (
+                                  <Star key={i} className={`h-3.5 w-3.5 ${i < review.rating ? 'fill-amber-400 text-amber-400' : 'fill-transparent text-zinc-300 dark:text-zinc-700'}`} />
+                                ))}
+                              </div>
+                            </div>
+                            <p className="text-zinc-600 dark:text-zinc-300 leading-relaxed font-medium md:pl-16 flex-1 text-sm md:text-base">{review.comment}</p>
+                            
+                            <div className="md:ml-16 mt-6 flex flex-wrap items-center gap-6 pt-5 border-t border-zinc-100 dark:border-zinc-800/50">
+                              <div className="flex items-center gap-4">
+                                <button 
+                                  onClick={() => handleVote(review.id, 'upvote')}
+                                  className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-colors ${hasUpvoted ? 'text-emerald-500' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                >
+                                  <ThumbsUp className={`h-4 w-4 ${hasUpvoted ? 'fill-current' : ''}`} />
+                                  {upvotes > 0 && upvotes}
+                                </button>
+                                <button 
+                                  onClick={() => handleVote(review.id, 'downvote')}
+                                  className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-colors ${hasDownvoted ? 'text-rose-500' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                                >
+                                  <ThumbsDown className={`h-4 w-4 ${hasDownvoted ? 'fill-current' : ''}`} />
+                                  {downvotes > 0 && downvotes}
+                                </button>
+                              </div>
+                              
+                              <button 
+                                onClick={() => setReplyingTo(replyingTo === review.id ? null : review.id)}
+                                className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-colors ${replyingTo === review.id ? 'text-emerald-500' : 'text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300'}`}
+                              >
+                                <MessageSquare className="h-4 w-4" /> Reply
+                              </button>
+                            </div>
+
+                            {replyingTo === review.id && (
+                              <div className="md:ml-16 mt-5 animate-in fade-in slide-in-from-top-2 duration-200">
+                                <form onSubmit={(e) => handleSubmitReply(e, review.id)} className="flex gap-3">
+                                  <input 
+                                    type="text" 
+                                    value={replyText}
+                                    onChange={(e) => setReplyText(e.target.value)}
+                                    placeholder="Write a reply..."
+                                    className="flex-1 bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-full px-5 py-3 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all text-zinc-900 dark:text-white font-medium placeholder-zinc-500"
+                                    required
+                                  />
+                                  <button type="submit" disabled={isSubmittingReply} className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-6 py-3 rounded-full text-xs font-bold uppercase tracking-widest hover:opacity-90 transition-opacity disabled:opacity-50 flex items-center justify-center shadow-md active:scale-95">
+                                    {isSubmittingReply ? <Loader2 className="h-4 w-4 animate-spin" /> : "Post"}
+                                  </button>
+                                </form>
+                              </div>
+                            )}
+
+                            {review.replies && review.replies.length > 0 && (
+                              <div className="md:ml-16 mt-6 space-y-4">
+                                {review.replies.map(reply => (
+                                  <div key={reply.id} className="bg-zinc-50 dark:bg-zinc-950/50 p-5 rounded-2xl border border-zinc-100 dark:border-zinc-800/50">
+                                    <div className="flex items-center justify-between mb-2">
+                                      <div className="flex items-center gap-3">
+                                        <div className="h-8 w-8 bg-zinc-200 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-900 dark:text-white font-bold text-[10px] border border-zinc-300 dark:border-zinc-700 shadow-sm">
+                                          {reply.userName.charAt(0).toUpperCase()}
+                                        </div>
+                                        <p className="font-bold text-xs text-zinc-900 dark:text-white">{reply.userName}</p>
+                                      </div>
+                                      <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest">
+                                        {new Date(reply.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                                      </span>
+                                    </div>
+                                    <p className="text-sm text-zinc-600 dark:text-zinc-300 font-medium pl-11 leading-relaxed">{reply.text}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </main>
       </div>
 
       {/* FULLSCREEN PHOTO SLIDER MODAL */}
       {viewingPhotosFor && viewingPhotosFor.imageUrls && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center z-[100] animate-in fade-in duration-300">
-          <div className="absolute top-0 w-full p-6 flex justify-between items-center z-10 bg-gradient-to-b from-black/80 to-transparent">
+          <div className="absolute top-0 w-full p-6 md:p-8 flex justify-between items-center z-10 bg-gradient-to-b from-black/80 to-transparent">
             <div className="text-white">
-              <h3 className="font-black text-xl">{viewingPhotosFor.name}</h3>
-              <p className="text-white/60 text-sm font-medium">{currentPhotoIndex + 1} / {viewingPhotosFor.imageUrls.length}</p>
+              <h3 className="font-black text-xl md:text-2xl tracking-tight">{viewingPhotosFor.name}</h3>
+              <p className="text-zinc-400 text-[10px] font-bold uppercase tracking-widest mt-1">{currentPhotoIndex + 1} / {viewingPhotosFor.imageUrls.length}</p>
             </div>
-            <button onClick={() => setViewingPhotosFor(null)} className="text-white/70 hover:text-white bg-white/10 hover:bg-white/20 p-3 rounded-full transition-colors backdrop-blur-md">
+            <button onClick={() => setViewingPhotosFor(null)} className="text-zinc-400 hover:text-white bg-white/10 hover:bg-white/20 p-3 rounded-full transition-colors backdrop-blur-md active:scale-95">
               <X className="h-6 w-6" />
             </button>
           </div>
 
-          <div className="relative w-full max-w-5xl px-4 md:px-12 flex items-center justify-center flex-1">
-            <button onClick={handlePrevPhoto} className="absolute left-4 md:left-8 bg-white/10 hover:bg-white/20 text-white p-3 md:p-4 rounded-full backdrop-blur-md transition-transform hover:scale-110 z-10">
-              <ChevronLeft className="h-8 w-8" />
+          <div className="relative w-full max-w-6xl px-4 md:px-16 flex items-center justify-center flex-1">
+            <button onClick={handlePrevPhoto} className="absolute left-4 md:left-8 bg-white/10 hover:bg-white/20 text-white p-3 md:p-4 rounded-full backdrop-blur-md transition-all hover:scale-110 active:scale-95 z-10 border border-white/10">
+              <ChevronLeft className="h-6 w-6 md:h-8 md:w-8" />
             </button>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={viewingPhotosFor.imageUrls[currentPhotoIndex]} alt={`Photo ${currentPhotoIndex + 1}`} className="max-h-[75vh] w-auto object-contain rounded-2xl shadow-2xl animate-in zoom-in-95 duration-200" />
-            <button onClick={handleNextPhoto} className="absolute right-4 md:right-8 bg-white/10 hover:bg-white/20 text-white p-3 md:p-4 rounded-full backdrop-blur-md transition-transform hover:scale-110 z-10">
-              <ChevronRight className="h-8 w-8" />
+            <img src={viewingPhotosFor.imageUrls[currentPhotoIndex]} alt={`Photo ${currentPhotoIndex + 1}`} className="max-h-[70vh] w-auto object-contain rounded-[2rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-200 border border-white/10" />
+            <button onClick={handleNextPhoto} className="absolute right-4 md:right-8 bg-white/10 hover:bg-white/20 text-white p-3 md:p-4 rounded-full backdrop-blur-md transition-all hover:scale-110 active:scale-95 z-10 border border-white/10">
+              <ChevronRight className="h-6 w-6 md:h-8 md:w-8" />
             </button>
           </div>
 
-          <div className="h-24 w-full bg-black/50 p-4 flex justify-center gap-2 overflow-x-auto hide-scrollbar border-t border-white/10">
+          <div className="h-28 w-full bg-black/80 p-5 flex justify-center gap-3 overflow-x-auto custom-scrollbar border-t border-white/10 backdrop-blur-md">
             {viewingPhotosFor.imageUrls.map((url, idx) => (
-              <button key={idx} onClick={() => setCurrentPhotoIndex(idx)} className={`h-full w-20 shrink-0 rounded-lg overflow-hidden transition-all border-2 ${currentPhotoIndex === idx ? 'border-indigo-500 opacity-100 scale-105' : 'border-transparent opacity-40 hover:opacity-70'}`}>
+              <button key={idx} onClick={() => setCurrentPhotoIndex(idx)} className={`h-full w-24 shrink-0 rounded-xl overflow-hidden transition-all border-2 ${currentPhotoIndex === idx ? 'border-emerald-500 opacity-100 scale-105 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-transparent opacity-40 hover:opacity-70'}`}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={url} alt="Thumbnail" className="h-full w-full object-cover" />
               </button>
@@ -735,87 +797,86 @@ function PartnerHotelContent() {
         </div>
       )}
 
-      {/* SECURE RAZORPAY BOOKING MODAL */}
+      {/* SECURE RAZORPAY BOOKING MODAL (FINTECH) */}
       {selectedRoom && (
-        <div className="fixed inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-50">
-          <div className="bg-white dark:bg-[#0f172a] rounded-[2.5rem] p-8 md:p-10 w-full max-w-lg shadow-2xl relative border border-transparent dark:border-white/10 animate-in zoom-in-95 duration-300">
+        <div className="fixed inset-0 bg-zinc-900/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] p-8 md:p-10 w-full max-w-md shadow-2xl relative border border-transparent dark:border-zinc-800 animate-in zoom-in-95 duration-300">
             
             {bookingSuccess ? (
               <div className="text-center py-10">
-                <div className="h-20 w-20 bg-emerald-100 dark:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-full flex items-center justify-center mx-auto mb-6">
+                <div className="h-20 w-20 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center mx-auto mb-6 border border-emerald-500/20">
                   <CheckCircle2 className="h-10 w-10" />
                 </div>
-                <h2 className="text-3xl font-black text-slate-900 dark:text-white tracking-tight mb-3">Booking Secured!</h2>
-                <p className="text-slate-500 dark:text-slate-400 font-medium">Your payment is successful and your room is locked. Adding to itinerary...</p>
+                <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight mb-2">Booking Secured!</h2>
+                <p className="text-zinc-500 dark:text-zinc-400 font-medium text-sm">Payment successful. Room locked. Adding to itinerary...</p>
               </div>
             ) : paymentStep === "PROCESSING" ? (
               <div className="text-center py-10">
-                <Loader2 className="h-12 w-12 text-indigo-600 animate-spin mx-auto mb-6" />
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Finalizing Details...</h2>
-                <p className="text-slate-500 dark:text-slate-400 font-medium">Verifying payment with bank and confirming your room block.</p>
+                <Loader2 className="h-12 w-12 text-emerald-500 animate-spin mx-auto mb-6" />
+                <h2 className="text-2xl font-black text-zinc-900 dark:text-white mb-2 tracking-tight">Finalizing Details...</h2>
+                <p className="text-zinc-500 dark:text-zinc-400 font-medium text-sm">Verifying payment with bank and confirming your room block.</p>
               </div>
             ) : (
               <>
-                <button onClick={() => setSelectedRoom(null)} className="absolute top-6 right-6 text-slate-400 hover:bg-slate-100 dark:hover:bg-white/10 p-2 rounded-full transition-colors"><X className="h-5 w-5" /></button>
+                <button onClick={() => setSelectedRoom(null)} className="absolute top-6 right-6 text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 p-2.5 rounded-full transition-colors active:scale-95"><X className="h-4 w-4" /></button>
                 
-                <h2 className="text-2xl font-black text-slate-900 dark:text-white mb-2">Checkout</h2>
-                <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400 mb-6 flex items-center"><Shield className="h-4 w-4 mr-1.5"/> Secured by Razorpay</p>
+                <h2 className="text-2xl font-black text-zinc-900 dark:text-white mb-2 tracking-tight">Checkout</h2>
+                <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mb-6 flex items-center"><Shield className="h-3.5 w-3.5 mr-1.5"/> Secured by Razorpay</p>
                 
-                <div className="bg-slate-50 dark:bg-[#1e293b] p-5 rounded-2xl border border-slate-200 dark:border-white/10 mb-6 flex items-center gap-4">
+                <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 mb-8 flex items-center gap-4">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={selectedRoom.imageUrls?.[0] || selectedRoom.imageUrl} alt="Room" className="h-16 w-16 rounded-xl object-cover" />
-                  <div>
-                    <p className="font-black text-slate-900 dark:text-white">{selectedRoom.name}</p>
-                    <p className="text-xs font-bold text-slate-500 dark:text-slate-400 mt-1">{symbol}{convert(selectedRoom.price).toLocaleString(undefined, {maximumFractionDigits: 0})} / night</p>
+                  <img src={selectedRoom.imageUrls?.[0] || selectedRoom.imageUrl} alt="Room" className="h-16 w-16 rounded-xl object-cover shadow-sm" />
+                  <div className="min-w-0">
+                    <p className="font-bold text-zinc-900 dark:text-white truncate text-base">{selectedRoom.name}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 mt-1">{symbol}{convert(selectedRoom.price).toLocaleString(undefined, {maximumFractionDigits: 0})} / night</p>
                   </div>
                 </div>
 
-                <form onSubmit={handleInitiatePayment} className="space-y-5">
+                <form onSubmit={handleInitiatePayment} className="space-y-6">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Check-In</label>
-                      <input type="date" value={checkIn} onChange={(e)=>setCheckIn(e.target.value)} className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-xl p-3 outline-none font-bold text-slate-900 dark:text-white cursor-pointer dark:[color-scheme:dark]" required />
+                      <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Check-In</label>
+                      <input type="date" value={checkIn} onChange={(e)=>setCheckIn(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none text-sm font-bold text-zinc-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer dark:[color-scheme:dark] transition-all" required />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Check-Out</label>
-                      <input type="date" value={checkOut} onChange={(e)=>setCheckOut(e.target.value)} className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-xl p-3 outline-none font-bold text-slate-900 dark:text-white cursor-pointer dark:[color-scheme:dark]" required />
+                      <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Check-Out</label>
+                      <input type="date" value={checkOut} onChange={(e)=>setCheckOut(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none text-sm font-bold text-zinc-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer dark:[color-scheme:dark] transition-all" required />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-2">Guests</label>
-                      <select value={guests} onChange={(e)=>setGuests(e.target.value)} className="w-full bg-slate-50 dark:bg-[#1e293b] border border-slate-200 dark:border-white/10 rounded-xl p-3 outline-none font-bold text-slate-900 dark:text-white cursor-pointer appearance-none">
+                    <div className="relative group">
+                      <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Guests</label>
+                      <select value={guests} onChange={(e)=>setGuests(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-4 pr-8 py-3 outline-none text-sm font-bold text-zinc-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer appearance-none transition-all">
                         <option value="1">1 Guest</option><option value="2">2 Guests</option><option value="3">3 Guests</option><option value="4">4 Guests</option>
                       </select>
+                      <ChevronDown className="absolute right-3 bottom-3 h-4 w-4 text-zinc-400 pointer-events-none group-hover:text-emerald-500 transition-colors" />
                     </div>
-                    <div>
-                      <label className="block text-[10px] font-black text-indigo-500 dark:text-indigo-400 uppercase tracking-widest mb-2">Attach to Itinerary</label>
-                      <div className="relative">
-                        <MapIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
-                        <select 
-                          value={selectedTripId} 
-                          onChange={(e) => setSelectedTripId(e.target.value)}
-                          className="w-full bg-indigo-50 dark:bg-[#1e293b] border border-indigo-100 dark:border-indigo-500/20 rounded-xl pl-9 pr-3 py-3 outline-none font-bold text-slate-900 dark:text-white cursor-pointer appearance-none"
-                        >
-                          {trips.length === 0 ? <option value="">No Trips Found</option> : trips.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-                        </select>
-                      </div>
+                    <div className="relative group">
+                      <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Attach to Trip</label>
+                      <select 
+                        value={selectedTripId} 
+                        onChange={(e) => setSelectedTripId(e.target.value)}
+                        className="w-full bg-emerald-50/50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 rounded-xl pl-4 pr-8 py-3 outline-none text-sm font-bold text-zinc-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer appearance-none transition-all"
+                      >
+                        {trips.length === 0 ? <option value="">No Trips Found</option> : trips.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+                      </select>
+                      <ChevronDown className="absolute right-3 bottom-3 h-4 w-4 text-emerald-500/70 pointer-events-none group-hover:text-emerald-500 transition-colors" />
                     </div>
                   </div>
 
-                  <div className="bg-slate-100 dark:bg-white/5 rounded-xl p-5 mt-4 flex justify-between items-center border border-slate-200 dark:border-white/5 shadow-inner">
+                  <div className="bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-5 mt-2 flex justify-between items-center border border-zinc-200 dark:border-zinc-800">
                     <div>
-                      <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest">Total Price</p>
-                      <p className="text-xs font-medium text-slate-400 mt-1">{nights} night{nights > 1 ? 's' : ''}</p>
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest">Total Price</p>
+                      <p className="text-xs font-bold text-zinc-900 dark:text-zinc-300 mt-1">{nights} night{nights > 1 ? 's' : ''}</p>
                     </div>
-                    <p className="text-3xl font-black text-slate-900 dark:text-white">
+                    <p className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">
                       {symbol}{(convert(selectedRoom.price) * nights).toLocaleString(undefined, {maximumFractionDigits: 0})}
                     </p>
                   </div>
 
-                  <button type="submit" disabled={isBookingLoading} className="w-full bg-slate-900 dark:bg-indigo-600 text-white py-4 rounded-xl font-black text-lg hover:bg-slate-800 dark:hover:bg-indigo-500 transition-all shadow-xl disabled:opacity-70 flex justify-center items-center mt-4">
-                    {isBookingLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Pay with Razorpay"}
+                  <button type="submit" disabled={isBookingLoading} className="w-full bg-emerald-500 text-zinc-950 py-4 rounded-full font-bold text-xs uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-[0_0_20px_rgba(16,185,129,0.2)] disabled:opacity-50 disabled:shadow-none flex justify-center items-center mt-2 active:scale-95 group">
+                    {isBookingLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <><CreditCard className="h-4 w-4 mr-2 group-hover:scale-110 transition-transform" /> Pay with Razorpay</>}
                   </button>
                 </form>
               </>
@@ -829,7 +890,7 @@ function PartnerHotelContent() {
 
 export default function PartnerHotelPage() {
   return (
-    <Suspense fallback={<div className="h-screen flex items-center justify-center bg-slate-50 dark:bg-[#030712]"><Loader2 className="h-10 w-10 animate-spin text-indigo-600" /></div>}>
+    <Suspense fallback={<div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950"><Loader2 className="h-10 w-10 animate-spin text-emerald-500" /></div>}>
       <PartnerHotelContent />
     </Suspense>
   );
