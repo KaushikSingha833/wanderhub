@@ -1,0 +1,490 @@
+"use client";
+import React, { useRef, useState, useEffect } from "react";
+import { motion, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
+import Link from "next/link";
+import { PlaneTakeoff, Map as MapIcon, Receipt, BedDouble, ArrowRight, ShieldCheck, Zap, Users, Plus, Compass, Wallet, CreditCard, Loader2, Sparkles } from "lucide-react";
+import { useMotionValue } from "framer-motion";
+
+// ==========================================
+// 1. DATA ASSETS
+// ==========================================
+const TRAVEL_DATA = [
+  "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1200&q=80",
+  "https://images.unsplash.com/photo-1533929736458-ca588d08c8be?w=1200&q=80",
+  "https://images.unsplash.com/photo-1542314831-c6a4d1409a54?w=1200&q=80",
+  "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1200&q=80",
+  "https://images.unsplash.com/photo-1512453979798-5ea266f8880c?w=1200&q=80",
+  "https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=1200&q=80",
+];
+
+const FAQS = [
+  { q: "How does the AI Routing engine work?", a: "WanderHub utilizes a custom geospatial algorithm that ingests your desired landmarks and outputs a chronologically and geographically optimized sequence, minimizing transit times." },
+  { q: "Is the Live Split feature truly real-time?", a: "Yes. Our architecture utilizes WebSockets to ensure that any expense logged by a group member is instantly reflected across all connected devices within 500 milliseconds." },
+  { q: "How do you achieve 0% commission on hotels?", a: "We integrate directly with B2B hospitality providers, bypassing consumer-facing Online Travel Agencies (OTAs) to pass the wholesale rates directly to your workspace." },
+  { q: "Can I export my itinerary?", a: "Absolutely. Workspaces can be exported to standard calendar formats, PDF dossiers, or shared via a live read-only web link." }
+];
+
+// ==========================================
+// 2. FLAWLESS PHYSICS CURSOR
+// ==========================================
+const CustomCursor = () => {
+  const mouseX = useMotionValue(-100);
+  const mouseY = useMotionValue(-100);
+  
+  const springX = useSpring(mouseX, { stiffness: 500, damping: 28, mass: 0.1 });
+  const springY = useSpring(mouseY, { stiffness: 500, damping: 28, mass: 0.1 });
+  
+  const [isHovering, setIsHovering] = useState(false);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      mouseX.set(e.clientX - 16);
+      mouseY.set(e.clientY - 16);
+      
+      const target = e.target as HTMLElement;
+      const isClickable = window.getComputedStyle(target).cursor === "pointer" || target.closest('a') || target.closest('button');
+      setIsHovering(!!isClickable);
+    };
+    
+    window.addEventListener("mousemove", handleMouseMove);
+    return () => window.removeEventListener("mousemove", handleMouseMove);
+  }, [mouseX, mouseY]);
+
+  return (
+    <motion.div
+      className="fixed left-0 top-0 z-[9999] h-8 w-8 rounded-full border border-emerald-500 bg-emerald-500/10 backdrop-blur-sm mix-blend-screen pointer-events-none hidden md:flex items-center justify-center"
+      style={{ x: springX, y: springY }}
+      animate={{ 
+        scale: isHovering ? 2.5 : 1, 
+        backgroundColor: isHovering ? "rgba(16, 185, 129, 0.2)" : "rgba(16, 185, 129, 0)", 
+        borderWidth: isHovering ? "2px" : "1px" 
+      }}
+      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+    >
+       <motion.div 
+         className="h-1.5 w-1.5 bg-emerald-400 rounded-full"
+         animate={{ opacity: isHovering ? 0 : 1 }}
+       />
+    </motion.div>
+  );
+};
+
+// ==========================================
+// 3. MAGNETIC ELEMENT COMPONENT
+// ==========================================
+const MagneticElement = ({ children, className }: { children: React.ReactNode; className?: string }) => {
+  const ref = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+
+  const handleMouse = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!ref.current) return;
+    const { clientX, clientY } = e;
+    const { height, width, left, top } = ref.current.getBoundingClientRect();
+    const middleX = clientX - (left + width / 2);
+    const middleY = clientY - (top + height / 2);
+    setPosition({ x: middleX * 0.3, y: middleY * 0.3 });
+  };
+
+  const reset = () => setPosition({ x: 0, y: 0 });
+
+  return (
+    <motion.div 
+      ref={ref} 
+      onMouseMove={handleMouse} 
+      onMouseLeave={reset} 
+      animate={{ x: position.x, y: position.y }} 
+      transition={{ type: "spring", stiffness: 150, damping: 15, mass: 0.1 }} 
+      className={className}
+    >
+      {children}
+    </motion.div>
+  );
+};
+
+// ==========================================
+// 4. SCROLL REVEAL TYPOGRAPHY
+// ==========================================
+const TextReveal = ({ text }: { text: string }) => {
+  const ref = useRef(null);
+  const { scrollYProgress } = useScroll({ target: ref, offset: ["start 80%", "end 40%"] });
+  const words = text.split(" ");
+
+  return (
+    <p ref={ref} className="text-4xl md:text-7xl font-black tracking-tighter leading-[1.1] text-white/20 flex flex-wrap gap-x-3 md:gap-x-5 gap-y-2">
+      {words.map((word, i) => {
+        const start = i / words.length;
+        const end = start + 1 / words.length;
+        // eslint-disable-next-line react-hooks/rules-of-hooks
+        const opacity = useTransform(scrollYProgress, [start, end], [0.1, 1]);
+        return <motion.span key={i} style={{ opacity }} className="text-white">{word}</motion.span>;
+      })}
+    </p>
+  );
+};
+
+// ==========================================
+// 5. ACCORDION PHYSICS
+// ==========================================
+const Accordion = ({ q, a }: { q: string, a: string }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  return (
+    <div className="border-b border-white/10 py-8 cursor-pointer group" onClick={() => setIsOpen(!isOpen)}>
+      <div className="flex justify-between items-center">
+        <h4 className="text-2xl md:text-3xl font-bold tracking-tight text-white group-hover:text-emerald-400 transition-colors pr-8">{q}</h4>
+        <motion.div animate={{ rotate: isOpen ? 45 : 0 }} transition={{ type: "spring", stiffness: 200, damping: 20 }} className="shrink-0">
+          <Plus className="h-8 w-8 text-zinc-500 group-hover:text-emerald-400 transition-colors" />
+        </motion.div>
+      </div>
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ type: "spring", stiffness: 100, damping: 20 }} className="overflow-hidden">
+            <p className="pt-6 text-xl text-zinc-400 font-medium leading-relaxed max-w-4xl">{a}</p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// ==========================================
+// 6. MASONRY PARALLAX COLUMN
+// ==========================================
+const ParallaxColumn = ({ images, yTransform }: { images: string[], yTransform: any }) => (
+  <motion.div style={{ y: yTransform }} className="flex flex-col gap-6 w-full md:w-1/3 min-w-[300px]">
+    {images.map((src, i) => (
+      <div key={i} className="w-full h-[350px] md:h-[500px] rounded-[2rem] overflow-hidden relative group shrink-0">
+        <div className="absolute inset-0 bg-emerald-500/20 mix-blend-overlay z-10 opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
+        <img src={src} alt="Travel Architecture" className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 group-hover:scale-110 transition-all duration-1000 ease-out" />
+      </div>
+    ))}
+  </motion.div>
+);
+
+// ==========================================
+// 7. DUAL-SCROLL COMPONENTS
+// ==========================================
+const WalletGroup = () => (
+  <div className="flex flex-col gap-4 w-full p-6">
+    <div className="bg-[#050505] p-5 rounded-2xl border border-white/5 shadow-2xl flex items-center gap-4">
+      <Wallet className="h-8 w-8 text-rose-400"/>
+      <div className="flex-1"><div className="h-2 w-1/2 bg-white/20 rounded-full mb-2"></div><div className="h-2 w-3/4 bg-white/10 rounded-full"></div></div>
+    </div>
+    <div className="bg-[#050505] p-5 rounded-2xl border border-white/5 shadow-2xl flex items-center gap-4">
+      <CreditCard className="h-8 w-8 text-emerald-400"/>
+      <div className="flex-1"><div className="h-2 w-2/3 bg-white/20 rounded-full mb-2"></div><div className="h-2 w-1/2 bg-white/10 rounded-full"></div></div>
+    </div>
+  </div>
+);
+
+const DualCard = ({ num, title, desc, img, component }: any) => (
+  <div className="w-[85vw] md:w-[45vw] h-[35vh] md:h-[40vh] shrink-0 bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] md:rounded-[3rem] overflow-hidden relative flex flex-col md:flex-row shadow-2xl group hover:border-emerald-500/30 transition-colors duration-700">
+    <div className="w-full md:w-[50%] p-8 md:p-12 flex flex-col justify-center relative z-20">
+      <h2 className="text-4xl md:text-6xl font-black text-white/10 mb-2 md:mb-4 tracking-tighter">{num}</h2>
+      <h3 className="text-3xl md:text-5xl font-black mb-3 tracking-tighter">{title}</h3>
+      <p className="text-sm md:text-base text-zinc-400 font-medium leading-relaxed">{desc}</p>
+    </div>
+    <div className="w-full md:w-[50%] h-full absolute md:relative inset-0 md:inset-auto z-0 md:z-10">
+      <div className="absolute inset-0 bg-gradient-to-t md:bg-gradient-to-r from-[#0a0a0a] via-[#0a0a0a]/90 md:via-transparent to-transparent z-10 pointer-events-none"></div>
+      {img ? (
+        <img src={img} className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-700 opacity-30 md:opacity-100 scale-105 group-hover:scale-100" alt={title} />
+      ) : (
+        <div className="w-full h-full flex items-center justify-center bg-[#050505] relative z-0 opacity-40 md:opacity-100">
+          {component}
+        </div>
+      )}
+    </div>
+  </div>
+);
+
+// ==========================================
+// 8. MAIN PAGE COMPONENT
+// ==========================================
+export default function ProLanding() {
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setIsLoaded(true), 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const mainRef = useRef(null);
+  const { scrollYProgress } = useScroll({ target: mainRef });
+  const smoothProgress = useSpring(scrollYProgress, { stiffness: 50, damping: 20, restDelta: 0.001 });
+
+  // --- DUAL DIRECTIONAL CAROUSEL MATH ---
+  const dualRef = useRef(null);
+  const { scrollYProgress: dualProgress } = useScroll({ 
+    target: dualRef, 
+    offset: ["start start", "end end"] 
+  });
+  
+  // Track 1: Moves Left (Translates negative X)
+  const xTop = useTransform(dualProgress, [0, 1], ["5vw", "-60vw"]);
+  // Track 2: Moves Right (Translates positive X)
+  const xBottom = useTransform(dualProgress, [0, 1], ["-60vw", "5vw"]);
+
+  // --- SVG Path Math ---
+  const svgRef = useRef(null);
+  const { scrollYProgress: svgProgress } = useScroll({ target: svgRef, offset: ["start 80%", "end 20%"] });
+  const pathLength = useSpring(useTransform(svgProgress, [0, 1], [0, 1]), { stiffness: 50, damping: 20 });
+
+  // --- Gallery Parallax Math ---
+  const galleryRef = useRef(null);
+  const { scrollYProgress: galleryProgress } = useScroll({ target: galleryRef, offset: ["start end", "end start"] });
+  const y1 = useTransform(galleryProgress, [0, 1], ["0px", "-150px"]);
+  const y2 = useTransform(galleryProgress, [0, 1], ["0px", "150px"]);
+  const y3 = useTransform(galleryProgress, [0, 1], ["-100px", "-250px"]);
+
+  return (
+    <div ref={mainRef} className="bg-[#050505] text-white min-h-screen font-sans selection:bg-emerald-500/30 overflow-x-hidden relative">
+      <CustomCursor />
+      
+      <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.03] mix-blend-screen bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+
+      <AnimatePresence>
+        {!isLoaded && (
+          <motion.div 
+            initial={{ opacity: 1 }} 
+            exit={{ opacity: 0, y: -50 }} 
+            transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+            className="fixed inset-0 z-[99999] bg-black flex flex-col items-center justify-center"
+          >
+            <Loader2 className="h-10 w-10 text-emerald-500 animate-spin mb-6" />
+            <div className="text-sm font-bold uppercase tracking-widest text-zinc-500 animate-pulse">Initializing OS</div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <nav className="fixed top-0 w-full z-50 px-6 md:px-12 py-8 flex justify-between items-center mix-blend-difference pointer-events-none">
+        <div className="flex items-center gap-3">
+          <PlaneTakeoff className="h-8 w-8 text-emerald-400" />
+          <span className="text-2xl font-black tracking-tighter text-white">WanderHub</span>
+        </div>
+        <MagneticElement className="pointer-events-auto">
+          <Link href="/" className="px-8 py-4 bg-white text-black font-black text-xs uppercase tracking-widest rounded-full hover:bg-emerald-400 transition-colors shadow-2xl">
+            Access Portal
+          </Link>
+        </MagneticElement>
+      </nav>
+
+      {/* ==========================================
+          NEW AWWWARDS HERO SECTION
+      ========================================== */}
+      <section className="h-screen w-full relative flex flex-col items-center justify-center overflow-hidden bg-[#050505] pt-10">
+        <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.1)_0%,transparent_50%)] pointer-events-none"></div>
+
+        <div className="relative z-10 w-full px-6 flex flex-col items-center text-center">
+          
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 1.2, ease: "easeOut" }} className="mb-8">
+            <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md shadow-2xl">
+              <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
+              <span className="text-xs font-bold uppercase tracking-widest text-zinc-300">WanderHub OS v2.0</span>
+            </div>
+          </motion.div>
+
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 1, delay: 1.4 }} className="flex flex-col items-center">
+            <h1 className="text-[14vw] md:text-[9vw] font-black tracking-tighter leading-[0.85] text-white flex flex-col items-center uppercase">
+              <span className="flex items-center gap-3 md:gap-6">
+                UNIFY
+                <motion.div
+                  initial={{ width: 0, opacity: 0 }}
+                  animate={{ width: "18vw", opacity: 1 }}
+                  transition={{ duration: 1.5, delay: 1.8, ease: [0.16, 1, 0.3, 1] }}
+                  className="h-[10vw] md:h-[6.5vw] rounded-full overflow-hidden border border-white/20 shadow-2xl shrink-0 relative"
+                >
+                  <div className="absolute inset-0 bg-emerald-500/20 mix-blend-overlay z-10"></div>
+                  <img src={TRAVEL_DATA[0]} className="w-full h-full object-cover filter grayscale hover:grayscale-0 transition-all duration-700" alt="Travel Element" />
+                </motion.div>
+                YOUR
+              </span>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 via-teal-500 to-emerald-800 pb-2">EXPEDITIONS.</span>
+            </h1>
+          </motion.div>
+
+          <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 2.2, duration: 1 }} className="mt-10 text-lg md:text-2xl font-medium text-zinc-400 max-w-2xl tracking-tight">
+            A hyper-optimized engine for modern travel. Sync itineraries, automate ledgers, and bypass OTA commissions in one frictionless workspace.
+          </motion.p>
+        </div>
+      </section>
+
+      {/* ==========================================
+          SCROLL REVEAL TEXT
+      ========================================== */}
+      <section className="py-40 px-6 max-w-7xl mx-auto min-h-screen flex items-center">
+        <TextReveal text="We engineered WanderHub to replace the fractured ecosystem of legacy travel tools. A singular, hyper-optimized environment where itineraries, finances, and bookings converge seamlessly." />
+      </section>
+
+      {/* ==========================================
+          SVG DRAWING (SPATIAL LOGIC)
+      ========================================== */}
+      <section ref={svgRef} className="py-32 relative overflow-hidden bg-black border-y border-white/5">
+         <div className="max-w-7xl mx-auto px-6 relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 items-center">
+            <div>
+               <div className="h-20 w-20 bg-zinc-900 border border-white/10 rounded-3xl flex items-center justify-center text-emerald-400 mb-10 shadow-inner">
+                 <Compass className="h-10 w-10" />
+               </div>
+               <h2 className="text-5xl md:text-7xl font-black tracking-tighter mb-8 text-white">Spatial Logic.</h2>
+               <p className="text-xl md:text-2xl text-zinc-400 font-medium leading-relaxed">Our AI node processes raw locational data, structuring it into an immutable, chronologically sequenced map. Transit friction is mathematically minimized.</p>
+            </div>
+            
+            <div className="relative h-[400px] md:h-[600px] w-full bg-zinc-950 border border-white/10 rounded-[3rem] p-10 flex items-center justify-center overflow-hidden shadow-2xl">
+               <svg viewBox="0 0 400 400" className="w-full h-full opacity-80 drop-shadow-[0_0_20px_rgba(16,185,129,0.4)]">
+                  <motion.path d="M 50 350 C 100 300, 50 150, 150 150 C 250 150, 200 50, 350 50" fill="none" stroke="#34d399" strokeWidth="4" strokeLinecap="round" style={{ pathLength }} />
+                  <motion.circle cx="50" cy="350" r="8" fill="#10b981" initial={{ scale: 0 }} whileInView={{ scale: 1 }} transition={{ delay: 0.2 }} />
+                  <motion.circle cx="150" cy="150" r="8" fill="#10b981" initial={{ scale: 0 }} whileInView={{ scale: 1 }} transition={{ delay: 0.4 }} />
+                  <motion.circle cx="350" cy="50" r="8" fill="#10b981" initial={{ scale: 0 }} whileInView={{ scale: 1 }} transition={{ delay: 0.6 }} />
+               </svg>
+            </div>
+         </div>
+      </section>
+
+      {/* ==========================================
+          PERFECT DUAL-DIRECTIONAL CAROUSEL
+      ========================================== */}
+      <section ref={dualRef} className="h-[300vh] relative">
+        <div className="sticky top-0 h-screen flex flex-col justify-center overflow-hidden bg-[#020202] gap-8 md:gap-12">
+          
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-emerald-900/10 blur-[150px] pointer-events-none z-0"></div>
+
+          {/* TOP TRACK: Slides Left */}
+          <motion.div style={{ x: xTop }} className="flex gap-6 md:gap-10 w-max relative z-10 px-[5vw]">
+             <DualCard 
+               num="01." 
+               title="Initiate." 
+               desc="Define parameters. Establish temporal boundaries and invite actors via secure cryptographic links." 
+               img={TRAVEL_DATA[0]} 
+             />
+             <DualCard 
+               num="02." 
+               title="Synthesize." 
+               desc="Aggregated data converges. WebSockets reflect structural changes globally across all viewports instantly." 
+               img={TRAVEL_DATA[1]} 
+             />
+             {/* Padding Card to prevent empty space */}
+             <div className="w-[85vw] md:w-[45vw] h-[35vh] md:h-[40vh] rounded-[2.5rem] md:rounded-[3rem] overflow-hidden border border-white/10 shrink-0 shadow-2xl group">
+               <img src={TRAVEL_DATA[3]} className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-700 opacity-40 group-hover:opacity-100" alt="Padding" />
+             </div>
+          </motion.div>
+
+          {/* BOTTOM TRACK: Slides Right */}
+          <motion.div style={{ x: xBottom }} className="flex gap-6 md:gap-10 w-max relative z-10 px-[5vw]">
+             {/* Padding Card to prevent empty space */}
+             <div className="w-[85vw] md:w-[45vw] h-[35vh] md:h-[40vh] rounded-[2.5rem] md:rounded-[3rem] overflow-hidden border border-white/10 shrink-0 shadow-2xl group">
+               <img src={TRAVEL_DATA[4]} className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-700 opacity-40 group-hover:opacity-100" alt="Padding" />
+             </div>
+             <DualCard 
+               num="03." 
+               title="Calculate." 
+               desc="Distributed ledger algorithms process micro-expenses, rendering live debt matrices automatically." 
+               component={<WalletGroup />} 
+             />
+             <DualCard 
+               num="04." 
+               title="Execute." 
+               desc="Secure B2B infrastructure bridges digital planning with physical reality. Seamless transaction architecture." 
+               img="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1200&q=80" 
+             />
+          </motion.div>
+
+        </div>
+      </section>
+
+      {/* ==========================================
+          MASONRY GALLERY
+      ========================================== */}
+      <section ref={galleryRef} className="py-40 relative z-10 bg-[#050505] border-y border-white/5">
+        <div className="max-w-7xl mx-auto px-6 mb-20 text-center relative z-20">
+           <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-white">Global Render.</h2>
+           <p className="text-zinc-500 font-medium mt-4 text-xl">The world's destinations, integrated directly into your workspace.</p>
+        </div>
+        
+        <div className="h-[700px] w-full max-w-[1400px] mx-auto px-6 overflow-hidden relative">
+           <div className="absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-[#050505] to-transparent z-20 pointer-events-none"></div>
+           <div className="absolute inset-x-0 bottom-0 h-32 bg-gradient-to-t from-[#050505] to-transparent z-20 pointer-events-none"></div>
+           
+           <div className="flex flex-col md:flex-row gap-6">
+             <ParallaxColumn images={[TRAVEL_DATA[0], TRAVEL_DATA[3], TRAVEL_DATA[1]]} yTransform={y1} />
+             <ParallaxColumn images={[TRAVEL_DATA[4],"https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=1200&q=80", TRAVEL_DATA[5]]} yTransform={y2} />
+             <ParallaxColumn images={[TRAVEL_DATA[1], TRAVEL_DATA[5], TRAVEL_DATA[0]]} yTransform={y3} />
+           </div>
+        </div>
+      </section>
+
+      {/* ==========================================
+          ACCORDION FAQS
+      ========================================== */}
+      <section className="py-40 px-6 max-w-4xl mx-auto">
+         <h2 className="text-5xl md:text-7xl font-black tracking-tighter mb-20 text-center">Architecture FAQs.</h2>
+         <div className="border-t border-white/10">
+            {FAQS.map((faq, i) => <Accordion key={i} q={faq.q} a={faq.a} />)}
+         </div>
+      </section>
+
+      {/* ==========================================
+          FINAL CTA
+      ========================================== */}
+      <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden bg-black border-t border-white/5">
+         
+         <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }} className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
+            <div className="w-[120vw] h-[120vw] md:w-[80vw] md:h-[80vw] bg-emerald-500/30 rounded-full blur-[150px]"></div>
+         </motion.div>
+
+         <div className="relative z-10 text-center px-6 w-full max-w-5xl">
+            <h2 className="text-[14vw] md:text-[8vw] font-black tracking-tighter leading-[0.9] mb-12 text-white drop-shadow-2xl">
+               DEPLOY<br/>WORKSPACE.
+            </h2>
+            <MagneticElement className="mx-auto block w-fit">
+               <Link href="/" className="relative group inline-flex items-center justify-center">
+                  <div className="absolute inset-0 bg-emerald-500 rounded-full blur-2xl opacity-40 group-hover:opacity-100 transition-opacity duration-500"></div>
+                  <div className="relative flex items-center gap-4 md:gap-6 bg-white text-black px-12 md:px-16 py-6 md:py-8 rounded-full text-xl md:text-2xl font-black uppercase tracking-widest overflow-hidden shadow-2xl">
+                     <span className="relative z-10">Initialize</span>
+                     <ArrowRight className="h-6 w-6 md:h-8 md:w-8 relative z-10 group-hover:rotate-[-45deg] transition-transform duration-500" />
+                     <div className="absolute inset-0 bg-emerald-400 translate-y-full group-hover:translate-y-0 transition-transform duration-500 ease-out z-0"></div>
+                  </div>
+               </Link>
+            </MagneticElement>
+         </div>
+      </section>
+
+      {/* ==========================================
+          FOOTER
+      ========================================== */}
+      <footer className="bg-[#020202] py-20 border-t border-white/5 relative z-20 overflow-hidden">
+        <div className="max-w-7xl mx-auto px-6 relative z-10">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-12 mb-32">
+             <div>
+                <div className="flex items-center gap-4 mb-8">
+                   <PlaneTakeoff className="h-10 w-10 text-white" />
+                   <span className="text-4xl font-black tracking-tighter">WanderHub</span>
+                </div>
+                <p className="text-xl text-zinc-500 font-medium max-w-sm">The unified standard for geospatial planning and asynchronous ledger synchronization.</p>
+             </div>
+             <div className="flex flex-col sm:flex-row gap-12 text-sm font-bold uppercase tracking-widest text-zinc-500">
+                <div className="flex flex-col gap-4">
+                   <Link href="/landing" className="hover:text-emerald-400 transition-colors">Platform</Link>
+                   <Link href="/infrastructure" className="hover:text-emerald-400 transition-colors">Infrastructure</Link>
+                </div>
+                <div className="flex flex-col gap-4">
+                   <Link href="/security" className="hover:text-emerald-400 transition-colors">Security</Link>
+                   <Link href="/partner/join" className="hover:text-emerald-400 transition-colors text-white">B2B Portal</Link>
+                </div>
+             </div>
+          </div>
+          
+          <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/10 text-xs font-bold uppercase tracking-widest text-zinc-600">
+             <p>© {new Date().getFullYear()} WANDERHUB TECHNOLOGIES.</p>
+             <div className="flex items-center gap-4 mt-4 md:mt-0">
+                <span>All Systems Nominal</span>
+                <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+             </div>
+          </div>
+        </div>
+        
+        {/* Massive Background Text */}
+        <div className="absolute bottom-[-5vw] md:bottom-[-10vw] left-0 right-0 text-[20vw] font-black text-white/[0.02] text-center pointer-events-none select-none tracking-tighter leading-none">
+           WANDERHUB
+        </div>
+      </footer>
+    </div>
+  );
+}
