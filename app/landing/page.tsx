@@ -261,9 +261,9 @@ export default function ProLanding() {
           <span className="text-2xl font-black tracking-tighter text-white">WanderHub</span>
         </div>
         <MagneticElement className="pointer-events-auto">
-          <Link href="/" className="px-8 py-4 bg-white text-black font-black text-xs uppercase tracking-widest rounded-full hover:bg-emerald-400 transition-colors shadow-2xl">
-            Access Portal
-          </Link>
+          <Link href="/" className="whitespace-nowrap px-5 py-3 md:px-8 md:py-4 bg-white text-black font-black text-[10px] md:text-xs uppercase tracking-widest rounded-full hover:bg-emerald-400 transition-colors shadow-2xl">
+                Access Portal
+            </Link>
         </MagneticElement>
       </nav>
 
