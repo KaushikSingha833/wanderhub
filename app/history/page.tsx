@@ -5,7 +5,7 @@ import Link from "next/link";
 import { collection, onSnapshot, query, orderBy, where, deleteDoc, doc, updateDoc } from "firebase/firestore";
 import { onAuthStateChanged, User as FirebaseUser, signOut } from "firebase/auth";
 import { auth, db } from "../lib/firebase";
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Users, LogOut, BedDouble, Menu, X, ArrowRight, Trash2, Archive, Plane, MessageSquare, Info, History, Check, RefreshCcw } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Users, LogOut, BedDouble, Menu, X, ArrowRight, Trash2, Archive, Plane, MessageSquare, Info, History, Check, RefreshCcw, Loader2 } from "lucide-react";
 
 interface Trip {
   id: string;
@@ -38,9 +38,9 @@ const getTripImage = (id: string) => {
 
 export default function HistoryPage() {
   const router = useRouter();
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
 
   const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -48,14 +48,15 @@ export default function HistoryPage() {
   // Bulk Selection State
   const [selectedTrips, setSelectedTrips] = useState<Set<string>>(new Set());
 
+  // 🛡️ SECURITY GUARD: Check if logged in
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
-        router.push("/");
+        router.push("/"); // Kick to landing page if not logged in
       } else {
         setUser(currentUser);
+        setIsAuthLoading(false); // Show the page
       }
-      setIsAuthLoading(false);
     });
     return () => unsubscribe();
   }, [router]);
@@ -146,7 +147,7 @@ export default function HistoryPage() {
     }
   };
 
-  // ✨ NEW: Single Restore Engine
+  // Single Restore Engine
   const handleRestoreTrip = async (e: React.MouseEvent, tripId: string, tripTitle: string) => {
     e.stopPropagation();
     if (confirm(`Do you want to restore "${tripTitle}" back to your active dashboard?`)) {
@@ -167,7 +168,15 @@ export default function HistoryPage() {
     }
   };
 
-  if (isAuthLoading) return <div className="h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950"><div className="animate-spin h-10 w-10 border-4 border-emerald-600 border-t-transparent rounded-full"></div></div>;
+  // 🛡️ LOADING SCREEN: Hide page until verified
+  if (isAuthLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950">
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
+
   if (!user) return null;
 
   return (
@@ -296,75 +305,87 @@ export default function HistoryPage() {
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8 animate-in fade-in slide-in-from-bottom-8 duration-700 delay-200">
-                {trips.map((trip) => (
-                  <div key={trip.id} onClick={() => router.push(`/trips/${trip.id}`)} className={`group relative h-80 rounded-[2rem] overflow-hidden hover:-translate-y-2 transition-all duration-500 cursor-pointer bg-zinc-200 dark:bg-zinc-800 border-2 ${selectedTrips.has(trip.id) ? 'border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.2)]' : 'border-transparent shadow-sm hover:shadow-2xl hover:shadow-zinc-500/20 dark:hover:shadow-black/50'}`}>
-                    
-                    {/* Full Cover Image - Filtered to look "Past" */}
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={trip.imageUrl || getTripImage(trip.id)} alt={trip.title} className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out filter ${selectedTrips.has(trip.id) ? 'grayscale-0 opacity-100 scale-105' : 'grayscale-[0.6] opacity-70 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-105'}`} />
-                    
-                    {/* Dark Gradient Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10 opacity-90 transition-opacity duration-500"></div>
+                {trips.map((trip) => {
+                  
+                  // ✨ NEW DATE CHECK LOGIC
+                  const today = new Date();
+                  today.setHours(0, 0, 0, 0);
+                  const endDate = new Date(trip.endDate);
+                  endDate.setHours(0, 0, 0, 0);
+                  const isExpired = endDate.getTime() < today.getTime();
 
-                    {/* Checkbox & Archived Badge Container */}
-                    <div className="absolute top-5 left-5 z-20 flex items-center gap-3">
+                  return (
+                    <div key={trip.id} onClick={() => router.push(`/trips/${trip.id}`)} className={`group relative h-80 rounded-[2rem] overflow-hidden hover:-translate-y-2 transition-all duration-500 cursor-pointer bg-zinc-200 dark:bg-zinc-800 border-2 ${selectedTrips.has(trip.id) ? 'border-emerald-500 shadow-[0_0_20px_rgba(16,185,129,0.2)]' : 'border-transparent shadow-sm hover:shadow-2xl hover:shadow-zinc-500/20 dark:hover:shadow-black/50'}`}>
+                      
+                      {/* Full Cover Image - Filtered to look "Past" */}
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={trip.imageUrl || getTripImage(trip.id)} alt={trip.title} className={`absolute inset-0 w-full h-full object-cover transition-transform duration-700 ease-out filter ${selectedTrips.has(trip.id) ? 'grayscale-0 opacity-100 scale-105' : 'grayscale-[0.6] opacity-70 group-hover:grayscale-0 group-hover:opacity-100 group-hover:scale-105'}`} />
+                      
+                      {/* Dark Gradient Overlay */}
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/40 to-black/10 opacity-90 transition-opacity duration-500"></div>
+
+                      {/* Checkbox & Archived Badge Container */}
+                      <div className="absolute top-5 left-5 z-20 flex items-center gap-3">
+                        {trip.adminId === user.uid && (
+                          <div 
+                            onClick={(e) => handleToggleSelect(e, trip.id)}
+                            className={`h-7 w-7 rounded-md backdrop-blur-md border flex items-center justify-center transition-all shadow-lg cursor-pointer ${selectedTrips.has(trip.id) ? 'bg-emerald-500 border-emerald-500 text-zinc-950 scale-110' : 'bg-black/50 border-white/30 text-transparent hover:border-white/60 hover:bg-black/70'}`}
+                          >
+                            <Check className="h-4 w-4" />
+                          </div>
+                        )}
+                        
+                        <div className="bg-zinc-950/80 backdrop-blur-md border border-zinc-700/50 text-zinc-300 px-3 py-1.5 rounded-full flex items-center text-[10px] font-bold uppercase tracking-widest shadow-lg pointer-events-none">
+                          <Archive className="h-3 w-3 mr-1.5" /> Archived
+                        </div>
+                      </div>
+
+                      {/* ✨ UPDATED: Top Right Admin Actions - Only show Restore if NOT expired */}
                       {trip.adminId === user.uid && (
-                        <div 
-                          onClick={(e) => handleToggleSelect(e, trip.id)}
-                          className={`h-7 w-7 rounded-md backdrop-blur-md border flex items-center justify-center transition-all shadow-lg cursor-pointer ${selectedTrips.has(trip.id) ? 'bg-emerald-500 border-emerald-500 text-zinc-950 scale-110' : 'bg-black/50 border-white/30 text-transparent hover:border-white/60 hover:bg-black/70'}`}
-                        >
-                          <Check className="h-4 w-4" />
+                        <div className="absolute top-5 right-5 z-20 flex flex-col gap-2">
+                          {!isExpired && (
+                            <button
+                              onClick={(e) => handleRestoreTrip(e, trip.id, trip.title)}
+                              className="h-10 w-10 bg-emerald-500 text-zinc-950 hover:bg-emerald-400 backdrop-blur-md border border-emerald-400/50 rounded-full flex items-center justify-center transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 shadow-[0_0_15px_rgba(16,185,129,0.3)] scale-100 md:scale-90 md:group-hover:scale-100"
+                              title="Restore to Dashboard"
+                            >
+                              <RefreshCcw className="h-4 w-4" />
+                            </button>
+                          )}
+                          <button
+                            onClick={(e) => handleDeleteTrip(e, trip.id, trip.title)}
+                            className="h-10 w-10 bg-white/10 hover:bg-rose-500/90 backdrop-blur-md border border-white/20 text-white rounded-full flex items-center justify-center transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 shadow-lg scale-100 md:scale-90 md:group-hover:scale-100"
+                            title="Permanently Delete History"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
                         </div>
                       )}
-                      
-                      <div className="bg-zinc-950/80 backdrop-blur-md border border-zinc-700/50 text-zinc-300 px-3 py-1.5 rounded-full flex items-center text-[10px] font-bold uppercase tracking-widest shadow-lg pointer-events-none">
-                        <Archive className="h-3 w-3 mr-1.5" /> Archived
-                      </div>
-                    </div>
 
-                    {/* ✨ NEW: Top Right Admin Actions (Restore & Delete) */}
-                    {trip.adminId === user.uid && (
-                      <div className="absolute top-5 right-5 z-20 flex flex-col gap-2">
-                        <button
-                          onClick={(e) => handleRestoreTrip(e, trip.id, trip.title)}
-                          className="h-10 w-10 bg-emerald-500 text-zinc-950 hover:bg-emerald-400 backdrop-blur-md border border-emerald-400/50 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 shadow-[0_0_15px_rgba(16,185,129,0.3)] scale-90 group-hover:scale-100"
-                          title="Restore to Dashboard"
-                        >
-                          <RefreshCcw className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={(e) => handleDeleteTrip(e, trip.id, trip.title)}
-                          className="h-10 w-10 bg-white/10 hover:bg-rose-500/90 backdrop-blur-md border border-white/20 text-white rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 shadow-lg scale-90 group-hover:scale-100"
-                          title="Permanently Delete History"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    )}
-
-                    {/* Floating Pill Info Box */}
-                    <div className="absolute bottom-5 left-5 right-5 bg-zinc-950/60 backdrop-blur-xl border border-white/10 p-5 rounded-3xl flex justify-between items-center shadow-2xl transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
-                      <div className="min-w-0 pr-4">
-                        <h3 className="text-xl font-bold text-white truncate drop-shadow-md mb-1.5">{trip.title}</h3>
-                        <div className="flex items-center gap-3">
-                          <span className="flex items-center text-zinc-400 text-xs font-bold">
-                            <Calendar className="h-3.5 w-3.5 mr-1 opacity-80" /> {new Date(trip.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
-                          </span>
-                          <span className="h-1 w-1 bg-zinc-600 rounded-full"></span>
-                          <span className="flex items-center text-zinc-400 text-xs font-bold">
-                            <Users className="h-3.5 w-3.5 mr-1 opacity-80" /> {trip.members?.length || 1}
-                          </span>
+                      {/* Floating Pill Info Box */}
+                      <div className="absolute bottom-5 left-5 right-5 bg-zinc-950/60 backdrop-blur-xl border border-white/10 p-5 rounded-3xl flex justify-between items-center shadow-2xl transform translate-y-0 md:translate-y-2 md:group-hover:translate-y-0 transition-transform duration-500">
+                        <div className="min-w-0 pr-4">
+                          <h3 className="text-xl font-bold text-white truncate drop-shadow-md mb-1.5">{trip.title}</h3>
+                          <div className="flex items-center gap-3">
+                            <span className="flex items-center text-zinc-400 text-xs font-bold">
+                              <Calendar className="h-3.5 w-3.5 mr-1 opacity-80" /> {new Date(trip.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                            <span className="h-1 w-1 bg-zinc-600 rounded-full"></span>
+                            <span className="flex items-center text-zinc-400 text-xs font-bold">
+                              <Users className="h-3.5 w-3.5 mr-1 opacity-80" /> {trip.members?.length || 1}
+                            </span>
+                          </div>
+                        </div>
+                        
+                        {/* Enter Button */}
+                        <div className="h-10 w-10 shrink-0 bg-white/10 border border-white/20 text-white rounded-full flex items-center justify-center shadow-lg group-hover:bg-white group-hover:text-zinc-950 transition-colors duration-300">
+                          <ArrowRight className="h-4 w-4" />
                         </div>
                       </div>
-                      
-                      {/* Enter Button */}
-                      <div className="h-10 w-10 shrink-0 bg-white/10 border border-white/20 text-white rounded-full flex items-center justify-center shadow-lg group-hover:bg-white group-hover:text-zinc-950 transition-colors duration-300">
-                        <ArrowRight className="h-4 w-4" />
-                      </div>
-                    </div>
 
-                  </div>
-                ))}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, addDoc, setDoc, serverTimestamp } from "firebase/firestore"; 
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
@@ -32,6 +33,9 @@ interface Activity {
 }
 
 export default function ItinerariesPage() {
+  const router = useRouter();
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [selectedTripId, setSelectedTripId] = useState<string>("");
@@ -63,6 +67,37 @@ export default function ItinerariesPage() {
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [liveMembers, setLiveMembers] = useState<any[]>([]);
   const [myLatestCoords, setMyLatestCoords] = useState<[number, number] | null>(null);
+
+  // 🛡️ SECURITY GUARD: Check if logged in
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser) {
+        router.push("/"); // Kick to landing page if not logged in
+      } else {
+        setUser(currentUser);
+        setIsAuthLoading(false); // Show the page
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
+
+  // FETCH TRIPS (Only runs once user is verified)
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, "trips"), 
+      where("members", "array-contains", user.uid), 
+      where("status", "==", "active")
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const tripsData = snapshot.docs.map(doc => ({ id: doc.id, title: doc.data().title }));
+      setTrips(tripsData);
+      if (tripsData.length > 0 && !selectedTripId) {
+        setSelectedTripId(tripsData[0].id);
+      }
+    });
+    return () => unsubscribe();
+  }, [user, selectedTripId]);
 
   // BROADCAST ENGINE (Watch Position)
   useEffect(() => {
@@ -243,23 +278,6 @@ export default function ItinerariesPage() {
   };
 
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        const q = query(collection(db, "trips"), where("members", "array-contains", currentUser.uid), where("status", "==", "active"));
-        onSnapshot(q, (snapshot) => {
-          const tripsData = snapshot.docs.map(doc => ({ id: doc.id, title: doc.data().title }));
-          setTrips(tripsData);
-          if (tripsData.length > 0 && !selectedTripId) setSelectedTripId(tripsData[0].id);
-        });
-      } else {
-        setIsLoading(false);
-      }
-    });
-    return () => unsubscribeAuth();
-  }, [selectedTripId]);
-
-  useEffect(() => {
     if (!selectedTripId) {
       setIsLoading(false);
       return;
@@ -368,7 +386,19 @@ export default function ItinerariesPage() {
     }
   };
 
-  if (isLoading) return <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950 transition-colors"><div className="animate-spin h-10 w-10 border-4 border-emerald-500 border-t-transparent rounded-full"></div></div>;
+  // 🛡️ LOADING SCREEN: Hide page until verified
+  if (isAuthLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-zinc-950">
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
+
+  // Fallback state if user somehow bypasses but is still not loaded (technically caught by isAuthLoading)
+  if (isLoading && trips.length === 0 && !selectedTripId) {
+      return <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950 transition-colors"><div className="animate-spin h-10 w-10 border-4 border-emerald-500 border-t-transparent rounded-full"></div></div>;
+  }
 
   return (
     <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors duration-300 selection:bg-emerald-500/20">

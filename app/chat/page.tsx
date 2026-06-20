@@ -16,22 +16,34 @@ interface Trip {
 
 export default function ChatHubPage() {
   const router = useRouter();
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // 🛡️ SECURITY GUARD: Check if logged in
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      if (!currentUser) router.push("/");
-      setUser(currentUser);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser) {
+        router.push("/"); // Kick to landing page if not logged in
+      } else {
+        setUser(currentUser);
+        setIsAuthLoading(false); // Show the page
+      }
     });
-    return () => unsubscribeAuth();
+    return () => unsubscribe();
   }, [router]);
 
+  // FETCH TRIPS (Only runs once user is verified)
   useEffect(() => {
     if (!user) return;
-    const q = query(collection(db, "trips"), where("members", "array-contains", user.uid), where("status", "==", "active"));
+    const q = query(
+      collection(db, "trips"), 
+      where("members", "array-contains", user.uid), 
+      where("status", "==", "active")
+    );
     
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const tripsData = snapshot.docs.map(doc => ({
@@ -48,7 +60,14 @@ export default function ChatHubPage() {
     return () => unsubscribe();
   }, [user]);
 
-  if (!user) return null;
+  // 🛡️ LOADING SCREEN: Hide page until verified
+  if (isAuthLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950">
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors duration-300 selection:bg-emerald-500/20">
@@ -105,7 +124,7 @@ export default function ChatHubPage() {
         <header className="hidden md:flex h-24 items-center justify-end px-12 z-20 shrink-0 sticky top-0 transition-all bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md">
           <div className="flex items-center gap-4">
             <div className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold flex items-center justify-center text-sm shadow-inner border border-zinc-200 dark:border-zinc-700">
-              {user.displayName?.charAt(0).toUpperCase() || "U"}
+              {user?.displayName?.charAt(0).toUpperCase() || "U"}
             </div>
           </div>
         </header>

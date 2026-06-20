@@ -4,19 +4,36 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth } from "../lib/firebase";
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Menu, X, BedDouble, Plane, MessageSquare, Info, Sparkles, Globe, ShieldCheck, Zap, Target, Users, Compass, Briefcase, Building2, ArrowRight, Code, Cpu, LineChart, History } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Menu, X, BedDouble, Plane, MessageSquare, Info, Sparkles, Globe, ShieldCheck, Zap, Target, Users, Compass, Briefcase, Building2, ArrowRight, Code, Cpu, LineChart, History, Loader2 } from "lucide-react";
 
 export default function AboutPage() {
   const router = useRouter();
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // 🛡️ SECURITY GUARD: Check if logged in
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser) {
+        router.push("/"); // Kick to landing page if not logged in
+      } else {
+        setUser(currentUser);
+        setIsAuthLoading(false); // Show the page
+      }
     });
-    return () => unsubscribeAuth();
-  }, []);
+    return () => unsubscribe();
+  }, [router]);
+
+  // 🛡️ LOADING SCREEN: Hide page until verified
+  if (isAuthLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#030712]">
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#030712] font-sans text-white overflow-hidden transition-colors duration-300 selection:bg-emerald-500/30">

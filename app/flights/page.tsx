@@ -1,4 +1,5 @@
 "use client";
+import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { collection, onSnapshot, query, where, addDoc } from "firebase/firestore"; 
@@ -20,6 +21,9 @@ const loadRazorpayScript = () => {
 };
 
 export default function FlightsPage() {
+  const router = useRouter();
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
@@ -50,23 +54,42 @@ export default function FlightsPage() {
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const [isEmailSending, setIsEmailSending] = useState(false);
 
-  // FETCH USER TRIPS
+  // 🛡️ SECURITY GUARD: Check if logged in
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        setPassengerDetails(prev => ({ ...prev, email: currentUser.email || "" }));
-        
-        const q = query(collection(db, "trips"), where("members", "array-contains", currentUser.uid), where("status", "==", "active"));
-        onSnapshot(q, (snapshot) => {
-          const tripsData = snapshot.docs.map(doc => ({ id: doc.id, title: doc.data().title }));
-          setTrips(tripsData);
-          if (tripsData.length > 0 && !selectedTripId) setSelectedTripId(tripsData[0].id);
-        });
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser) {
+        router.push("/"); // Kick to landing page if not logged in
+      } else {
+        setUser(currentUser);
+        setIsAuthLoading(false); // Show the page
       }
     });
-    return () => unsubscribeAuth();
-  }, []);
+    return () => unsubscribe();
+  }, [router]);
+
+  // FETCH TRIPS (Only runs once user is verified)
+  useEffect(() => {
+    if (!user) return;
+    
+    // Auto-fill email for the passenger form
+    setPassengerDetails(prev => ({ ...prev, email: user.email || "" }));
+    
+    const q = query(
+      collection(db, "trips"), 
+      where("members", "array-contains", user.uid), 
+      where("status", "==", "active")
+    );
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const tripsData = snapshot.docs.map(doc => ({ id: doc.id, title: doc.data().title }));
+      setTrips(tripsData);
+      if (tripsData.length > 0 && !selectedTripId) {
+        setSelectedTripId(tripsData[0].id);
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [user, selectedTripId]);
 
   // FETCH USER'S PAST BOOKINGS
   useEffect(() => {
@@ -248,6 +271,15 @@ export default function FlightsPage() {
   const formatFlightTime = (isoString: string) => {
     return new Date(isoString).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
   };
+
+  // 🛡️ LOADING SCREEN: Hide page until verified
+  if (isAuthLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950">
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden selection:bg-emerald-500/20 transition-colors duration-300">

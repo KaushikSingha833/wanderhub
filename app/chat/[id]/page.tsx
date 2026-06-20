@@ -27,7 +27,9 @@ export default function TripChatPage() {
   const router = useRouter();
   const tripId = params.id as string;
 
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  
   const [tripName, setTripName] = useState("Loading Trip...");
   const [memberNames, setMemberNames] = useState<Record<string, string>>({});
   const [messages, setMessages] = useState<Message[]>([]);
@@ -49,10 +51,15 @@ export default function TripChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
+  // 🛡️ SECURITY GUARD: Check if logged in
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      if (!currentUser) router.push("/");
-      setUser(currentUser);
+      if (!currentUser) {
+        router.push("/"); // Kick to landing page if not logged in
+      } else {
+        setUser(currentUser);
+        setIsAuthLoading(false); // Show the page
+      }
     });
     return () => unsubscribeAuth();
   }, [router]);
@@ -245,7 +252,14 @@ export default function TripChatPage() {
     ));
   };
 
-  if (!user) return null;
+  // 🛡️ LOADING SCREEN: Hide page until verified
+  if (isAuthLoading || !user) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950">
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors duration-300 selection:bg-emerald-500/20" onClick={() => setSelectedMessageId(null)}>

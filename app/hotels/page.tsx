@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { collection, getDocs, query, where, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
 import { auth, db } from "../lib/firebase"; 
@@ -34,6 +35,9 @@ interface HotelResult {
 }
 
 export default function HotelsPage() {
+  const router = useRouter();
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
   const [user, setUser] = useState<FirebaseUser | null>(null);
   
   const [destination, setDestination] = useState("Mumbai, India");
@@ -64,20 +68,34 @@ export default function HotelsPage() {
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [suggestSuccess, setSuggestSuccess] = useState(false);
 
+  // 🛡️ SECURITY GUARD: Check if logged in
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        const q = query(collection(db, "trips"), where("members", "array-contains", currentUser.uid),where("status", "==", "active"));
-        onSnapshot(q, (snapshot) => {
-          const tripsData = snapshot.docs.map(doc => ({ id: doc.id, title: doc.data().title }));
-          setUserTrips(tripsData);
-          if (tripsData.length > 0 && !selectedTripId) setSelectedTripId(tripsData[0].id);
-        });
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser) {
+        router.push("/"); // Kick to landing page if not logged in
+      } else {
+        setUser(currentUser);
+        setIsAuthLoading(false); // Show the page
       }
     });
-    return () => unsubscribeAuth();
-  }, [selectedTripId]);
+    return () => unsubscribe();
+  }, [router]);
+
+  // FETCH TRIPS (Only runs once user is verified)
+  useEffect(() => {
+    if (!user) return;
+    const q = query(
+      collection(db, "trips"), 
+      where("members", "array-contains", user.uid),
+      where("status", "==", "active")
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const tripsData = snapshot.docs.map(doc => ({ id: doc.id, title: doc.data().title }));
+      setUserTrips(tripsData);
+      if (tripsData.length > 0 && !selectedTripId) setSelectedTripId(tripsData[0].id);
+    });
+    return () => unsubscribe();
+  }, [user, selectedTripId]);
 
   useEffect(() => {
     const fetchSuggestions = async () => {
@@ -367,6 +385,15 @@ export default function HotelsPage() {
     if (sortBy === "distance") return (a.distance ?? 9999) - (b.distance ?? 9999);
     return 0; 
   });
+
+  // 🛡️ LOADING SCREEN: Hide page until verified
+  if (isAuthLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-zinc-950">
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors duration-300 selection:bg-emerald-500/20">

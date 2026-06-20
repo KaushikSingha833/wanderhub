@@ -2,10 +2,10 @@
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { collection, query, where, getDocs, addDoc, doc, getDoc, orderBy, serverTimestamp, updateDoc, arrayUnion, arrayRemove, onSnapshot} from "firebase/firestore";
+import { collection, query, where, getDocs, addDoc, doc, updateDoc, arrayUnion, arrayRemove, onSnapshot, serverTimestamp, orderBy } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase";
 import { useCurrency } from "../../lib/useCurrency";
-import { MapPin, Star, Wifi, Coffee, BedDouble, Users, Calendar, ArrowLeft, CheckCircle2, Shield, Loader2, Sparkles, X, Tv, Wind, Smartphone, ChevronLeft, ChevronRight, Image as ImageIcon, MessageSquare, ThumbsUp, ThumbsDown, Map as MapIcon, ArrowDownUp, PlaneTakeoff, CreditCard, Settings, Plane, Info, Search, Menu, ChevronDown, AlertCircle} from "lucide-react";
+import { MapPin, Star, Wifi, BedDouble, Users, Calendar, ArrowLeft, CheckCircle2, Shield, Loader2, Sparkles, X, Tv, Wind, ChevronDown, AlertCircle, ChevronLeft, ChevronRight, Image as ImageIcon, MessageSquare, ThumbsUp, ThumbsDown, Map as MapIcon, ArrowDownUp, PlaneTakeoff, CreditCard, Settings, Plane, Info, Search, Menu, Phone, Mail, Building2, Send, History } from "lucide-react";
 import Link from "next/link";
 
 // --- RAZORPAY SCRIPT LOADER ---
@@ -63,8 +63,13 @@ function PartnerHotelContent() {
   
   const decodedHotelName = decodeURIComponent(params.hotelName as string);
   
+  // 🛡️ SECURITY GUARD STATE
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  
   const [checkIn, setCheckIn] = useState(searchParams.get("checkIn") || "");
+  const [arrivalTime, setArrivalTime] = useState("14:00"); 
   const [checkOut, setCheckOut] = useState(searchParams.get("checkOut") || "");
+  const [departureTime, setDepartureTime] = useState("11:00"); 
   const [guests, setGuests] = useState(searchParams.get("guests") || "2");
   
   const [sortBy, setSortBy] = useState("recommended");
@@ -75,6 +80,12 @@ function PartnerHotelContent() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   
   const [hotelCoords, setHotelCoords] = useState<{lat: number, lng: number} | null>(null);
+  const [hotelContact, setHotelContact] = useState<{phone: string, email: string, uid: string} | null>(null);
+
+  // ✨ NEW: Integrated Chat States
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatMessages, setChatMessages] = useState<any[]>([]);
+  const [chatInput, setChatInput] = useState("");
 
   const [trips, setTrips] = useState<any[]>([]);
   const [selectedTripId, setSelectedTripId] = useState<string>("");
@@ -97,27 +108,36 @@ function PartnerHotelContent() {
   const [viewingPhotosFor, setViewingPhotosFor] = useState<Room | null>(null);
   const [currentPhotoIndex, setCurrentPhotoIndex] = useState(0);
 
-  // ✨ NEW: TRAIN BOOKING OVERLAP STATE
   const [occupiedRoomIds, setOccupiedRoomIds] = useState<Set<string>>(new Set());
   const [isCheckingAvailability, setIsCheckingAvailability] = useState(false);
 
   const { symbol, convert } = useCurrency();
 
+  // 🛡️ SECURITY GUARD: Kick out unauthenticated users immediately
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        // ✨ Added the status filter right here!
-        const qTrips = query(collection(db, "trips"), where("members", "array-contains", currentUser.uid), where("status", "==", "active"));
+      if (!currentUser) {
+        router.push("/"); // Redirect straight to landing if not logged in
+      } else {
+        setUser(currentUser);
+        setIsAuthLoading(false); // Authentication verified, unlock page loading
+        
+        const qTrips = query(
+          collection(db, "trips"), 
+          where("members", "array-contains", currentUser.uid), 
+          where("status", "==", "active")
+        );
         onSnapshot(qTrips, (snapshot) => {
           const tripsData = snapshot.docs.map(doc => ({ id: doc.id, title: doc.data().title }));
           setTrips(tripsData);
-          if (tripsData.length > 0) setSelectedTripId(tripsData[0].id);
+          if (tripsData.length > 0 && !selectedTripId) {
+            setSelectedTripId(tripsData[0].id);
+          }
         });
       }
     });
     return () => unsubscribe();
-  }, [router]);
+  }, [router, selectedTripId]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -136,6 +156,11 @@ function PartnerHotelContent() {
           if (hotelData.latitude && hotelData.longitude) {
             setHotelCoords({ lat: hotelData.latitude, lng: hotelData.longitude });
           }
+          setHotelContact({
+            phone: hotelData.hotelPhone || "",
+            email: hotelData.hotelEmail || "",
+            uid: hotelData.uid || ""
+          });
         }
 
         const qReviews = query(collection(db, "hotelReviews"), where("hotelName", "==", decodedHotelName));
@@ -157,20 +182,36 @@ function PartnerHotelContent() {
     if (decodedHotelName) fetchData();
   }, [decodedHotelName]);
 
-  // ✨ NEW: TRAIN BOOKING OVERLAP CHECKER
+  // ✨ NEW: Fetch Dedicated Hotel Chat Messages
+  useEffect(() => {
+    if (!isChatOpen || !user || !hotelContact) return;
+    
+    const combinedChatId = `${user.uid}_${hotelContact.uid}`;
+    const qMessages = query(
+      collection(db, "hotelChats"), 
+      where("chatId", "==", combinedChatId), 
+      orderBy("timestamp", "asc")
+    );
+    
+    const unsubscribeMessages = onSnapshot(qMessages, (snapshot) => {
+      setChatMessages(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+    });
+    
+    return () => unsubscribeMessages();
+  }, [isChatOpen, user, hotelContact]);
+
   useEffect(() => {
     const fetchOccupiedRooms = async () => {
-      if (!checkIn || !checkOut) {
+      if (!checkIn || !checkOut || !arrivalTime || !departureTime) {
         setOccupiedRoomIds(new Set());
         return;
       }
       setIsCheckingAvailability(true);
       
       try {
-        const reqStart = new Date(checkIn).getTime();
-        const reqEnd = new Date(checkOut).getTime();
+        const reqStart = new Date(`${checkIn}T${arrivalTime}`).getTime();
+        const reqEnd = new Date(`${checkOut}T${departureTime}`).getTime();
         
-        // Prevent invalid date ranges
         if (reqStart >= reqEnd) {
           setOccupiedRoomIds(new Set());
           setIsCheckingAvailability(false);
@@ -188,10 +229,9 @@ function PartnerHotelContent() {
 
         snapshot.docs.forEach(doc => {
           const b = doc.data();
-          const bStart = new Date(b.checkIn).getTime();
-          const bEnd = new Date(b.checkOut).getTime();
+          const bStart = new Date(`${b.checkIn}T${b.arrivalTime || "14:00"}`).getTime();
+          const bEnd = new Date(`${b.checkOut}T${b.departureTime || "11:00"}`).getTime();
 
-          // ✨ OVERLAP FORMULA
           if (reqStart < bEnd && reqEnd > bStart) {
             occupied.add(b.roomId);
           }
@@ -206,15 +246,12 @@ function PartnerHotelContent() {
     };
 
     fetchOccupiedRooms();
-  }, [checkIn, checkOut, decodedHotelName]);
+  }, [checkIn, checkOut, arrivalTime, departureTime, decodedHotelName]);
 
-  // ✨ UPDATED: INTEGRATE OVERLAP INTO DISPLAY LOGIC
   const displayedRooms = useMemo(() => {
     let filtered = rooms.filter(room => {
       const roomCapacity = room.maxGuests || 2; 
-      // 1. Capacity Check
       if (roomCapacity < Number(guests)) return false;
-      // 2. Train Booking Overlap Check
       if (occupiedRoomIds.has(room.id)) return false; 
       return true;
     });
@@ -244,7 +281,6 @@ function PartnerHotelContent() {
   const nights = calculateNights();
   const totalPriceInBase = selectedRoom ? selectedRoom.price * nights : 0;
   
-  // Real-time check if selected room became occupied due to date tweaks in modal
   const isRoomCurrentlyOccupied = selectedRoom ? occupiedRoomIds.has(selectedRoom.id) : false;
 
   const handleSubmitReview = async (e: React.FormEvent) => {
@@ -333,11 +369,13 @@ function PartnerHotelContent() {
   const handleInitiatePayment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) { alert("Please log in to book."); router.push('/'); return; }
-    if (!selectedRoom || !checkIn || !checkOut) { alert("Please fill out all dates."); return; }
+    if (!selectedRoom || !checkIn || !checkOut || !arrivalTime || !departureTime) { 
+      alert("Please fill out all dates and times."); 
+      return; 
+    }
     
-    // ✨ EXTRA SAFETY CHECK: Prevent double-booking race condition
     if (isRoomCurrentlyOccupied) {
-       alert("Sorry! This room was just booked for these dates. Please select different dates.");
+       alert("Sorry! This room was just booked for these precise times. Please adjust your schedule.");
        return;
     }
 
@@ -378,7 +416,7 @@ function PartnerHotelContent() {
           email: user.email || "",
           contact: "9999999999", 
         },
-        theme: { color: "#10b981" }, // Emerald color
+        theme: { color: "#10b981" }, 
       };
 
       const paymentObject = new (window as any).Razorpay(options);
@@ -407,6 +445,8 @@ function PartnerHotelContent() {
         customerEmail: user.email || "", 
         checkIn: checkIn || "",
         checkOut: checkOut || "",
+        arrivalTime: arrivalTime || "14:00",
+        departureTime: departureTime || "11:00",
         guests: Number(guests) || 2,
         totalPriceBase: totalPriceInBase || 0, 
         status: "Confirmed", 
@@ -420,9 +460,9 @@ function PartnerHotelContent() {
           title: `Check-in at ${selectedRoom.hotelName}`,
           type: "hotel",
           date: checkIn,
-          time: "14:00", 
+          time: arrivalTime, 
           location: hotelCity,
-          notes: `Room: ${selectedRoom.name} | Guests: ${guests} | Checkout: ${checkOut}`,
+          notes: `Room: ${selectedRoom.name} | Guests: ${guests} | Arrival: ${arrivalTime} | Departure: ${departureTime}`,
           trackingNumber: transactionId.substring(4, 12).toUpperCase() 
         });
       }
@@ -444,6 +484,30 @@ function PartnerHotelContent() {
     }
   };
 
+  // ✨ NEW: Handle Sending General Hotel Messages
+  const handleSendHotelMessage = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!chatInput.trim() || !user || !hotelContact) return;
+    
+    const combinedChatId = `${user.uid}_${hotelContact.uid}`;
+    
+    try {
+      await addDoc(collection(db, "hotelChats"), {
+        chatId: combinedChatId,
+        hotelId: hotelContact.uid,
+        hotelName: decodedHotelName,
+        customerId: user.uid,
+        customerName: user.displayName || "Guest",
+        senderId: user.uid,
+        text: chatInput.trim(),
+        timestamp: serverTimestamp()
+      });
+      setChatInput("");
+    } catch (error) {
+      console.error("Error sending chat:", error);
+    }
+  };
+
   const handleNextPhoto = () => {
     if (!viewingPhotosFor || !viewingPhotosFor.imageUrls) return;
     setCurrentPhotoIndex((prev) => prev === viewingPhotosFor.imageUrls!.length - 1 ? 0 : prev + 1);
@@ -453,6 +517,15 @@ function PartnerHotelContent() {
     setCurrentPhotoIndex((prev) => prev === 0 ? viewingPhotosFor.imageUrls!.length - 1 : prev - 1);
   };
 
+  // 🛡️ LOADING INTERCEPTOR: Prevents layout flashing
+  if (isAuthLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950">
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
+
   if (isLoading) return <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950"><Loader2 className="h-10 w-10 animate-spin text-emerald-500" /></div>;
 
   const hotelCity = rooms.length > 0 ? rooms[0].city : "Unknown Location";
@@ -461,12 +534,10 @@ function PartnerHotelContent() {
   return (
     <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors duration-300 selection:bg-emerald-500/20">
       
-      {/* MOBILE MENU BLUR */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-md z-40 md:hidden transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
-      {/* FLOATING SIDEBAR (EDITORIAL STYLE) */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col transform transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] print:hidden ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} md:relative md:translate-x-0`}>
         <div className="h-20 flex items-center px-8 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
           <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-3 shadow-sm">
@@ -483,6 +554,7 @@ function PartnerHotelContent() {
           <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><CreditCard className="h-5 w-5 mr-3 opacity-70" /> Expenses</Link>
           <Link href="/flights" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Plane className="h-5 w-5 mr-3 opacity-70" /> Book Flights</Link>
           <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-2xl font-bold transition-all"><BedDouble className="h-5 w-5 mr-3 text-emerald-600 dark:text-emerald-400" /> Book Hotels</Link>
+          <Link href="/history" className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><History className="h-5 w-5 mr-3 opacity-70" /> Trip History</Link>
           <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Settings className="h-5 w-5 mr-3 opacity-70" /> Settings</Link>
           
           <div className="mt-auto pt-6 border-t border-zinc-200 dark:border-zinc-800">
@@ -493,11 +565,9 @@ function PartnerHotelContent() {
         </nav>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
         <div className="absolute top-[10%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
 
-        {/* MOBILE TOP BAR */}
         <div className="md:hidden h-20 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-6 shrink-0 z-30 sticky top-0 transition-colors">
           <div className="flex items-center">
             <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-2 shadow-sm">
@@ -511,7 +581,6 @@ function PartnerHotelContent() {
           </div>
         </div>
 
-        {/* DESKTOP HEADER (MINIMALIST) */}
         <header className="hidden md:flex h-24 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 items-center justify-between px-12 z-20 shrink-0 sticky top-0 transition-all">
           <div>
             <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Property Details</h2>
@@ -524,7 +593,6 @@ function PartnerHotelContent() {
 
         <main className="flex-1 overflow-y-auto custom-scrollbar relative z-10">
           
-          {/* EDITORIAL HERO BANNER */}
           <div className="relative h-[40vh] md:h-[50vh] w-full bg-zinc-900 dark:bg-black overflow-hidden mb-8 md:mb-12 border-b border-zinc-800">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] mix-blend-overlay pointer-events-none"></div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -564,7 +632,46 @@ function PartnerHotelContent() {
 
           <div className="max-w-7xl mx-auto px-4 md:px-12 pb-24 relative z-30">
             
-            {/* ROOMS GRID */}
+            {hotelContact && (
+              <div className="mb-12 bg-white dark:bg-zinc-900/40 rounded-[2rem] border border-zinc-200 dark:border-zinc-800/50 p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm">
+                <div className="flex items-center gap-5 w-full md:w-auto">
+                  <div className="h-16 w-16 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center border border-emerald-500/20 shrink-0">
+                    <Building2 className="h-8 w-8" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-zinc-900 dark:text-white tracking-tight">Property Management</h3>
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-1">Verified Host</p>
+                    {hotelContact.email && (
+                      <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400 mt-2 flex items-center">
+                        <Mail className="h-4 w-4 mr-2" /> {hotelContact.email}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="flex w-full md:w-auto gap-3 shrink-0">
+                  {hotelContact.phone && (
+                    <a 
+                      href={`tel:${hotelContact.phone}`}
+                      className="flex-1 md:flex-none px-6 py-3.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-sm active:scale-95"
+                    >
+                      <Phone className="h-4 w-4 mr-2" /> Call Hotel
+                    </a>
+                  )}
+                  {/* ✨ UPDATED: Chat Button now opens modal instead of redirecting */}
+                  <button 
+                    onClick={() => {
+                      if(!user) { alert("Please log in to chat with the host."); return; }
+                      setIsChatOpen(true);
+                    }}
+                    className="flex-1 md:flex-none px-6 py-3.5 bg-emerald-500 text-zinc-950 hover:bg-emerald-400 rounded-full text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.2)] active:scale-95"
+                  >
+                    <MessageSquare className="h-4 w-4 mr-2" /> Chat Now
+                  </button>
+                </div>
+              </div>
+            )}
+
             <div className="mb-20">
               <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4 border-b border-zinc-200 dark:border-zinc-800 pb-4">
                 <div>
@@ -663,7 +770,6 @@ function PartnerHotelContent() {
               )}
             </div>
 
-            {/* PUBLIC REVIEWS & RATINGS SECTION */}
             <div className="border-t border-zinc-200 dark:border-zinc-800 pt-16">
               <div className="flex items-center justify-between mb-10">
                 <h2 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tight flex items-center">
@@ -672,7 +778,6 @@ function PartnerHotelContent() {
               </div>
 
               <div className="grid grid-cols-1 xl:grid-cols-3 gap-10">
-                {/* Left: Write a Review Form */}
                 <div className="xl:col-span-1">
                   <div className="bg-white dark:bg-zinc-900/50 rounded-[2rem] p-8 md:p-10 border border-zinc-200 dark:border-zinc-800/50 shadow-sm sticky top-32">
                     <div className="h-12 w-12 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-full flex items-center justify-center mb-6 shadow-sm border border-zinc-200 dark:border-zinc-700">
@@ -724,7 +829,6 @@ function PartnerHotelContent() {
                   </div>
                 </div>
 
-                {/* Right: Public Review Feed */}
                 <div className="xl:col-span-2">
                   {reviews.length === 0 ? (
                     <div className="text-center py-24 bg-transparent rounded-[2rem] border border-dashed border-zinc-300 dark:border-zinc-800">
@@ -878,7 +982,7 @@ function PartnerHotelContent() {
       {/* SECURE RAZORPAY BOOKING MODAL (FINTECH) */}
       {selectedRoom && (
         <div className="fixed inset-0 bg-zinc-900/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] p-8 md:p-10 w-full max-w-md shadow-2xl relative border border-transparent dark:border-zinc-800 animate-in zoom-in-95 duration-300">
+          <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] p-8 md:p-10 w-full max-w-[500px] shadow-2xl relative border border-transparent dark:border-zinc-800 animate-in zoom-in-95 duration-300">
             
             {bookingSuccess ? (
               <div className="text-center py-10">
@@ -903,7 +1007,7 @@ function PartnerHotelContent() {
                 
                 {isRoomCurrentlyOccupied && (
                   <div className="bg-rose-500/10 border border-rose-500/20 text-rose-500 text-[10px] font-bold uppercase tracking-widest px-4 py-3 rounded-xl mb-6 flex items-center">
-                    <AlertCircle className="h-4 w-4 mr-2" /> Room is unavailable for these dates.
+                    <AlertCircle className="h-4 w-4 mr-2 shrink-0" /> Room is unavailable for these precise times.
                   </div>
                 )}
 
@@ -916,19 +1020,30 @@ function PartnerHotelContent() {
                   </div>
                 </div>
 
-                <form onSubmit={handleInitiatePayment} className="space-y-6">
+                <form onSubmit={handleInitiatePayment} className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Check-In</label>
+                      <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Check-In Date</label>
                       <input type="date" value={checkIn} onChange={(e)=>setCheckIn(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none text-sm font-bold text-zinc-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer dark:[color-scheme:dark] transition-all" required />
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Check-Out</label>
-                      <input type="date" value={checkOut} onChange={(e)=>setCheckOut(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none text-sm font-bold text-zinc-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer dark:[color-scheme:dark] transition-all" required />
+                      <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Arrival Time</label>
+                      <input type="time" value={arrivalTime} onChange={(e)=>setArrivalTime(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none text-sm font-bold text-zinc-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer dark:[color-scheme:dark] transition-all" required />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Check-Out Date</label>
+                      <input type="date" value={checkOut} onChange={(e)=>setCheckOut(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none text-sm font-bold text-zinc-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer dark:[color-scheme:dark] transition-all" required />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Departure Time</label>
+                      <input type="time" value={departureTime} onChange={(e)=>setDepartureTime(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl px-4 py-3 outline-none text-sm font-bold text-zinc-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer dark:[color-scheme:dark] transition-all" required />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4 pt-2">
                     <div className="relative group">
                       <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Guests</label>
                       <select value={guests} onChange={(e)=>setGuests(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-xl pl-4 pr-8 py-3 outline-none text-sm font-bold text-zinc-900 dark:text-white focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 cursor-pointer appearance-none transition-all">
@@ -965,6 +1080,77 @@ function PartnerHotelContent() {
                 </form>
               </>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* ✨ HOTEL CHAT DRAWER */}
+      {isChatOpen && (
+        <div className="fixed inset-0 z-[110] flex justify-end">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setIsChatOpen(false)}></div>
+          <div className="relative w-full max-w-md bg-zinc-950 h-full border-l border-zinc-800 flex flex-col shadow-2xl animate-in slide-in-from-right duration-300">
+            
+            {/* Header */}
+            <div className="h-24 border-b border-zinc-800 flex items-center justify-between px-6 bg-zinc-900/80 backdrop-blur-md shrink-0">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center border border-emerald-500/20 shadow-sm">
+                  <Building2 className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-white text-lg tracking-tight truncate max-w-[200px]">{decodedHotelName}</h3>
+                  <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest mt-0.5 flex items-center">
+                    <span className="relative flex h-2 w-2 mr-1.5"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span></span> Live Support
+                  </p>
+                </div>
+              </div>
+              <button onClick={() => setIsChatOpen(false)} className="h-10 w-10 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-full flex items-center justify-center transition-colors active:scale-95 border border-zinc-800"><X className="h-5 w-5" /></button>
+            </div>
+
+            {/* Messages Feed */}
+            <div className="flex-1 overflow-y-auto p-6 custom-scrollbar flex flex-col gap-4 bg-zinc-950 relative">
+              {chatMessages.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center text-zinc-500 opacity-70 z-10">
+                  <div className="h-16 w-16 bg-zinc-900 border border-zinc-800 rounded-full flex items-center justify-center mb-4 shadow-sm">
+                    <MessageSquare className="h-8 w-8 text-zinc-600" />
+                  </div>
+                  <p className="text-sm font-bold text-white tracking-tight mb-1">Start a conversation</p>
+                  <p className="text-xs font-medium text-center px-8">Ask the host about amenities, early check-in, or special requests.</p>
+                </div>
+              ) : (
+                chatMessages.map(msg => {
+                  const isMe = msg.senderId === user?.uid;
+                  return (
+                    <div key={msg.id} className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
+                      <div className={`px-5 py-3.5 rounded-2xl max-w-[85%] shadow-md ${isMe ? 'bg-emerald-500 text-zinc-950 rounded-br-sm' : 'bg-zinc-800 text-white rounded-bl-sm border border-zinc-700'}`}>
+                        <p className="text-sm font-medium leading-relaxed">{msg.text}</p>
+                        {msg.timestamp && (
+                          <p className={`text-[8px] font-bold uppercase tracking-widest mt-2 text-right ${isMe ? 'text-emerald-900/60' : 'text-zinc-400'}`}>
+                            {new Date(msg.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
+
+            {/* Input Form */}
+            <form onSubmit={handleSendHotelMessage} className="p-5 border-t border-zinc-800 bg-zinc-900/80 backdrop-blur-md flex gap-3 shrink-0 z-10">
+               <input 
+                 value={chatInput} 
+                 onChange={e => setChatInput(e.target.value)} 
+                 placeholder="Type your message..." 
+                 className="flex-1 bg-zinc-950 border border-zinc-800 rounded-full px-6 py-4 text-sm font-medium text-white outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-all placeholder-zinc-600 shadow-inner"
+               />
+               <button 
+                 type="submit" 
+                 disabled={!chatInput.trim()}
+                 className="h-14 w-14 bg-emerald-500 text-zinc-950 rounded-full flex items-center justify-center hover:bg-emerald-400 transition-all shrink-0 active:scale-95 disabled:opacity-50 shadow-[0_0_15px_rgba(16,185,129,0.2)]"
+               >
+                 <Send className="h-5 w-5 ml-0.5" />
+               </button>
+            </form>
           </div>
         </div>
       )}

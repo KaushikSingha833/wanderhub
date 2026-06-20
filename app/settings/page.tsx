@@ -18,6 +18,8 @@ import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, User, Globe, Bell, S
 
 export default function SettingsPage() {
   const router = useRouter();
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+  
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [activeTab, setActiveTab] = useState("profile");
   
@@ -75,15 +77,43 @@ export default function SettingsPage() {
 
   const closeDialog = () => setDialog(prev => ({ ...prev, isOpen: false }));
 
-  // 1. Load User & Preferences
+  const applyThemeToDocument = (selectedTheme: string) => {
+    const root = document.documentElement;
+    if (selectedTheme === 'Dark Mode') {
+      root.classList.add('dark');
+    } else if (selectedTheme === 'Light Mode') {
+      root.classList.remove('dark');
+    } else {
+      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        root.classList.add('dark');
+      } else {
+        root.classList.remove('dark');
+      }
+    }
+  };
+
+  // 🛡️ 1. SECURITY GUARD: Check if logged in
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-      if (currentUser) {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser) {
+        router.push("/"); // Kick to landing page if not logged in
+      } else {
         setUser(currentUser);
-        setDisplayName(currentUser.displayName || "");
-        
-        // Fetch custom preferences from Firestore
-        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+        setIsAuthLoading(false); // Valid user, proceed to loading their data
+      }
+    });
+    return () => unsubscribe();
+  }, [router]);
+
+  // 2. FETCH PREFERENCES (Only runs once user is verified)
+  useEffect(() => {
+    if (!user) return;
+
+    setDisplayName(user.displayName || "");
+    
+    const fetchPreferences = async () => {
+      try {
+        const userDoc = await getDoc(doc(db, "users", user.uid));
         const localTheme = localStorage.getItem('theme');
 
         if (userDoc.exists()) {
@@ -106,7 +136,7 @@ export default function SettingsPage() {
           applyThemeToDocument(resolvedTheme);
 
           if (localTheme && dbTheme !== localTheme) {
-            setDoc(doc(db, "users", currentUser.uid), { theme: localTheme }, { merge: true });
+            setDoc(doc(db, "users", user.uid), { theme: localTheme }, { merge: true });
           }
 
         } else {
@@ -114,28 +144,15 @@ export default function SettingsPage() {
           setTheme(resolvedTheme);
           applyThemeToDocument(resolvedTheme);
         }
-      } else {
-        router.push("/"); 
+      } catch (error) {
+        console.error("Error fetching preferences:", error);
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
-    });
-    return () => unsubscribe();
-  }, [router]);
+    };
 
-  const applyThemeToDocument = (selectedTheme: string) => {
-    const root = document.documentElement;
-    if (selectedTheme === 'Dark Mode') {
-      root.classList.add('dark');
-    } else if (selectedTheme === 'Light Mode') {
-      root.classList.remove('dark');
-    } else {
-      if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
-        root.classList.add('dark');
-      } else {
-        root.classList.remove('dark');
-      }
-    }
-  };
+    fetchPreferences();
+  }, [user]);
 
   const handleThemeChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
     const newTheme = e.target.value;
@@ -278,7 +295,15 @@ export default function SettingsPage() {
     }
   };
 
-  if (isLoading) return <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950 transition-colors"><div className="animate-spin h-10 w-10 border-4 border-emerald-500 border-t-transparent rounded-full"></div></div>;
+  // 🛡️ LOADING SCREEN: Hide page until verified and preferences are loaded
+  if (isAuthLoading || isLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950">
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
+  
   if (!user) return null;
 
   const isEmailUser = user?.providerData.some(provider => provider.providerId === 'password');

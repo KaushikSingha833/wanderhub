@@ -51,9 +51,13 @@ const getTripImage = (id: string) => {
 };
 
 export default function TripDetails() {
-  const params = useParams(); const router = useRouter(); const tripId = params.id as string;
+  const params = useParams(); 
+  const router = useRouter(); 
+  const tripId = params.id as string;
   
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
   const [user, setUser] = useState<FirebaseUser | null>(null);
+  
   const [trip, setTrip] = useState<Trip | null>(null);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [packingItems, setPackingItems] = useState<PackingItem[]>([]);
@@ -79,20 +83,33 @@ export default function TripDetails() {
   // Packing List State
   const [newItemName, setNewItemName] = useState("");
 
-  // 1. Listen to Auth State
+  // 🛡️ 1. SECURITY GUARD: Check if logged in
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => { setUser(currentUser); });
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser) {
+        router.push("/"); // Kick to landing page if not logged in
+      } else {
+        setUser(currentUser);
+        setIsAuthLoading(false); // Show the page
+      }
+    });
     return () => unsubscribe();
-  }, []);
+  }, [router]);
 
   // 2. Fetch Data (UPGRADED: Trip is now real-time!)
   useEffect(() => {
-    if (!tripId) return;
+    if (!tripId || !user) return;
 
     // Real-time trip listener
     const unsubTrip = onSnapshot(doc(db, "trips", tripId), (docSnap) => {
       if (docSnap.exists()) {
-        setTrip({ id: docSnap.id, ...(docSnap.data() as Omit<Trip, 'id'>) });
+        const data = docSnap.data();
+        if (!data.members?.includes(user.uid)) {
+          alert("You are not a member of this trip.");
+          router.push("/");
+          return;
+        }
+        setTrip({ id: docSnap.id, ...(data as Omit<Trip, 'id'>) });
       }
     });
 
@@ -116,7 +133,7 @@ export default function TripDetails() {
     });
 
     return () => { unsubTrip(); unsubActivities(); unsubPacking(); unsubPolls(); };
-  }, [tripId]);
+  }, [tripId, user, router]);
 
   // The Self-Healing Name Sync
   useEffect(() => {
@@ -253,8 +270,35 @@ export default function TripDetails() {
     }
   };
 
-  if (isLoading || !user) return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 transition-colors"><div className="animate-spin h-10 w-10 border-4 border-emerald-500 border-t-transparent rounded-full"></div></div>;
-  if (!trip) return <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 transition-colors"><div className="text-center"><MapIcon className="h-16 w-16 mx-auto text-zinc-300 dark:text-zinc-700 mb-4"/><h2 className="text-2xl font-bold text-zinc-700 dark:text-zinc-300 tracking-tight">Trip not found</h2><button onClick={() => router.push('/')} className="mt-4 text-emerald-600 dark:text-emerald-400 font-bold hover:underline">Return Home</button></div></div>;
+  // 🛡️ LOADING SCREEN: Hide page until verified
+  if (isAuthLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950">
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
+
+  // Backup loader for data fetch
+  if (isLoading || !user) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 transition-colors">
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
+
+  if (!trip) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 transition-colors">
+        <div className="text-center">
+          <MapIcon className="h-16 w-16 mx-auto text-zinc-300 dark:text-zinc-700 mb-4"/>
+          <h2 className="text-2xl font-bold text-zinc-700 dark:text-zinc-300 tracking-tight">Trip not found</h2>
+          <button onClick={() => router.push('/')} className="mt-4 text-emerald-600 dark:text-emerald-400 font-bold hover:underline">Return Home</button>
+        </div>
+      </div>
+    );
+  }
 
   const isAdmin = user.uid === trip.adminId;
   const tripImageUrl = trip.imageUrl || getTripImage(trip.id);
@@ -589,7 +633,7 @@ export default function TripDetails() {
             <div className="space-y-3 mb-8">
               {trip.members?.map((memberUid) => {
                 const isThisMemberAdmin = memberUid === trip.adminId;
-                const isMe = memberUid === user.uid;
+                const isMe = memberUid === user?.uid;
                 const memberName = trip.memberNames?.[memberUid] || "Unknown Traveler";
 
                 return (
@@ -615,7 +659,7 @@ export default function TripDetails() {
               })}
             </div>
             {!isAdmin && (
-              <button onClick={() => handleRemoveMember(user.uid, "Yourself")} className="w-full flex items-center justify-center bg-transparent text-rose-500 hover:bg-rose-500 hover:text-white px-5 py-3 rounded-full font-bold text-sm uppercase tracking-widest transition-all border border-rose-500/30">
+              <button onClick={() => handleRemoveMember(user?.uid || "", "Yourself")} className="w-full flex items-center justify-center bg-transparent text-rose-500 hover:bg-rose-500 hover:text-white px-5 py-3 rounded-full font-bold text-sm uppercase tracking-widest transition-all border border-rose-500/30">
                 <LogOut className="h-4 w-4 mr-2" /> Leave Adventure
               </button>
             )}

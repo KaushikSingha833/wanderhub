@@ -76,6 +76,12 @@ export default function Home() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // ✨ EXTEND TRIP STATE
+  const [isExtendModalOpen, setIsExtendModalOpen] = useState(false);
+  const [selectedTripToExtend, setSelectedTripToExtend] = useState<Trip | null>(null);
+  const [newEndDate, setNewEndDate] = useState("");
+  const [isExtending, setIsExtending] = useState(false);
+
   const [title, setTitle] = useState("");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
@@ -243,7 +249,6 @@ export default function Home() {
     }
   };
 
-  // ✨ NEW: Archive Trip Function instead of Delete
   const handleArchiveTrip = async (e: React.MouseEvent, tripId: string, tripTitle: string) => {
     e.stopPropagation();
 
@@ -256,6 +261,27 @@ export default function Home() {
         console.error("Error archiving trip:", error);
         alert("Failed to archive trip.");
       }
+    }
+  };
+
+  // ✨ NEW: Extend Trip Function
+  const handleExtendTripSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedTripToExtend || !newEndDate) return;
+    setIsExtending(true);
+    try {
+      await updateDoc(doc(db, "trips", selectedTripToExtend.id), {
+        endDate: newEndDate
+      });
+      setIsExtendModalOpen(false);
+      setSelectedTripToExtend(null);
+      setNewEndDate("");
+      alert("Trip extended successfully!");
+    } catch (error) {
+      console.error("Error extending trip:", error);
+      alert("Failed to extend trip.");
+    } finally {
+      setIsExtending(false);
     }
   };
 
@@ -803,15 +829,29 @@ export default function Home() {
                     {/* Dark Gradient Overlay */}
                     <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/10 to-transparent opacity-80 group-hover:opacity-90 transition-opacity duration-500"></div>
 
-                    {/* ✨ NEW: Top Right Admin Button (Now Archives) */}
+                    {/* ✨ UPDATED: Top Right Admin Actions */}
                     {trip.adminId === user.uid && (
-                      <button
-                        onClick={(e) => handleArchiveTrip(e, trip.id, trip.title)}
-                        className="absolute top-5 right-5 h-10 w-10 bg-white/10 hover:bg-white backdrop-blur-md border border-white/20 text-white hover:text-zinc-900 rounded-full flex items-center justify-center transition-all opacity-0 group-hover:opacity-100 shadow-lg scale-90 group-hover:scale-100 z-20"
-                        title="Archive Trip"
-                      >
-                        <Archive className="h-4 w-4" />
-                      </button>
+                      <div className="absolute top-5 right-5 z-20 flex flex-col gap-2">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedTripToExtend(trip);
+                            setNewEndDate(trip.endDate);
+                            setIsExtendModalOpen(true);
+                          }}
+                          className="h-10 w-10 bg-sky-500 text-zinc-950 hover:bg-sky-400 backdrop-blur-md border border-sky-400/50 rounded-full flex items-center justify-center transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 shadow-[0_0_15px_rgba(14,165,233,0.3)] scale-100 md:scale-90 md:group-hover:scale-100"
+                          title="Extend Trip Duration"
+                        >
+                          <Calendar className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={(e) => handleArchiveTrip(e, trip.id, trip.title)}
+                          className="h-10 w-10 bg-white/10 hover:bg-white backdrop-blur-md border border-white/20 text-white hover:text-zinc-900 rounded-full flex items-center justify-center transition-all opacity-100 md:opacity-0 md:group-hover:opacity-100 shadow-lg scale-100 md:scale-90 md:group-hover:scale-100"
+                          title="Archive Trip"
+                        >
+                          <Archive className="h-4 w-4" />
+                        </button>
+                      </div>
                     )}
 
                     {/* Floating Pill Info Box */}
@@ -870,11 +910,45 @@ export default function Home() {
                 </div>
               </div>
               <div className="flex justify-end gap-3 mt-4 pt-6">
-                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-xl font-bold transition-colors w-full sm:w-auto">Cancel</button>
+                <button type="button" onClick={() => setIsModalOpen(false)} className="px-6 py-3.5 text-zinc-500 hover:bg-zinc-100 dark:bg-zinc-900 rounded-xl font-bold transition-colors w-full sm:w-auto">Cancel</button>
                 <button type="submit" disabled={isSubmitting} className="px-8 py-3.5 text-white dark:text-zinc-950 bg-zinc-900 dark:bg-white hover:opacity-90 rounded-xl font-bold transition-all w-full sm:w-auto disabled:opacity-50 flex justify-center items-center active:scale-95">
                   {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : "Create Trip"}
                 </button>
               </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* EXTEND TRIP MODAL */}
+      {isExtendModalOpen && selectedTripToExtend && (
+        <div className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
+          <div className="bg-white dark:bg-zinc-950 rounded-[2rem] p-8 md:p-10 w-full max-w-sm shadow-2xl relative animate-in zoom-in-95 duration-200 border border-zinc-200 dark:border-zinc-800">
+            <button onClick={() => !isExtending && setIsExtendModalOpen(false)} className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-zinc-100 dark:bg-zinc-900 p-2 rounded-full transition-colors"><X className="h-5 w-5" /></button>
+
+            <div className="mb-6">
+              <div className="h-12 w-12 bg-sky-500/10 text-sky-500 rounded-full flex items-center justify-center mb-4 border border-sky-500/20">
+                <Calendar className="h-6 w-6" />
+              </div>
+              <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">Extend Trip</h2>
+              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mt-1">Select a new end date for <span className="font-bold text-zinc-900 dark:text-white">{selectedTripToExtend.title}</span>.</p>
+            </div>
+
+            <form onSubmit={handleExtendTripSubmit} className="flex flex-col gap-6">
+              <div>
+                <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2">New End Date</label>
+                <input 
+                  type="date" 
+                  value={newEndDate} 
+                  min={selectedTripToExtend.endDate} 
+                  onChange={(e) => setNewEndDate(e.target.value)} 
+                  className="w-full bg-zinc-50 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 focus:border-sky-500 focus:ring-1 focus:ring-sky-500 rounded-xl p-4 outline-none font-bold text-zinc-900 dark:text-white transition-all cursor-pointer dark:[color-scheme:dark]" 
+                  required 
+                />
+              </div>
+              <button type="submit" disabled={isExtending} className="w-full bg-sky-500 text-zinc-950 py-4 rounded-xl font-bold transition-all text-base disabled:opacity-50 flex justify-center items-center active:scale-95 hover:bg-sky-400 shadow-[0_0_15px_rgba(14,165,233,0.3)]">
+                {isExtending ? <Loader2 className="h-5 w-5 animate-spin" /> : "Confirm Extension"}
+              </button>
             </form>
           </div>
         </div>

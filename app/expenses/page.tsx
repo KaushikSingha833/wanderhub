@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { collection, addDoc, onSnapshot, query, where, orderBy, doc, deleteDoc } from "firebase/firestore"; 
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db } from "../lib/firebase"; 
@@ -17,6 +18,9 @@ interface Expense {
 const COLORS = ['#10b981', '#059669', '#34d399', '#0ea5e9', '#6366f1', '#8b5cf6'];
 
 export default function ExpensesPage() {
+  const router = useRouter();
+  const [isAuthLoading, setIsAuthLoading] = useState(true);
+
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [trips, setTrips] = useState<Trip[]>([]);
   const [selectedTripId, setSelectedTripId] = useState<string>("");
@@ -37,22 +41,45 @@ export default function ExpensesPage() {
   // CURRENCY ENGINE
   const { symbol, convert } = useCurrency();
 
-  // 1. Auth & Fetch Trips
+  // 🛡️ SECURITY GUARD: Check if logged in
   useEffect(() => {
-    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        setExpPayer(currentUser.displayName?.split(" ")[0] || "Me");
-        const q = query(collection(db, "trips"), where("members", "array-contains", currentUser.uid), where("status", "==", "active"));
-        onSnapshot(q, (snapshot) => {
-          const tripsData = snapshot.docs.map(doc => ({ id: doc.id, title: doc.data().title, members: doc.data().members || [] }));
-          setTrips(tripsData);
-          if (tripsData.length > 0 && !selectedTripId) setSelectedTripId(tripsData[0].id);
-        });
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (!currentUser) {
+        router.push("/"); // Kick to landing page if not logged in
+      } else {
+        setUser(currentUser);
+        setIsAuthLoading(false); // Show the page
       }
     });
-    return () => unsubscribeAuth();
-  }, [selectedTripId]);
+    return () => unsubscribe();
+  }, [router]);
+
+  // 1. Fetch Trips (Only runs once user is verified)
+  useEffect(() => {
+    if (!user) return;
+    
+    setExpPayer(user.displayName?.split(" ")[0] || "Me");
+    
+    const q = query(
+      collection(db, "trips"), 
+      where("members", "array-contains", user.uid), 
+      where("status", "==", "active")
+    );
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const tripsData = snapshot.docs.map(doc => ({ 
+        id: doc.id, 
+        title: doc.data().title, 
+        members: doc.data().members || [] 
+      }));
+      setTrips(tripsData);
+      if (tripsData.length > 0 && !selectedTripId) {
+        setSelectedTripId(tripsData[0].id);
+      }
+    });
+    
+    return () => unsubscribe();
+  }, [user, selectedTripId]);
 
   // 2. Fetch Expenses for Selected Trip
   useEffect(() => {
@@ -161,6 +188,15 @@ export default function ExpensesPage() {
     return results;
   }, [expenses, totalSpent]);
 
+  // 🛡️ LOADING SCREEN: Hide page until verified
+  if (isAuthLoading) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950">
+        <Loader2 className="h-10 w-10 animate-spin text-emerald-500" />
+      </div>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors duration-300 selection:bg-emerald-500/20">
       
@@ -182,7 +218,7 @@ export default function ExpensesPage() {
         <nav className="flex-1 px-4 py-8 overflow-y-auto custom-scrollbar flex flex-col gap-2">
           <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Map className="h-5 w-5 mr-3 opacity-70" /> Dashboard</Link>
           <Link href="/itineraries" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Calendar className="h-5 w-5 mr-3 opacity-70" /> Itineraries</Link>
-          <Link href="/chat" className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all">
+          <Link href="/chat" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all">
             <MessageSquare className="h-5 w-5 mr-3 opacity-70" /> Group Chat
           </Link>
           <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-2xl font-bold transition-all"><CreditCard className="h-5 w-5 mr-3 text-emerald-600 dark:text-emerald-400" /> Expenses</Link>
