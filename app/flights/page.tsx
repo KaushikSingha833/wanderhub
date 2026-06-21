@@ -2,7 +2,7 @@
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { collection, onSnapshot, query, where, addDoc } from "firebase/firestore"; 
+import { collection, onSnapshot, query, where, addDoc, getDoc, doc } from "firebase/firestore"; 
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db } from "../lib/firebase"; 
 import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, MapPin, Plane, BedDouble, Loader2, Menu, X, ArrowRightLeft, Search, CheckCircle2, AlertCircle, User as UserIcon, Ticket, Briefcase, Users, Tag, Download, Map as MapIcon, Clock, Hash, MessageSquare, Info, ChevronDown, History } from "lucide-react";
@@ -55,17 +55,33 @@ export default function FlightsPage() {
   const [isEmailSending, setIsEmailSending] = useState(false);
 
   // 🛡️ SECURITY GUARD: Check if logged in
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (!currentUser) {
-        router.push("/"); // Kick to landing page if not logged in
-      } else {
+  // 🛡️ SECURITY GUARD: Travelers Only
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    if (!currentUser) {
+      router.push("/"); // Kick to landing page if not logged in
+    } else {
+      try {
+        // Fetch user profile to check their role
+        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+        
+        if (userDoc.exists() && userDoc.data().role === "hotel_partner") {
+          // Bouncer: Kick Hotel Partners OUT of the customer site!
+          router.push("/partner/dashboard");
+          return;
+        }
+
+        // If they pass, let them in
         setUser(currentUser);
-        setIsAuthLoading(false); // Show the page
+        setIsAuthLoading(false);
+        
+      } catch (error) {
+        console.error("Auth check error:", error);
       }
-    });
-    return () => unsubscribe();
-  }, [router]);
+    }
+  });
+  return () => unsubscribe();
+}, [router]);
 
   // FETCH TRIPS (Only runs once user is verified)
   useEffect(() => {

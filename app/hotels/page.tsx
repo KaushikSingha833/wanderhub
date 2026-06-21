@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
-import { collection, getDocs, query, where, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, getDocs, query, where, onSnapshot, addDoc, serverTimestamp, getDoc, doc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase"; 
 import { useCurrency } from "../lib/useCurrency"; 
 import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Search, MapPin, Star, Wifi, Coffee, ExternalLink, BedDouble, Menu, X, Sparkles, Users, Loader2, Plane, ArrowDownUp, LocateFixed, CheckCircle2, MessageSquare, Info, ChevronDown, History } from "lucide-react";
@@ -68,14 +68,29 @@ export default function HotelsPage() {
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [suggestSuccess, setSuggestSuccess] = useState(false);
 
-  // 🛡️ SECURITY GUARD: Check if logged in
+  // 🛡️ SECURITY GUARD: Travelers Only
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
         router.push("/"); // Kick to landing page if not logged in
       } else {
-        setUser(currentUser);
-        setIsAuthLoading(false); // Show the page
+        try {
+          // Fetch user profile to check their role
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          
+          if (userDoc.exists() && userDoc.data().role === "hotel_partner") {
+            // Bouncer: Kick Hotel Partners OUT of the customer site!
+            router.push("/partner/dashboard");
+            return;
+          }
+
+          // If they pass, let them in
+          setUser(currentUser);
+          setIsAuthLoading(false);
+          
+        } catch (error) {
+          console.error("Auth check error:", error);
+        }
       }
     });
     return () => unsubscribe();
@@ -378,6 +393,8 @@ export default function HotelsPage() {
       setIsSuggesting(false);
     }
   };
+
+  const borderClass = "border-zinc-200 dark:border-zinc-800/50";
 
   const displayedHotels = [...hotels].sort((a, b) => {
     if (sortBy === "price_asc") return a.pricePerNight - b.pricePerNight;

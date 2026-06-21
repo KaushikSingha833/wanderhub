@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { collection, onSnapshot, query, orderBy, where, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { collection, onSnapshot, query, orderBy, where, deleteDoc, doc, updateDoc, getDoc } from "firebase/firestore";
 import { onAuthStateChanged, User as FirebaseUser, signOut } from "firebase/auth";
 import { auth, db } from "../lib/firebase";
 import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Users, LogOut, BedDouble, Menu, X, ArrowRight, Trash2, Archive, Plane, MessageSquare, Info, History, Check, RefreshCcw, Loader2 } from "lucide-react";
@@ -50,12 +50,27 @@ export default function HistoryPage() {
 
   // 🛡️ SECURITY GUARD: Check if logged in
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
         router.push("/"); // Kick to landing page if not logged in
       } else {
-        setUser(currentUser);
-        setIsAuthLoading(false); // Show the page
+        try {
+          // Fetch user profile to check their role
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          
+          if (userDoc.exists() && userDoc.data().role === "hotel_partner") {
+            // Bouncer: Kick Hotel Partners OUT of the customer site!
+            router.push("/partner/dashboard");
+            return;
+          }
+  
+          // If they pass, let them in
+          setUser(currentUser);
+          setIsAuthLoading(false);
+          
+        } catch (error) {
+          console.error("Auth check error:", error);
+        }
       }
     });
     return () => unsubscribe();

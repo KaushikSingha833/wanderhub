@@ -3,7 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
-import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, addDoc, setDoc, serverTimestamp } from "firebase/firestore"; 
+import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, addDoc, setDoc, serverTimestamp, getDoc } from "firebase/firestore"; 
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db } from "../lib/firebase"; 
 import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Printer, Clock, MapPin, Plane, Hotel, Utensils, Trash2, Map as MapIcon, CalendarPlus, ChevronDown, ChevronUp, AlignLeft, Navigation, BedDouble, Sparkles, Loader2, Menu, X, Sun, CloudRain, Hash, Info, ArrowRight, Radio, Users, MessageSquare, History } from "lucide-react";
@@ -69,16 +69,32 @@ export default function ItinerariesPage() {
   const [myLatestCoords, setMyLatestCoords] = useState<[number, number] | null>(null);
 
   // 🛡️ SECURITY GUARD: Check if logged in
-  useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (!currentUser) {
-        router.push("/"); // Kick to landing page if not logged in
-      } else {
+  // 🛡️ SECURITY GUARD: Travelers Only
+useEffect(() => {
+  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    if (!currentUser) {
+      router.push("/"); // Kick to landing page if not logged in
+    } else {
+      try {
+        // Fetch user profile to check their role
+        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+        
+        if (userDoc.exists() && userDoc.data().role === "hotel_partner") {
+          // Bouncer: Kick Hotel Partners OUT of the customer site!
+          router.push("/partner/dashboard");
+          return;
+        }
+
+        // If they pass, let them in
         setUser(currentUser);
-        setIsAuthLoading(false); // Show the page
+        setIsAuthLoading(false);
+        
+      } catch (error) {
+        console.error("Auth check error:", error);
       }
-    });
-    return () => unsubscribe();
+    }
+  });
+  return () => unsubscribe();
   }, [router]);
 
   // FETCH TRIPS (Only runs once user is verified)

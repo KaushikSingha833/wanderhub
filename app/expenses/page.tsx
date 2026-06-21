@@ -2,7 +2,7 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { collection, addDoc, onSnapshot, query, where, orderBy, doc, deleteDoc } from "firebase/firestore"; 
+import { collection, addDoc, onSnapshot, query, where, orderBy, doc, deleteDoc, getDoc } from "firebase/firestore"; 
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
 import { auth, db } from "../lib/firebase"; 
 import { useCurrency } from "../lib/useCurrency"; 
@@ -43,16 +43,31 @@ export default function ExpensesPage() {
 
   // 🛡️ SECURITY GUARD: Check if logged in
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      if (!currentUser) {
-        router.push("/"); // Kick to landing page if not logged in
-      } else {
-        setUser(currentUser);
-        setIsAuthLoading(false); // Show the page
-      }
-    });
-    return () => unsubscribe();
-  }, [router]);
+      const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+        if (!currentUser) {
+          router.push("/"); // Kick to landing page if not logged in
+        } else {
+          try {
+            // Fetch user profile to check their role
+            const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+            
+            if (userDoc.exists() && userDoc.data().role === "hotel_partner") {
+              // Bouncer: Kick Hotel Partners OUT of the customer site!
+              router.push("/partner/dashboard");
+              return;
+            }
+  
+            // If they pass, let them in
+            setUser(currentUser);
+            setIsAuthLoading(false);
+            
+          } catch (error) {
+            console.error("Auth check error:", error);
+          }
+        }
+      });
+      return () => unsubscribe();
+    }, [router]);
 
   // 1. Fetch Trips (Only runs once user is verified)
   useEffect(() => {

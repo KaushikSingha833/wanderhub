@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { collection, addDoc, onSnapshot, query, orderBy, where, getDocs, doc, updateDoc, arrayUnion, deleteDoc } from "firebase/firestore";
+import { collection, addDoc, onSnapshot, query, orderBy, where, getDocs, getDoc, doc, updateDoc, arrayUnion, deleteDoc, setDoc } from "firebase/firestore";
 import {
   GoogleAuthProvider,
   signInWithPopup,
@@ -63,6 +63,12 @@ export default function Home() {
   const [authEmail, setAuthEmail] = useState("");
   const [authPassword, setAuthPassword] = useState("");
 
+  // ✨ PHASE 1: OTP STATE
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpInput, setOtpInput] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState("");
+
   // FORGOT PASSWORD STATE
   const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
   const [resetEmail, setResetEmail] = useState("");
@@ -87,13 +93,36 @@ export default function Home() {
   const [endDate, setEndDate] = useState("");
   const [joinCode, setJoinCode] = useState("");
 
+  // 🛡️ SECURITY GUARD: Travelers Only
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      setIsAuthLoading(false);
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (!currentUser) {
+        // Allow unauthenticated users to see the landing page
+        setUser(null);
+        setIsAuthLoading(false);
+      } else {
+        try {
+          // Fetch user profile to check their role
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          
+          if (userDoc.exists() && userDoc.data().role === "hotel_partner") {
+            // Bouncer: Kick Hotel Partners OUT of the customer site!
+            router.push("/partner/dashboard");
+            return;
+          }
+
+          // If they pass the check, let them into the traveler dashboard
+          setUser(currentUser);
+          setIsAuthLoading(false);
+          
+        } catch (error) {
+          console.error("Auth check error:", error);
+          setIsAuthLoading(false);
+        }
+      }
     });
     return () => unsubscribe();
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (!user) return;
@@ -110,9 +139,29 @@ export default function Home() {
         id: doc.id,
         ...(doc.data() as Omit<Trip, 'id'>),
       }));
-      setTrips(tripsData);
+
+      // ✨ AUTO-ARCHIVE LOGIC: Clean up trips that have ended
+      const today = new Date();
+      const localMonth = String(today.getMonth() + 1).padStart(2, '0');
+      const localDay = String(today.getDate()).padStart(2, '0');
+      const todayStr = `${today.getFullYear()}-${localMonth}-${localDay}`; // Safely gets local YYYY-MM-DD
+      
+      const activeTrips: Trip[] = [];
+
+      tripsData.forEach((trip) => {
+        // If the trip's end date is strictly before today, it's over.
+        if (trip.endDate && trip.endDate < todayStr) {
+          // Auto-archive it in Firebase so it moves to the History page permanently
+          updateDoc(doc(db, "trips", trip.id), { status: "archived" }).catch(console.error);
+        } else {
+          activeTrips.push(trip);
+        }
+      });
+
+      setTrips(activeTrips);
       setIsLoading(false);
     });
+    
     return () => unsubscribe();
   }, [user]);
 
@@ -125,32 +174,129 @@ export default function Home() {
     }
   };
 
+  // ✨ PHASE 1 & 2: SECURE OTP EMAIL SENDING WITH RATE LIMITING
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setAuthError("");
     setAuthLoading(true);
 
     try {
-      if (isLoginMode) {
-        await signInWithEmailAndPassword(auth, authEmail, authPassword);
-      } else {
-        if (!authName.trim()) throw new Error("Please enter your full name.");
+      if (!isLoginMode && !authName.trim()) throw new Error("Please enter your full name.");
+      if (authPassword.length < 6) throw new Error("Password must be at least 6 characters.");
 
-        const userCredential = await createUserWithEmailAndPassword(auth, authEmail, authPassword);
+      const cleanEmail = authEmail.toLowerCase().trim();
 
-        await updateProfile(userCredential.user, {
-          displayName: authName.trim()
-        });
-
-        setUser({ ...userCredential.user, displayName: authName.trim() } as FirebaseUser);
+      // 🛡️ PHASE 2: RATE LIMIT CHECK
+      const attemptRef = doc(db, "login_attempts", cleanEmail);
+      const attemptSnap = await getDoc(attemptRef);
+      if (attemptSnap.exists()) {
+        const attemptData = attemptSnap.data();
+        if (attemptData.lockedUntil && attemptData.lockedUntil.toDate() > new Date()) {
+          const minutesLeft = Math.ceil((attemptData.lockedUntil.toDate().getTime() - Date.now()) / 60000);
+          throw new Error(`Too many failed attempts. Try again in ${minutesLeft} minutes.`);
+        }
       }
+
+      // 1. Generate a 6-digit secure code
+      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // 2. Save it to Firestore temporarily (Expires in 10 minutes)
+      await setDoc(doc(db, "temp_otps", cleanEmail), {
+        code: generatedOtp,
+        expiresAt: new Date(Date.now() + 10 * 60000), 
+        type: isLoginMode ? "login" : "register"
+      });
+
+      // 3. Trigger the Email API
+      const res = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, otp: generatedOtp })
+      });
+
+      // 4. Strict check: If email fails to send, throw error and stop process
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to send verification email. Please check your configuration.");
+      }
+
+      // If email sent successfully, show modal
+      setShowOtpModal(true);
+
     } catch (err: any) {
-      if (err.code === 'auth/invalid-credential') setAuthError("Incorrect email or password.");
-      else if (err.code === 'auth/email-already-in-use') setAuthError("An account with this email already exists.");
-      else if (err.code === 'auth/weak-password') setAuthError("Password should be at least 6 characters.");
-      else setAuthError(err.message);
+      setAuthError(err.message);
     } finally {
       setAuthLoading(false);
+    }
+  };
+
+  // ✨ VERIFY OTP & FINALIZE LOGIN WITH BRUTE-FORCE PROTECTION
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOtpError("");
+    setOtpLoading(true);
+    const cleanEmail = authEmail.toLowerCase().trim();
+
+    try {
+      const otpDocRef = doc(db, "temp_otps", cleanEmail);
+      const otpDoc = await getDoc(otpDocRef);
+
+      if (!otpDoc.exists()) throw new Error("Verification code expired or invalid.");
+      
+      const data = otpDoc.data();
+      
+      // Validation Checks
+      if (data.code !== otpInput) throw new Error("Incorrect verification code.");
+      if (data.expiresAt.toDate() < new Date()) throw new Error("Code has expired. Please request a new one.");
+
+      // Success! Delete the OTP document so it can't be reused
+      await deleteDoc(otpDocRef);
+
+      // Finalize Firebase Auth
+      if (isLoginMode) {
+        await signInWithEmailAndPassword(auth, cleanEmail, authPassword);
+      } else {
+        const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, authPassword);
+        await setDoc(doc(db, "users", userCredential.user.uid), {
+          uid: userCredential.user.uid,
+          email: userCredential.user.email,
+          role: "traveler",
+          createdAt: new Date(),
+        });
+        await updateProfile(userCredential.user, { displayName: authName.trim() });
+        setUser({ ...userCredential.user, displayName: authName.trim() } as FirebaseUser);
+      }
+      
+      // 🛡️ RESET RATE LIMIT COUNTER ON SUCCESS
+      await deleteDoc(doc(db, "login_attempts", cleanEmail)).catch(() => {});
+
+      setShowOtpModal(false);
+      setOtpInput("");
+    } catch (err: any) {
+      // 🛡️ RECORD FAILED ATTEMPT
+      const attemptRef = doc(db, "login_attempts", cleanEmail);
+      const attemptSnap = await getDoc(attemptRef);
+      let currentAttempts = 1;
+
+      if (attemptSnap.exists()) {
+        currentAttempts = (attemptSnap.data().failedAttempts || 0) + 1;
+      }
+
+      if (currentAttempts >= 5) {
+        await setDoc(attemptRef, {
+          failedAttempts: currentAttempts,
+          lockedUntil: new Date(Date.now() + 15 * 60000) // Lock for 15 mins
+        }, { merge: true });
+        setOtpError("Too many failed attempts. Account locked for 15 minutes.");
+        setTimeout(() => setShowOtpModal(false), 2000);
+      } else {
+        await setDoc(attemptRef, { failedAttempts: currentAttempts }, { merge: true });
+        if (err.code === 'auth/invalid-credential') setOtpError("Firebase Error: Incorrect email or password.");
+        else if (err.code === 'auth/email-already-in-use') setOtpError("Firebase Error: Account already exists.");
+        else setOtpError(err.message);
+      }
+    } finally {
+      setOtpLoading(false);
     }
   };
 
@@ -264,7 +410,6 @@ export default function Home() {
     }
   };
 
-  // ✨ NEW: Extend Trip Function
   const handleExtendTripSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedTripToExtend || !newEndDate) return;
@@ -603,7 +748,7 @@ export default function Home() {
               </div>
 
               <button type="submit" disabled={authLoading} className="w-full bg-emerald-500 text-zinc-950 font-bold py-4 rounded-xl hover:bg-emerald-400 transition-all disabled:opacity-50 mt-6 active:scale-[0.98]">
-                {authLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : (isLoginMode ? "Sign In" : "Create Account")}
+                {authLoading ? <Loader2 className="h-5 w-5 animate-spin mx-auto" /> : (isLoginMode ? "Sign In Securely" : "Create Secure Account")}
               </button>
             </form>
 
@@ -670,6 +815,49 @@ export default function Home() {
           </div>
         )}
 
+        {/* ✨ THE NEW OTP VERIFICATION MODAL */}
+        {showOtpModal && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
+            <div className="bg-zinc-950 rounded-[2rem] p-8 max-w-sm w-full shadow-2xl border border-zinc-800 relative animate-in zoom-in-95 duration-200">
+              <button onClick={() => { setShowOtpModal(false); setOtpInput(""); }} className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors">
+                <X className="h-5 w-5" />
+              </button>
+              
+              <div className="h-14 w-14 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 mb-6 border border-emerald-500/20 mx-auto shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
+              
+              <h3 className="text-xl font-bold text-white text-center tracking-tight mb-2">Verify Identity</h3>
+              <p className="text-sm font-medium text-zinc-400 text-center mb-6">
+                We sent a 6-digit code to <br/><span className="text-white font-bold">{authEmail}</span>.
+              </p>
+
+              {otpError && (
+                <div className="mb-6 p-4 text-xs font-bold uppercase tracking-widest text-red-400 bg-red-500/10 border border-red-500/30 rounded-xl flex items-start text-left">
+                  <AlertCircle className="h-4 w-4 mr-2 shrink-0" /> {otpError}
+                </div>
+              )}
+
+              <form onSubmit={handleVerifyOtp}>
+                <div className="relative mb-6">
+                  <input 
+                    type="text" 
+                    maxLength={6}
+                    value={otpInput} 
+                    onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))} 
+                    placeholder="Enter 6-digit code" 
+                    required
+                    className="w-full px-4 py-4 bg-zinc-900 text-white border border-zinc-800 rounded-xl focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none font-black tracking-[0.3em] text-center text-xl transition-all placeholder-zinc-700"
+                  />
+                </div>
+                <button type="submit" disabled={otpLoading || otpInput.length !== 6} className="w-full bg-emerald-500 text-zinc-950 font-bold py-4 rounded-xl hover:bg-emerald-400 transition-all disabled:opacity-50 flex justify-center items-center active:scale-[0.98] uppercase tracking-widest text-[10px]">
+                  {otpLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Verify & Continue"}
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
       </div>
     );
   }
@@ -699,8 +887,7 @@ export default function Home() {
           <Link href="/" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 bg-zinc-100 dark:bg-zinc-900 text-zinc-900 dark:text-white rounded-2xl font-bold transition-all"><Map className="h-5 w-5 mr-3 text-emerald-600 dark:text-emerald-400" /> Dashboard</Link>
           <Link href="/itineraries" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Calendar className="h-5 w-5 mr-3 opacity-70" /> Itineraries</Link>
           <Link href="/chat" className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all">
-            <MessageSquare className="h-5 w-5 mr-3 opacity-70" /> Group Chat
-          </Link>
+            <MessageSquare className="h-5 w-5 mr-3 opacity-70" /> Group Chat</Link>
           <Link href="/expenses" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><CreditCard className="h-5 w-5 mr-3 opacity-70" /> Expenses</Link>
           <Link href="/flights" className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Plane className="h-5 w-5 mr-3 opacity-70" /> Book Flights</Link>
           <Link href="/hotels" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><BedDouble className="h-5 w-5 mr-3 opacity-70" /> Book Hotels</Link>

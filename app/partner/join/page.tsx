@@ -2,10 +2,10 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from "firebase/auth";
-import { doc, setDoc, getDoc } from "firebase/firestore";
+import { createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, signOut } from "firebase/auth";
+import { doc, setDoc, getDoc, deleteDoc } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase"; 
-import { Building2, Mail, Lock, AlertCircle, CheckCircle2, User as UserIcon, FileText, Hash, MapPin, PlaneTakeoff, ShieldCheck, ArrowRight, Loader2, LocateFixed, Sparkles, TrendingUp, CreditCard } from "lucide-react";
+import { Building2, Mail, Lock, AlertCircle, CheckCircle2, User as UserIcon, FileText, Hash, MapPin, PlaneTakeoff, ShieldCheck, ArrowRight, Loader2, LocateFixed, Sparkles, TrendingUp, CreditCard, X } from "lucide-react";
 
 import dynamic from 'next/dynamic'; 
 
@@ -43,6 +43,18 @@ export default function PartnerJoinPage() {
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
+  // ✨ PHASE 1: OTP STATES
+  const [showOtpModal, setShowOtpModal] = useState(false);
+  const [otpInput, setOtpInput] = useState("");
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpError, setOtpError] = useState("");
+
+  // 🛡️ FORGOT PASSWORD STATES
+  const [isForgotModalOpen, setIsForgotModalOpen] = useState(false);
+  const [resetEmail, setResetEmail] = useState("");
+  const [isResetLoading, setIsResetLoading] = useState(false);
+  const [resetFeedback, setResetFeedback] = useState({ type: "", message: "" });
+
   // Fix hydration issues
   useEffect(() => {
     setIsMounted(true);
@@ -68,15 +80,88 @@ export default function PartnerJoinPage() {
     );
   };
 
+  // ✨ PHASE 1 & 2: SECURE OTP EMAIL SENDING WITH RATE LIMITING
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setIsLoading(true);
 
     try {
+      // Input Validation
+      if (!isLoginMode) {
+        if (!hotelName.trim() || !city.trim() || !ownerName.trim()) throw new Error("Please fill in all profile fields.");
+        if (!licenseNumber.trim() || !gstNumber.trim()) throw new Error("Please provide your business verification numbers.");
+        if (!latitude || !longitude) throw new Error("Please pin your exact property location on the map.");
+      }
+      if (password.length < 6) throw new Error("Password must be at least 6 characters.");
+
+      const cleanEmail = email.toLowerCase().trim();
+
+      // 🛡️ PHASE 2: RATE LIMIT CHECK
+      const attemptRef = doc(db, "login_attempts", cleanEmail);
+      const attemptSnap = await getDoc(attemptRef);
+      if (attemptSnap.exists()) {
+        const attemptData = attemptSnap.data();
+        if (attemptData.lockedUntil && attemptData.lockedUntil.toDate() > new Date()) {
+          const minutesLeft = Math.ceil((attemptData.lockedUntil.toDate().getTime() - Date.now()) / 60000);
+          throw new Error(`Too many failed attempts. Try again in ${minutesLeft} minutes.`);
+        }
+      }
+
+      // 1. Generate 6-digit OTP
+      const generatedOtp = Math.floor(100000 + Math.random() * 900000).toString();
+      
+      // 2. Save temporarily (10 min expiry)
+      await setDoc(doc(db, "temp_otps", cleanEmail), {
+        code: generatedOtp,
+        expiresAt: new Date(Date.now() + 10 * 60000),
+        type: isLoginMode ? "login" : "register_partner"
+      });
+
+      // 3. Trigger Email API
+      const res = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: cleanEmail, otp: generatedOtp })
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Failed to send verification email. Please check configuration.");
+      }
+
+      setShowOtpModal(true);
+
+    } catch (err: any) {
+      setError(err.message || "An error occurred.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // ✨ VERIFY OTP & FINALIZE PARTNER LOGIN/REGISTRATION
+  const handleVerifyOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setOtpError("");
+    setOtpLoading(true);
+    const cleanEmail = email.toLowerCase().trim();
+
+    try {
+      const otpDocRef = doc(db, "temp_otps", cleanEmail);
+      const otpDoc = await getDoc(otpDocRef);
+
+      if (!otpDoc.exists()) throw new Error("Verification code expired or invalid.");
+      
+      const data = otpDoc.data();
+      if (data.code !== otpInput) throw new Error("Incorrect verification code.");
+      if (data.expiresAt.toDate() < new Date()) throw new Error("Code has expired. Please request a new one.");
+
+      // Success! Delete OTP doc
+      await deleteDoc(otpDocRef);
+
       if (isLoginMode) {
         // --- LOGIN FLOW ---
-        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const userCredential = await signInWithEmailAndPassword(auth, cleanEmail, password);
         const user = userCredential.user;
 
         // Security Check: Ensure they are a Hotel Partner
@@ -84,24 +169,14 @@ export default function PartnerJoinPage() {
         if (userDoc.exists() && userDoc.data().role === "hotel_partner") {
           router.push("/partner/dashboard"); 
         } else {
-          await auth.signOut();
+          await signOut(auth);
           throw new Error("Access Denied: This email is not registered as a Hotel Partner.");
         }
       } else {
         // --- REGISTRATION FLOW ---
-        if (!licenseNumber.trim() || !gstNumber.trim()) {
-          throw new Error("Please provide your business verification numbers.");
-        }
-        
-        if (!latitude || !longitude) {
-          throw new Error("Please pin your exact property location on the map.");
-        }
-
-        // 1. Create the Auth User
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const userCredential = await createUserWithEmailAndPassword(auth, cleanEmail, password);
         const user = userCredential.user;
 
-        // 2. Save the Business Profile to Firestore with Coordinates
         await setDoc(doc(db, "users", user.uid), {
           uid: user.uid,
           email: user.email,
@@ -119,12 +194,67 @@ export default function PartnerJoinPage() {
 
         setSuccess(true);
       }
+      
+      // 🛡️ RESET RATE LIMIT COUNTER ON SUCCESS
+      await deleteDoc(doc(db, "login_attempts", cleanEmail)).catch(() => {});
+      
+      setShowOtpModal(false);
+      setOtpInput("");
     } catch (err: any) {
-      if (err.code === 'auth/invalid-credential') setError("Incorrect email or password.");
-      else if (err.code === 'auth/email-already-in-use') setError("This hotel email is already registered.");
-      else setError(err.message || "Failed to authenticate. Please try again.");
+      // 🛡️ RECORD FAILED ATTEMPT
+      const attemptRef = doc(db, "login_attempts", cleanEmail);
+      const attemptSnap = await getDoc(attemptRef);
+      let currentAttempts = 1;
+
+      if (attemptSnap.exists()) {
+        currentAttempts = (attemptSnap.data().failedAttempts || 0) + 1;
+      }
+
+      if (currentAttempts >= 5) {
+        await setDoc(attemptRef, {
+          failedAttempts: currentAttempts,
+          lockedUntil: new Date(Date.now() + 15 * 60000)
+        }, { merge: true });
+        setOtpError("Too many failed attempts. Account locked for 15 minutes.");
+        setTimeout(() => setShowOtpModal(false), 2000);
+      } else {
+        await setDoc(attemptRef, { failedAttempts: currentAttempts }, { merge: true });
+        if (err.code === 'auth/invalid-credential') setOtpError("Firebase Error: Incorrect email or password.");
+        else if (err.code === 'auth/email-already-in-use') setOtpError("Firebase Error: Account already exists.");
+        else setOtpError(err.message);
+      }
     } finally {
-      setIsLoading(false);
+      setOtpLoading(false);
+    }
+  };
+
+  // 🛡️ SECURE PASSWORD RESET HANDLER
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetEmail.trim()) return;
+    setIsResetLoading(true);
+    setResetFeedback({ type: "", message: "" });
+    
+    try {
+      await sendPasswordResetEmail(auth, resetEmail);
+      // Security measure: Don't confirm if the email exists, just say "If registered..."
+      setResetFeedback({ type: "success", message: "If this email is registered, a secure reset link has been sent." });
+      
+      setTimeout(() => {
+        setIsForgotModalOpen(false);
+        setResetEmail("");
+        setResetFeedback({ type: "", message: "" });
+      }, 4000);
+    } catch (err: any) {
+      console.error("Password reset error:", err);
+      // Still show generic success for security, unless it's a formatting error
+      if (err.code === 'auth/invalid-email') {
+        setResetFeedback({ type: "error", message: "Please enter a validly formatted email address." });
+      } else {
+        setResetFeedback({ type: "success", message: "If this email is registered, a secure reset link has been sent." });
+      }
+    } finally {
+      setIsResetLoading(false);
     }
   };
 
@@ -152,8 +282,8 @@ export default function PartnerJoinPage() {
               <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" /> Verification Pending
             </div>
           </div>
-          <Link href="/" className="inline-flex w-full justify-center bg-white text-zinc-950 px-8 py-5 rounded-full font-black text-xs uppercase tracking-widest hover:bg-zinc-200 transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)] active:scale-95">
-            Return to Homepage
+          <Link href="/partner/dashboard" className="inline-flex w-full justify-center bg-white text-zinc-950 px-8 py-5 rounded-full font-black text-xs uppercase tracking-widest hover:bg-zinc-200 transition-all shadow-[0_0_30px_rgba(255,255,255,0.15)] active:scale-95">
+            Go to Partner Dashboard
           </Link>
         </div>
       </div>
@@ -294,7 +424,14 @@ export default function PartnerJoinPage() {
               </div>
 
               <div>
-                <label className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-2 ml-1">Password</label>
+                <div className="flex justify-between items-center mb-2">
+                  <label className="block text-[9px] font-bold text-zinc-500 uppercase tracking-widest ml-1">Password</label>
+                  {isLoginMode && (
+                    <button type="button" onClick={(e) => { e.preventDefault(); setIsForgotModalOpen(true); }} className="text-[9px] font-bold text-emerald-500 hover:text-emerald-400 uppercase tracking-widest transition-colors">
+                      Forgot Password?
+                    </button>
+                  )}
+                </div>
                 <div className="relative group">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 group-focus-within:text-emerald-500 transition-colors" />
                   <input type="password" value={password} onChange={(e) => setPassword(e.target.value)} required placeholder="••••••••" className="w-full pl-11 pr-4 py-4 bg-zinc-900 border border-zinc-800 rounded-2xl focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none font-bold text-white transition-all placeholder-zinc-600 text-sm shadow-inner" />
@@ -390,7 +527,7 @@ export default function PartnerJoinPage() {
 
             <div className="pt-6">
               <button type="submit" disabled={isLoading} className="w-full bg-emerald-500 text-zinc-950 font-black py-5 rounded-full shadow-[0_0_30px_rgba(16,185,129,0.2)] hover:bg-emerald-400 transition-all disabled:opacity-50 flex justify-center items-center text-xs uppercase tracking-widest active:scale-95 group">
-                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : (isLoginMode ? "Access Dashboard" : "Submit Application")}
+                {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : (isLoginMode ? "Secure Partner Login" : "Submit Verification")}
                 {!isLoading && <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />}
               </button>
             </div>
@@ -407,6 +544,105 @@ export default function PartnerJoinPage() {
 
         </div>
       </div>
+
+      {/* 🛡️ FORGOT PASSWORD MODAL */}
+      {isForgotModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-zinc-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-[2rem] p-8 md:p-10 max-w-sm w-full shadow-2xl relative animate-in zoom-in-95 duration-200">
+            <button 
+              onClick={() => { 
+                setIsForgotModalOpen(false); 
+                setResetFeedback({type: "", message: ""}); 
+                setResetEmail("");
+              }} 
+              className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors"
+            >
+              <X className="h-5 w-5" />
+            </button>
+            
+            <div className="h-12 w-12 bg-emerald-500/10 border border-emerald-500/20 rounded-full flex items-center justify-center mb-6 shadow-sm">
+              <Lock className="h-5 w-5 text-emerald-500" />
+            </div>
+            
+            <h3 className="text-2xl font-black text-white tracking-tight mb-2">Reset Password</h3>
+            <p className="text-zinc-400 text-xs font-medium mb-6 leading-relaxed">
+              Enter your registered business email address and we'll send you a link to reset your password.
+            </p>
+
+            {resetFeedback.message && (
+              <div className={`mb-6 p-4 text-[10px] font-bold uppercase tracking-widest rounded-xl border ${resetFeedback.type === 'error' ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
+                {resetFeedback.message}
+              </div>
+            )}
+
+            <form onSubmit={handlePasswordReset} className="space-y-6">
+              <div className="relative group">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-500 group-focus-within:text-emerald-500 transition-colors" />
+                <input 
+                  type="email" 
+                  value={resetEmail} 
+                  onChange={(e) => setResetEmail(e.target.value)} 
+                  required 
+                  placeholder="manager@hotel.com" 
+                  className="w-full pl-11 pr-4 py-4 bg-zinc-950 border border-zinc-800 rounded-2xl focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none font-bold text-white transition-all placeholder-zinc-600 text-sm shadow-inner" 
+                />
+              </div>
+              
+              <button 
+                type="submit" 
+                disabled={isResetLoading || !resetEmail.trim()} 
+                className="w-full bg-emerald-500 text-zinc-950 font-black py-4 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:bg-emerald-400 transition-all disabled:opacity-50 flex justify-center items-center text-[10px] uppercase tracking-widest active:scale-95"
+              >
+                {isResetLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Send Reset Link"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ✨ THE NEW OTP VERIFICATION MODAL */}
+      {showOtpModal && (
+        <div className="fixed inset-0 bg-black/90 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
+          <div className="bg-zinc-900 rounded-[2rem] p-8 max-w-sm w-full shadow-2xl border border-zinc-800 relative animate-in zoom-in-95 duration-200">
+            <button onClick={() => { setShowOtpModal(false); setOtpInput(""); }} className="absolute top-6 right-6 text-zinc-500 hover:text-white transition-colors">
+              <X className="h-5 w-5" />
+            </button>
+            
+            <div className="h-14 w-14 bg-emerald-500/10 rounded-full flex items-center justify-center text-emerald-500 mb-6 border border-emerald-500/20 mx-auto shadow-[0_0_15px_rgba(16,185,129,0.2)]">
+              <ShieldCheck className="h-6 w-6" />
+            </div>
+            
+            <h3 className="text-xl font-bold text-white text-center tracking-tight mb-2">Verify Identity</h3>
+            <p className="text-sm font-medium text-zinc-400 text-center mb-6">
+              We sent a secure 6-digit code to <br/><span className="text-white font-bold">{email}</span>.
+            </p>
+
+            {otpError && (
+              <div className="mb-6 p-4 text-xs font-bold uppercase tracking-widest text-rose-400 bg-rose-500/10 border border-rose-500/30 rounded-xl flex items-start text-left">
+                <AlertCircle className="h-4 w-4 mr-2 shrink-0" /> {otpError}
+              </div>
+            )}
+
+            <form onSubmit={handleVerifyOtp}>
+              <div className="relative mb-6">
+                <input 
+                  type="text" 
+                  maxLength={6}
+                  value={otpInput} 
+                  onChange={(e) => setOtpInput(e.target.value.replace(/\D/g, ''))} 
+                  placeholder="Enter 6-digit code" 
+                  required
+                  className="w-full px-4 py-4 bg-zinc-950 text-white border border-zinc-800 rounded-xl focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 outline-none font-black tracking-[0.3em] text-center text-xl transition-all placeholder-zinc-700 shadow-inner"
+                />
+              </div>
+              <button type="submit" disabled={otpLoading || otpInput.length !== 6} className="w-full bg-emerald-500 text-zinc-950 font-bold py-4 rounded-xl hover:bg-emerald-400 transition-all disabled:opacity-50 flex justify-center items-center active:scale-[0.98] uppercase tracking-widest text-[10px]">
+                {otpLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Verify & Continue"}
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

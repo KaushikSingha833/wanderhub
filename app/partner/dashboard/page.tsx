@@ -71,10 +71,16 @@ export default function PartnerDashboard() {
   const [newRoomImages, setNewRoomImages] = useState<string[]>([""]);
   const [newRoomMaxGuests, setNewRoomMaxGuests] = useState("2"); 
 
-  const [upiId, setUpiId] = useState("");
   const [hotelPhone, setHotelPhone] = useState("");
   const [hotelEmail, setHotelEmail] = useState("");
   const [isSavingSettings, setIsSavingSettings] = useState(false);
+
+  // ✨ UPI VERIFICATION ENGINE STATES
+  const [upiId, setUpiId] = useState(""); 
+  const [upiInput, setUpiInput] = useState("");
+  const [isVerifyingUpi, setIsVerifyingUpi] = useState(false);
+  const [verifiedUpiName, setVerifiedUpiName] = useState<string | null>(null);
+  const [upiError, setUpiError] = useState("");
 
   const { symbol, convert } = useCurrency();
 
@@ -98,9 +104,15 @@ export default function PartnerDashboard() {
             }
             
             setUserProfile(profile);
-            if (profile.upiId) setUpiId(profile.upiId);
             if (profile.hotelPhone) setHotelPhone(profile.hotelPhone);
             if (profile.hotelEmail) setHotelEmail(profile.hotelEmail);
+            
+            // Auto-verify if they already have a saved UPI ID in the DB
+            if (profile.upiId) {
+              setUpiId(profile.upiId);
+              setUpiInput(profile.upiId);
+              setVerifiedUpiName(profile.hotelName || "Verified Partner Account");
+            }
             
             setIsAuthLoading(false); // Show the page
           } else {
@@ -164,6 +176,41 @@ export default function PartnerDashboard() {
     
     return () => unsubscribeMessages();
   }, [selectedChatBooking, userProfile]);
+
+  // ✨ VPA NETWORK VERIFICATION CALL
+  const verifyUpiId = async () => {
+    setUpiError("");
+    setVerifiedUpiName(null);
+
+    if (!upiInput.includes("@")) {
+      setUpiError("Please enter a valid UPI ID format (e.g., hotel@okaxis)");
+      return;
+    }
+
+    setIsVerifyingUpi(true);
+
+    try {
+      const res = await fetch("/api/verify-upi", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ upiId: upiInput }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.isValid) {
+        throw new Error(data.message || "Failed to verify UPI ID");
+      }
+
+      // Success! Lock the VPA and show the bank account name
+      setVerifiedUpiName(data.registeredName);
+      setUpiId(upiInput); 
+    } catch (err: any) {
+      setUpiError(err.message);
+    } finally {
+      setIsVerifyingUpi(false);
+    }
+  };
 
   const handleEditClick = (room: Room) => {
     setEditingRoomId(room.id);
@@ -286,6 +333,13 @@ export default function PartnerDashboard() {
   const handleSaveSettings = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!userProfile) return;
+    
+    // Final check before sending to DB
+    if (!verifiedUpiName) {
+      setUpiError("You must verify the UPI ID before saving settings.");
+      return;
+    }
+
     setIsSavingSettings(true);
     try {
       await updateDoc(doc(db, "users", userProfile.uid), {
@@ -1320,20 +1374,58 @@ export default function PartnerDashboard() {
 
                   <div>
                     <label className="block text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-3 ml-1">Your Business UPI ID</label>
-                    <input 
-                      type="text" 
-                      value={upiId} 
-                      onChange={(e) => setUpiId(e.target.value.toLowerCase())} 
-                      placeholder="hotelname@okaxis" 
-                      required 
-                      className="w-full px-6 py-4 bg-zinc-950 border border-zinc-800 rounded-2xl focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 outline-none font-bold text-white transition-all placeholder-zinc-600 text-base shadow-inner" 
-                    />
-                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-3 ml-2 flex items-center"><AlertTriangle className="h-3 w-3 mr-1 text-amber-500"/> Make sure this is linked to your business account.</p>
+                    <div className="relative group flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                      <div className="relative w-full sm:flex-1">
+                        <input 
+                          type="text" 
+                          value={upiInput} 
+                          onChange={(e) => {
+                            setUpiInput(e.target.value.toLowerCase());
+                            setVerifiedUpiName(null); // Reset verification if they change the text
+                            setUpiError("");
+                          }} 
+                          placeholder="hotelname@okaxis" 
+                          required 
+                          className={`w-full px-6 py-4 bg-zinc-950 border ${verifiedUpiName ? 'border-emerald-500/50 focus:border-emerald-500' : upiError ? 'border-rose-500/50 focus:border-rose-500' : 'border-zinc-800 focus:border-zinc-500'} rounded-2xl outline-none font-bold text-white transition-all placeholder-zinc-600 text-base shadow-inner`} 
+                        />
+                      </div>
+                      
+                      <button 
+                        type="button"
+                        onClick={verifyUpiId}
+                        disabled={isVerifyingUpi || !upiInput || verifiedUpiName !== null}
+                        className={`w-full sm:w-auto px-8 py-4 rounded-2xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center justify-center shrink-0 shadow-sm ${verifiedUpiName ? 'bg-emerald-500/10 text-emerald-500 border border-emerald-500/20' : 'bg-zinc-800 text-white hover:bg-zinc-700 active:scale-95 disabled:opacity-50'}`}
+                      >
+                        {isVerifyingUpi ? <Loader2 className="h-4 w-4 animate-spin" /> : verifiedUpiName ? "Verified" : "Verify Network"}
+                      </button>
+                    </div>
+
+                    {upiError && (
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-rose-400 mt-3 flex items-center ml-1 animate-in fade-in">
+                        <AlertTriangle className="h-3 w-3 mr-1.5" /> {upiError}
+                      </p>
+                    )}
+
+                    {verifiedUpiName && (
+                      <div className="mt-4 p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-xl flex items-center animate-in fade-in slide-in-from-top-2">
+                        <CheckCircle2 className="h-5 w-5 text-emerald-500 mr-3 shrink-0" />
+                        <div>
+                          <p className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest mb-0.5">Bank Account Found</p>
+                          <p className="text-sm font-bold text-white tracking-tight">{verifiedUpiName}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {!verifiedUpiName && !upiError && (
+                      <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-3 ml-2 flex items-center">
+                        <AlertTriangle className="h-3 w-3 mr-1 text-amber-500"/> Make sure this is linked to your business account.
+                      </p>
+                    )}
                   </div>
 
                   <button 
                     type="submit" 
-                    disabled={isSavingSettings} 
+                    disabled={isSavingSettings || !verifiedUpiName} 
                     className="w-full bg-emerald-500 text-zinc-950 font-bold text-xs uppercase tracking-widest py-5 rounded-full shadow-[0_0_20px_rgba(16,185,129,0.2)] hover:bg-emerald-400 transition-all disabled:opacity-50 flex justify-center items-center active:scale-95"
                   >
                     {isSavingSettings ? <Loader2 className="h-5 w-5 animate-spin" /> : "Save Settings"}
