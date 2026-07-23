@@ -1,13 +1,9 @@
 "use client";
 import React, { useRef, useState, useEffect } from "react";
-import { motion, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
+import { motion, useScroll, useTransform, useSpring, AnimatePresence, useMotionValue } from "framer-motion";
 import Link from "next/link";
-import { PlaneTakeoff, Server, Cpu, Globe2, Activity, Zap, Database, Network, ArrowRight, HardDrive } from "lucide-react";
-import { useMotionValue } from "framer-motion";
+import { PlaneTakeoff, Server, Cpu, Database, Network, ArrowRight, HardDrive } from "lucide-react";
 
-// ==========================================
-// 1. FLAWLESS PHYSICS CURSOR
-// ==========================================
 const CustomCursor = () => {
   const mouseX = useMotionValue(-100);
   const mouseY = useMotionValue(-100);
@@ -38,9 +34,6 @@ const CustomCursor = () => {
   );
 };
 
-// ==========================================
-// 2. MAGNETIC COMPONENT
-// ==========================================
 const MagneticElement = ({ children, className }: { children: React.ReactNode; className?: string }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -59,9 +52,37 @@ const MagneticElement = ({ children, className }: { children: React.ReactNode; c
   );
 };
 
-// ==========================================
-// 3. SCROLL REVEAL TYPOGRAPHY
-// ==========================================
+const SpotlightCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => {
+  const divRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [opacity, setOpacity] = useState(0);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!divRef.current) return;
+    const rect = divRef.current.getBoundingClientRect();
+    setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  return (
+    <div
+      ref={divRef}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setOpacity(1)}
+      onMouseLeave={() => setOpacity(0)}
+      className={`relative overflow-hidden ${className}`}
+    >
+      <div
+        className="pointer-events-none absolute -inset-px transition-opacity duration-300 z-0"
+        style={{
+          opacity,
+          background: `radial-gradient(800px circle at ${position.x}px ${position.y}px, rgba(16,185,129,0.15), transparent 40%)`,
+        }}
+      />
+      {children}
+    </div>
+  );
+};
+
 const TextReveal = ({ text }: { text: string }) => {
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 80%", "end 40%"] });
@@ -72,7 +93,6 @@ const TextReveal = ({ text }: { text: string }) => {
       {words.map((word, i) => {
         const start = i / words.length;
         const end = start + 1 / words.length;
-        // eslint-disable-next-line react-hooks/rules-of-hooks
         const opacity = useTransform(scrollYProgress, [start, end], [0.1, 1]);
         return <motion.span key={i} style={{ opacity }} className="text-white">{word}</motion.span>;
       })}
@@ -80,9 +100,6 @@ const TextReveal = ({ text }: { text: string }) => {
   );
 };
 
-// ==========================================
-// 4. ANIMATED DATA NODE COMPONENT
-// ==========================================
 const DataNode = ({ cx, cy, delay }: { cx: number, cy: number, delay: number }) => (
   <g>
     <motion.circle cx={cx} cy={cy} r="4" fill="#10b981" initial={{ opacity: 0, scale: 0 }} whileInView={{ opacity: 1, scale: 1 }} transition={{ delay, duration: 0.5 }} viewport={{ once: true }} />
@@ -93,9 +110,6 @@ const DataNode = ({ cx, cy, delay }: { cx: number, cy: number, delay: number }) 
   </g>
 );
 
-// ==========================================
-// 5. MAIN INFRASTRUCTURE PAGE
-// ==========================================
 export default function InfrastructurePage() {
   const mainRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: mainRef });
@@ -103,7 +117,6 @@ export default function InfrastructurePage() {
   const heroY = useTransform(smoothProgress, [0, 0.2], [0, 200]);
   const heroOpacity = useTransform(smoothProgress, [0, 0.2], [1, 0]);
 
-  // Network SVG Draw Math
   const svgRef = useRef(null);
   const { scrollYProgress: svgProgress } = useScroll({ target: svgRef, offset: ["start 70%", "end 30%"] });
   const pathLength = useSpring(useTransform(svgProgress, [0, 1], [0, 1]), { stiffness: 40, damping: 20 });
@@ -126,12 +139,8 @@ export default function InfrastructurePage() {
         </MagneticElement>
       </nav>
 
-      {/* ==========================================
-          HERO SECTION
-      ========================================== */}
       <section className="h-screen w-full relative flex flex-col items-center justify-center overflow-hidden bg-[#050505]">
         
-        {/* Animated Grid / Mesh Background */}
         <motion.div style={{ opacity: heroOpacity, y: heroY }} className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
           <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(16,185,129,0.15)_0%,transparent_70%)]"></div>
           
@@ -161,16 +170,10 @@ export default function InfrastructurePage() {
         </div>
       </section>
 
-      {/* ==========================================
-          SCROLL REVEAL TEXT
-      ========================================== */}
       <section className="py-40 px-6 max-w-7xl mx-auto min-h-screen flex items-center">
         <TextReveal text="Legacy systems rely on centralized monolithic servers. We shattered that architecture. WanderHub deploys code and data to the absolute edge, running compute cycles physically closer to your devices." />
       </section>
 
-      {/* ==========================================
-          GLOBAL NODE NETWORK (SVG DRAW ANIMATION)
-      ========================================== */}
       <section ref={svgRef} className="py-32 relative z-10 border-y border-white/5 bg-black overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-900/10 blur-[150px] pointer-events-none"></div>
         
@@ -180,18 +183,14 @@ export default function InfrastructurePage() {
            
            <div className="w-full h-[400px] md:h-[600px] relative border border-white/10 rounded-[3rem] bg-[#050505] shadow-2xl overflow-hidden flex items-center justify-center">
               
-              {/* World Map Backdrop (Abstract) */}
               <div className="absolute inset-0 opacity-[0.15] bg-[url('https://images.unsplash.com/photo-1524661135-423995f22d0b?w=1200&q=80')] bg-cover bg-center filter grayscale mix-blend-luminosity"></div>
 
-              {/* SVG Network Draw */}
               <svg viewBox="0 0 1000 600" className="w-full h-full relative z-10 drop-shadow-[0_0_15px_rgba(16,185,129,0.6)]">
-                 {/* Main Trunks */}
                  <motion.path d="M 200 200 C 400 100, 600 300, 800 200" fill="none" stroke="#34d399" strokeWidth="3" strokeDasharray="5 5" style={{ pathLength }} />
                  <motion.path d="M 200 200 C 300 400, 500 500, 700 400" fill="none" stroke="#10b981" strokeWidth="2" style={{ pathLength }} />
                  <motion.path d="M 800 200 C 900 300, 800 500, 700 400" fill="none" stroke="#059669" strokeWidth="2" strokeDasharray="10 5" style={{ pathLength }} />
                  <motion.path d="M 400 100 C 450 250, 550 250, 700 400" fill="none" stroke="#34d399" strokeWidth="1.5" style={{ pathLength }} />
 
-                 {/* Nodes */}
                  <DataNode cx={200} cy={200} delay={0.2} />
                  <DataNode cx={400} cy={100} delay={0.4} />
                  <DataNode cx={600} cy={300} delay={0.6} />
@@ -204,56 +203,49 @@ export default function InfrastructurePage() {
         </div>
       </section>
 
-      {/* ==========================================
-          BENTO GRID (THE STACK)
-      ========================================== */}
       <section className="py-40 px-6 relative z-10">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-16">The Engine Room.</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            {/* Feature 1 (Large) */}
-            <div className="md:col-span-2 bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 md:p-14 relative overflow-hidden group">
-               {/* Animated Data Line Border */}
+            <SpotlightCard className="md:col-span-2 bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 md:p-14 group hover:border-white/10 transition-colors">
                <div className="absolute top-0 left-0 w-full h-[1px] bg-gradient-to-r from-transparent via-emerald-500 to-transparent -translate-x-full group-hover:animate-[slideRight_2s_ease-in-out_infinite]"></div>
                <div className="relative z-10">
                  <Cpu className="h-12 w-12 text-emerald-400 mb-8" />
                  <h3 className="text-3xl font-black tracking-tighter mb-4">Vercel Edge Compute</h3>
                  <p className="text-zinc-400 text-lg leading-relaxed max-w-lg">Our Next.js Turbopack architecture pre-renders static assets while delegating heavy dynamic operations (like AI routing) directly to Edge Functions deployed globally.</p>
                </div>
-            </div>
+            </SpotlightCard>
 
-            {/* Feature 2 (Small) */}
-            <div className="bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 relative overflow-hidden group">
-               <Database className="h-10 w-10 text-zinc-300 mb-6" />
-               <h3 className="text-2xl font-black tracking-tighter mb-3">NoSQL Ledger</h3>
-               <p className="text-zinc-400 text-sm leading-relaxed">Firestore's document model allows us to perform real-time fan-out updates for split expenses.</p>
-            </div>
+            <SpotlightCard className="bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 group hover:border-white/10 transition-colors">
+               <div className="relative z-10">
+                 <Database className="h-10 w-10 text-zinc-300 mb-6" />
+                 <h3 className="text-2xl font-black tracking-tighter mb-3">NoSQL Ledger</h3>
+                 <p className="text-zinc-400 text-sm leading-relaxed">Firestore's document model allows us to perform real-time fan-out updates for split expenses.</p>
+               </div>
+            </SpotlightCard>
 
-            {/* Feature 3 (Small) */}
-            <div className="bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 relative overflow-hidden group">
-               <Network className="h-10 w-10 text-zinc-300 mb-6" />
-               <h3 className="text-2xl font-black tracking-tighter mb-3">WebSocket Sockets</h3>
-               <p className="text-zinc-400 text-sm leading-relaxed">Persistent TCP connections keep your group chats and live map trackers perfectly in sync.</p>
-            </div>
+            <SpotlightCard className="bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 group hover:border-white/10 transition-colors">
+               <div className="relative z-10">
+                 <Network className="h-10 w-10 text-zinc-300 mb-6" />
+                 <h3 className="text-2xl font-black tracking-tighter mb-3">WebSocket Sockets</h3>
+                 <p className="text-zinc-400 text-sm leading-relaxed">Persistent TCP connections keep your group chats and live map trackers perfectly in sync.</p>
+               </div>
+            </SpotlightCard>
 
-            {/* Feature 4 (Large) */}
-            <div className="md:col-span-2 bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 md:p-14 relative overflow-hidden flex flex-col md:flex-row items-center gap-12 group">
-               <div className="flex-1 z-10">
+            <SpotlightCard className="md:col-span-2 bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 md:p-14 flex flex-col md:flex-row items-center gap-12 group hover:border-white/10 transition-colors">
+               <div className="flex-1 relative z-10">
                  <HardDrive className="h-12 w-12 text-emerald-400 mb-8" />
                  <h3 className="text-3xl font-black tracking-tighter mb-4">Hybrid Aggregation API</h3>
                  <p className="text-zinc-400 text-lg leading-relaxed">We don't just rely on our own B2B inventory. Our gateway nodes dynamically fetch and compare standard OTA rates in the background to ensure price parity.</p>
                </div>
-            </div>
+            </SpotlightCard>
 
           </div>
         </div>
       </section>
 
-      {/* ==========================================
-          PERFORMANCE STATS
-      ========================================== */}
       <section className="py-32 relative z-10 border-t border-white/5 bg-[#020202]">
         <div className="max-w-7xl mx-auto px-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-px bg-white/5 rounded-[3rem] overflow-hidden border border-white/10">
@@ -278,9 +270,6 @@ export default function InfrastructurePage() {
         </div>
       </section>
 
-      {/* ==========================================
-          FINAL CTA
-      ========================================== */}
       <section className="relative h-[80vh] flex flex-col items-center justify-center overflow-hidden bg-black border-t border-white/5">
          <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }} className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
             <div className="w-[120vw] h-[120vw] md:w-[80vw] md:h-[80vw] bg-emerald-500/30 rounded-full blur-[150px]"></div>
@@ -302,10 +291,7 @@ export default function InfrastructurePage() {
          </div>
       </section>
 
-      {/* ==========================================
-          FOOTER (SHARED)
-      ========================================== */}
-      <footer className="bg-[#020202] py-20 border-t border-white/5 relative z-20 overflow-hidden">
+      <footer className="bg-[#020202] py-20 border-t border-white/5 relative z-20 overflow-hidden min-h-[500px]">
         <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-12 mb-32">
              <div>
@@ -335,12 +321,21 @@ export default function InfrastructurePage() {
              </div>
           </div>
         </div>
-        <div className="absolute bottom-[-5vw] md:bottom-[-10vw] left-0 right-0 text-[20vw] font-black text-white/[0.02] text-center pointer-events-none select-none tracking-tighter leading-none">
+        
+        <motion.div 
+           whileHover={{ 
+             y: -20,
+             color: "rgba(16, 185, 129, 0.15)",
+             textShadow: "0px -20px 100px rgba(16, 185, 129, 0.5)",
+             scale: 1.02
+           }}
+           transition={{ type: "spring", stiffness: 100, damping: 10 }}
+           className="absolute bottom-[-5vw] md:bottom-[-10vw] left-0 right-0 text-[20vw] font-black text-white/[0.02] text-center select-none tracking-tighter leading-none cursor-pointer"
+        >
            WANDERHUB
-        </div>
+        </motion.div>
       </footer>
 
-      {/* Global CSS for Data Line Animation */}
       <style dangerouslySetInnerHTML={{__html: `
         @keyframes slideRight {
           0% { transform: translateX(-100%); }

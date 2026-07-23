@@ -1,13 +1,9 @@
 "use client";
 import React, { useRef, useState, useEffect } from "react";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { motion, useScroll, useTransform, useSpring, useMotionValue } from "framer-motion";
 import Link from "next/link";
 import { PlaneTakeoff, ShieldCheck, Lock, Fingerprint, Network, Server, Key, Terminal, ArrowRight } from "lucide-react";
-import { useMotionValue } from "framer-motion";
 
-// ==========================================
-// 1. FLAWLESS PHYSICS CURSOR
-// ==========================================
 const CustomCursor = () => {
   const mouseX = useMotionValue(-100);
   const mouseY = useMotionValue(-100);
@@ -38,9 +34,6 @@ const CustomCursor = () => {
   );
 };
 
-// ==========================================
-// 2. MAGNETIC COMPONENT
-// ==========================================
 const MagneticElement = ({ children, className }: { children: React.ReactNode; className?: string }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -59,9 +52,37 @@ const MagneticElement = ({ children, className }: { children: React.ReactNode; c
   );
 };
 
-// ==========================================
-// 3. MAIN SECURITY PAGE
-// ==========================================
+const SpotlightCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => {
+  const divRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [opacity, setOpacity] = useState(0);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!divRef.current) return;
+    const rect = divRef.current.getBoundingClientRect();
+    setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  return (
+    <div
+      ref={divRef}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setOpacity(1)}
+      onMouseLeave={() => setOpacity(0)}
+      className={`relative overflow-hidden ${className}`}
+    >
+      <div
+        className="pointer-events-none absolute -inset-px transition-opacity duration-300 z-0"
+        style={{
+          opacity,
+          background: `radial-gradient(800px circle at ${position.x}px ${position.y}px, rgba(16,185,129,0.15), transparent 40%)`,
+        }}
+      />
+      {children}
+    </div>
+  );
+};
+
 export default function SecurityPage() {
   const mainRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: mainRef });
@@ -73,10 +94,8 @@ export default function SecurityPage() {
     <div ref={mainRef} className="bg-[#050505] text-white min-h-screen font-sans selection:bg-emerald-500/30 overflow-x-hidden relative">
       <CustomCursor />
       
-      {/* GLOBAL NOISE */}
       <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.03] mix-blend-screen bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
 
-      {/* NAVBAR */}
       <nav className="fixed top-0 w-full z-50 px-6 md:px-12 py-8 flex justify-between items-center mix-blend-difference pointer-events-none">
         <Link href="/landing" className="flex items-center gap-3 pointer-events-auto">
           <PlaneTakeoff className="h-8 w-8 text-emerald-400" />
@@ -89,12 +108,10 @@ export default function SecurityPage() {
         </MagneticElement>
       </nav>
 
-      {/* HERO SECTION */}
       <section className="h-screen w-full relative flex flex-col items-center justify-center overflow-hidden">
         <motion.div style={{ opacity: heroOpacity, y: heroY }} className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08)_0%,transparent_50%)]"></div>
           
-          {/* Abstract Cryptography Visual */}
           <div className="relative w-[80vw] h-[80vw] md:w-[40vw] md:h-[40vw] flex items-center justify-center">
              <motion.div animate={{ rotate: 360 }} transition={{ duration: 50, repeat: Infinity, ease: "linear" }} className="absolute inset-0 border border-emerald-500/20 rounded-full border-dashed"></motion.div>
              <motion.div animate={{ rotate: -360 }} transition={{ duration: 40, repeat: Infinity, ease: "linear" }} className="absolute inset-10 border border-white/5 rounded-full"></motion.div>
@@ -123,45 +140,48 @@ export default function SecurityPage() {
         </div>
       </section>
 
-      {/* BENTO GRID SECURITY ARCHITECTURE */}
       <section className="py-32 px-6 relative z-10">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-16 text-center">Defense in Depth.</h2>
           
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
-            <div className="md:col-span-2 bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 md:p-14 relative overflow-hidden group hover:border-white/10 transition-colors">
-               <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
-               <Network className="h-12 w-12 text-emerald-400 mb-8" />
-               <h3 className="text-3xl font-black tracking-tighter mb-4">WSS:// Encrypted WebSockets</h3>
-               <p className="text-zinc-400 text-lg leading-relaxed max-w-lg">All live collaborative sessions, expenses, and geographical routing calculations are transmitted over mathematically encrypted WebSocket channels, preventing man-in-the-middle (MITM) interceptions.</p>
-            </div>
+            <SpotlightCard className="md:col-span-2 bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 md:p-14 group hover:border-white/10 transition-colors">
+               <div className="relative z-10">
+                 <Network className="h-12 w-12 text-emerald-400 mb-8" />
+                 <h3 className="text-3xl font-black tracking-tighter mb-4">WSS:// Encrypted WebSockets</h3>
+                 <p className="text-zinc-400 text-lg leading-relaxed max-w-lg">All live collaborative sessions, expenses, and geographical routing calculations are transmitted over mathematically encrypted WebSocket channels, preventing man-in-the-middle (MITM) interceptions.</p>
+               </div>
+            </SpotlightCard>
 
-            <div className="bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 md:p-14 relative overflow-hidden group hover:border-white/10 transition-colors">
-               <Fingerprint className="h-12 w-12 text-zinc-300 mb-8" />
-               <h3 className="text-3xl font-black tracking-tighter mb-4">Auth Tokens</h3>
-               <p className="text-zinc-400 leading-relaxed">Stateless JWT authentication ensures session integrity across edge nodes without exposing credentials.</p>
-            </div>
+            <SpotlightCard className="bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 md:p-14 group hover:border-white/10 transition-colors">
+               <div className="relative z-10">
+                 <Fingerprint className="h-12 w-12 text-zinc-300 mb-8" />
+                 <h3 className="text-3xl font-black tracking-tighter mb-4">Auth Tokens</h3>
+                 <p className="text-zinc-400 leading-relaxed">Stateless JWT authentication ensures session integrity across edge nodes without exposing credentials.</p>
+               </div>
+            </SpotlightCard>
 
-            <div className="bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 md:p-14 relative overflow-hidden group hover:border-white/10 transition-colors">
-               <Server className="h-12 w-12 text-zinc-300 mb-8" />
-               <h3 className="text-3xl font-black tracking-tighter mb-4">Data at Rest</h3>
-               <p className="text-zinc-400 leading-relaxed">All physical database partitions are encrypted at the storage level using AES-256 standard.</p>
-            </div>
+            <SpotlightCard className="bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 md:p-14 group hover:border-white/10 transition-colors">
+               <div className="relative z-10">
+                 <Server className="h-12 w-12 text-zinc-300 mb-8" />
+                 <h3 className="text-3xl font-black tracking-tighter mb-4">Data at Rest</h3>
+                 <p className="text-zinc-400 leading-relaxed">All physical database partitions are encrypted at the storage level using AES-256 standard.</p>
+               </div>
+            </SpotlightCard>
 
-            <div className="md:col-span-2 bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 md:p-14 relative overflow-hidden flex flex-col md:flex-row items-center gap-12 group hover:border-white/10 transition-colors">
-               <div className="flex-1">
+            <SpotlightCard className="md:col-span-2 bg-[#0a0a0a] border border-white/5 rounded-[2.5rem] p-10 md:p-14 flex flex-col md:flex-row items-center gap-12 group hover:border-white/10 transition-colors">
+               <div className="flex-1 relative z-10">
                  <Key className="h-12 w-12 text-emerald-400 mb-8" />
                  <h3 className="text-3xl font-black tracking-tighter mb-4">PCI-DSS Payments</h3>
                  <p className="text-zinc-400 text-lg leading-relaxed">Direct integration with Razorpay ensures WanderHub never touches raw credit card data. All ledger settlements and B2B bookings are fully tokenized.</p>
                </div>
-            </div>
+            </SpotlightCard>
 
           </div>
         </div>
       </section>
 
-      {/* CODE TERMINAL SECTION */}
       <section className="py-32 relative z-10 bg-[#020202] border-y border-white/5 overflow-hidden">
          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-emerald-900/10 blur-[150px] pointer-events-none"></div>
          <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-20 items-center relative z-10">
@@ -177,7 +197,6 @@ export default function SecurityPage() {
                </p>
             </div>
 
-            {/* Fake Code Terminal */}
             <div className="rounded-2xl border border-white/10 bg-[#0a0a0a] shadow-2xl overflow-hidden text-sm md:text-base">
                <div className="bg-[#111] px-4 py-3 border-b border-white/5 flex gap-2">
                  <div className="h-3 w-3 rounded-full bg-rose-500"></div>
@@ -186,7 +205,7 @@ export default function SecurityPage() {
                </div>
                <div className="p-6 md:p-8 font-mono text-zinc-400 overflow-x-auto leading-loose">
                   <span className="text-rose-400">match</span> /trips/&#123;tripId&#125; &#123;<br/>
-                  &nbsp;&nbsp;<span className="text-emerald-400">// Strict Membership Verification</span><br/>
+                  &nbsp;&nbsp;<span className="text-emerald-400"></span><br/>
                   &nbsp;&nbsp;<span className="text-sky-400">allow</span> read, write: <span className="text-amber-400">if</span> isAuthenticated() && <br/>
                   &nbsp;&nbsp;(request.auth.uid <span className="text-rose-400">in</span> resource.data.members);<br/>
                   &#125;
@@ -196,7 +215,6 @@ export default function SecurityPage() {
          </div>
       </section>
 
-      {/* FINAL CTA */}
       <section className="py-40 text-center px-6 relative z-10">
          <h2 className="text-4xl md:text-6xl font-black tracking-tighter mb-10">Secure Your Journey.</h2>
          <MagneticElement className="mx-auto block w-fit">
@@ -206,10 +224,7 @@ export default function SecurityPage() {
          </MagneticElement>
       </section>
 
-      {/* ==========================================
-          FOOTER (SHARED)
-      ========================================== */}
-      <footer className="bg-[#020202] py-20 border-t border-white/5 relative z-20 overflow-hidden">
+      <footer className="bg-[#020202] py-20 border-t border-white/5 relative z-20 overflow-hidden min-h-[500px]">
         <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-12 mb-32">
              <div>
@@ -240,10 +255,18 @@ export default function SecurityPage() {
           </div>
         </div>
         
-        {/* Massive Background Text */}
-        <div className="absolute bottom-[-5vw] md:bottom-[-10vw] left-0 right-0 text-[20vw] font-black text-white/[0.02] text-center pointer-events-none select-none tracking-tighter leading-none">
+        <motion.div 
+           whileHover={{ 
+             y: -20,
+             color: "rgba(16, 185, 129, 0.15)",
+             textShadow: "0px -20px 100px rgba(16, 185, 129, 0.5)",
+             scale: 1.02
+           }}
+           transition={{ type: "spring", stiffness: 100, damping: 10 }}
+           className="absolute bottom-[-5vw] md:bottom-[-10vw] left-0 right-0 text-[20vw] font-black text-white/[0.02] text-center select-none tracking-tighter leading-none cursor-pointer"
+        >
            WANDERHUB
-        </div>
+        </motion.div>
       </footer>
 
     </div>

@@ -5,9 +5,6 @@ import Link from "next/link";
 import { PlaneTakeoff, Map as MapIcon, Receipt, BedDouble, ArrowRight, ShieldCheck, Zap, Users, Plus, Compass, Wallet, CreditCard, Loader2, Sparkles } from "lucide-react";
 import { useMotionValue } from "framer-motion";
 
-// ==========================================
-// 1. DATA ASSETS
-// ==========================================
 const TRAVEL_DATA = [
   "https://images.unsplash.com/photo-1499856871958-5b9627545d1a?w=1200&q=80",
   "https://images.unsplash.com/photo-1533929736458-ca588d08c8be?w=1200&q=80",
@@ -24,9 +21,6 @@ const FAQS = [
   { q: "Can I export my itinerary?", a: "Absolutely. Workspaces can be exported to standard calendar formats, PDF dossiers, or shared via a live read-only web link." }
 ];
 
-// ==========================================
-// 2. FLAWLESS PHYSICS CURSOR
-// ==========================================
 const CustomCursor = () => {
   const mouseX = useMotionValue(-100);
   const mouseY = useMotionValue(-100);
@@ -69,9 +63,6 @@ const CustomCursor = () => {
   );
 };
 
-// ==========================================
-// 3. MAGNETIC ELEMENT COMPONENT
-// ==========================================
 const MagneticElement = ({ children, className }: { children: React.ReactNode; className?: string }) => {
   const ref = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -101,9 +92,6 @@ const MagneticElement = ({ children, className }: { children: React.ReactNode; c
   );
 };
 
-// ==========================================
-// 4. SCROLL REVEAL TYPOGRAPHY
-// ==========================================
 const TextReveal = ({ text }: { text: string }) => {
   const ref = useRef(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start 80%", "end 40%"] });
@@ -114,7 +102,6 @@ const TextReveal = ({ text }: { text: string }) => {
       {words.map((word, i) => {
         const start = i / words.length;
         const end = start + 1 / words.length;
-        // eslint-disable-next-line react-hooks/rules-of-hooks
         const opacity = useTransform(scrollYProgress, [start, end], [0.1, 1]);
         return <motion.span key={i} style={{ opacity }} className="text-white">{word}</motion.span>;
       })}
@@ -122,9 +109,6 @@ const TextReveal = ({ text }: { text: string }) => {
   );
 };
 
-// ==========================================
-// 5. ACCORDION PHYSICS
-// ==========================================
 const Accordion = ({ q, a }: { q: string, a: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
@@ -146,9 +130,6 @@ const Accordion = ({ q, a }: { q: string, a: string }) => {
   );
 };
 
-// ==========================================
-// 6. MASONRY PARALLAX COLUMN
-// ==========================================
 const ParallaxColumn = ({ images, yTransform }: { images: string[], yTransform: any }) => (
   <motion.div style={{ y: yTransform }} className="flex flex-col gap-6 w-full md:w-1/3 min-w-[300px]">
     {images.map((src, i) => (
@@ -160,9 +141,6 @@ const ParallaxColumn = ({ images, yTransform }: { images: string[], yTransform: 
   </motion.div>
 );
 
-// ==========================================
-// 7. DUAL-SCROLL COMPONENTS
-// ==========================================
 const WalletGroup = () => (
   <div className="flex flex-col gap-4 w-full p-6">
     <div className="bg-[#050505] p-5 rounded-2xl border border-white/5 shadow-2xl flex items-center gap-4">
@@ -196,9 +174,6 @@ const DualCard = ({ num, title, desc, img, component }: any) => (
   </div>
 );
 
-// ==========================================
-// 8. MAIN PAGE COMPONENT
-// ==========================================
 export default function ProLanding() {
   const [isLoaded, setIsLoaded] = useState(false);
 
@@ -211,24 +186,19 @@ export default function ProLanding() {
   const { scrollYProgress } = useScroll({ target: mainRef });
   const smoothProgress = useSpring(scrollYProgress, { stiffness: 50, damping: 20, restDelta: 0.001 });
 
-  // --- DUAL DIRECTIONAL CAROUSEL MATH ---
   const dualRef = useRef(null);
   const { scrollYProgress: dualProgress } = useScroll({ 
     target: dualRef, 
     offset: ["start start", "end end"] 
   });
   
-  // Track 1: Moves Left (Translates negative X)
   const xTop = useTransform(dualProgress, [0, 1], ["5vw", "-60vw"]);
-  // Track 2: Moves Right (Translates positive X)
   const xBottom = useTransform(dualProgress, [0, 1], ["-60vw", "5vw"]);
 
-  // --- SVG Path Math ---
   const svgRef = useRef(null);
   const { scrollYProgress: svgProgress } = useScroll({ target: svgRef, offset: ["start 80%", "end 20%"] });
   const pathLength = useSpring(useTransform(svgProgress, [0, 1], [0, 1]), { stiffness: 50, damping: 20 });
 
-  // --- Gallery Parallax Math ---
   const galleryRef = useRef(null);
   const { scrollYProgress: galleryProgress } = useScroll({ target: galleryRef, offset: ["start end", "end start"] });
   const y1 = useTransform(galleryProgress, [0, 1], ["0px", "-150px"]);
@@ -267,9 +237,6 @@ export default function ProLanding() {
         </MagneticElement>
       </nav>
 
-      {/* ==========================================
-          NEW AWWWARDS HERO SECTION
-      ========================================== */}
       <section className="h-screen w-full relative flex flex-col items-center justify-center overflow-hidden bg-[#050505] pt-10">
         <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.1)_0%,transparent_50%)] pointer-events-none"></div>
 
@@ -307,16 +274,10 @@ export default function ProLanding() {
         </div>
       </section>
 
-      {/* ==========================================
-          SCROLL REVEAL TEXT
-      ========================================== */}
       <section className="py-40 px-6 max-w-7xl mx-auto min-h-screen flex items-center">
         <TextReveal text="We engineered WanderHub to replace the fractured ecosystem of legacy travel tools. A singular, hyper-optimized environment where itineraries, finances, and bookings converge seamlessly." />
       </section>
 
-      {/* ==========================================
-          SVG DRAWING (SPATIAL LOGIC)
-      ========================================== */}
       <section ref={svgRef} className="py-32 relative overflow-hidden bg-black border-y border-white/5">
          <div className="max-w-7xl mx-auto px-6 relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 items-center">
             <div>
@@ -338,15 +299,11 @@ export default function ProLanding() {
          </div>
       </section>
 
-      {/* ==========================================
-          PERFECT DUAL-DIRECTIONAL CAROUSEL
-      ========================================== */}
       <section ref={dualRef} className="h-[300vh] relative">
         <div className="sticky top-0 h-screen flex flex-col justify-center overflow-hidden bg-[#020202] gap-8 md:gap-12">
           
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-emerald-900/10 blur-[150px] pointer-events-none z-0"></div>
 
-          {/* TOP TRACK: Slides Left */}
           <motion.div style={{ x: xTop }} className="flex gap-6 md:gap-10 w-max relative z-10 px-[5vw]">
              <DualCard 
                num="01." 
@@ -360,15 +317,12 @@ export default function ProLanding() {
                desc="Aggregated data converges. WebSockets reflect structural changes globally across all viewports instantly." 
                img={TRAVEL_DATA[1]} 
              />
-             {/* Padding Card to prevent empty space */}
              <div className="w-[85vw] md:w-[45vw] h-[35vh] md:h-[40vh] rounded-[2.5rem] md:rounded-[3rem] overflow-hidden border border-white/10 shrink-0 shadow-2xl group">
                <img src={TRAVEL_DATA[3]} className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-700 opacity-40 group-hover:opacity-100" alt="Padding" />
              </div>
           </motion.div>
 
-          {/* BOTTOM TRACK: Slides Right */}
           <motion.div style={{ x: xBottom }} className="flex gap-6 md:gap-10 w-max relative z-10 px-[5vw]">
-             {/* Padding Card to prevent empty space */}
              <div className="w-[85vw] md:w-[45vw] h-[35vh] md:h-[40vh] rounded-[2.5rem] md:rounded-[3rem] overflow-hidden border border-white/10 shrink-0 shadow-2xl group">
                <img src={TRAVEL_DATA[4]} className="w-full h-full object-cover filter grayscale group-hover:grayscale-0 transition-all duration-700 opacity-40 group-hover:opacity-100" alt="Padding" />
              </div>
@@ -389,9 +343,6 @@ export default function ProLanding() {
         </div>
       </section>
 
-      {/* ==========================================
-          MASONRY GALLERY
-      ========================================== */}
       <section ref={galleryRef} className="py-40 relative z-10 bg-[#050505] border-y border-white/5">
         <div className="max-w-7xl mx-auto px-6 mb-20 text-center relative z-20">
            <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-white">Global Render.</h2>
@@ -410,9 +361,6 @@ export default function ProLanding() {
         </div>
       </section>
 
-      {/* ==========================================
-          ACCORDION FAQS
-      ========================================== */}
       <section className="py-40 px-6 max-w-4xl mx-auto">
          <h2 className="text-5xl md:text-7xl font-black tracking-tighter mb-20 text-center">Architecture FAQs.</h2>
          <div className="border-t border-white/10">
@@ -420,9 +368,6 @@ export default function ProLanding() {
          </div>
       </section>
 
-      {/* ==========================================
-          FINAL CTA
-      ========================================== */}
       <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden bg-black border-t border-white/5">
          
          <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }} className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
@@ -446,9 +391,6 @@ export default function ProLanding() {
          </div>
       </section>
 
-      {/* ==========================================
-          FOOTER
-      ========================================== */}
       <footer className="bg-[#020202] py-20 border-t border-white/5 relative z-20 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-12 mb-32">
@@ -480,10 +422,18 @@ export default function ProLanding() {
           </div>
         </div>
         
-        {/* Massive Background Text */}
-        <div className="absolute bottom-[-5vw] md:bottom-[-10vw] left-0 right-0 text-[20vw] font-black text-white/[0.02] text-center pointer-events-none select-none tracking-tighter leading-none">
+        <motion.div 
+           whileHover={{ 
+             y: -20,
+             color: "rgba(16, 185, 129, 0.15)",
+             textShadow: "0px -20px 100px rgba(16, 185, 129, 0.5)",
+             scale: 1.02
+           }}
+           transition={{ type: "spring", stiffness: 100, damping: 10 }}
+           className="absolute bottom-[-5vw] md:bottom-[-10vw] left-0 right-0 text-[20vw] font-black text-white/[0.02] text-center select-none tracking-tighter leading-none cursor-pointer"
+        >
            WANDERHUB
-        </div>
+        </motion.div>
       </footer>
     </div>
   );
