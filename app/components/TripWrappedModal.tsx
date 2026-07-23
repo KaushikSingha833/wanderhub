@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence, animate } from "framer-motion";
+import { motion, AnimatePresence, animate, Variants } from "framer-motion";
 import { X, Map, CreditCard, Hotel, Trophy, ArrowRight, Download, Zap } from "lucide-react";
 
 interface TripWrappedProps {
@@ -71,13 +71,13 @@ export default function TripWrappedModal({ isOpen, onClose, tripData }: TripWrap
 
   if (!isOpen) return null;
 
-  const slideVariants = {
+  const slideVariants: Variants = {
     initial: { opacity: 0, scale: 1.1, filter: "blur(10px)" },
     animate: { opacity: 1, scale: 1, filter: "blur(0px)", transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] } },
     exit: { opacity: 0, scale: 0.9, filter: "blur(10px)", transition: { duration: 0.5, ease: [0.7, 0, 0.84, 0] } }
   };
 
-  const textVariants = {
+  const textVariants: Variants = {
     initial: { opacity: 0, y: 40 },
     animate: { opacity: 1, y: 0, transition: { duration: 0.8, delay: 0.3, ease: "easeOut" } }
   };
@@ -150,7 +150,7 @@ export default function TripWrappedModal({ isOpen, onClose, tripData }: TripWrap
               </motion.div>
               <motion.h3 variants={textVariants} className="text-2xl font-bold text-emerald-500 mt-2 uppercase tracking-widest">Kilometers</motion.h3>
               <motion.p variants={textVariants} className="text-zinc-500 font-medium mt-8 text-sm uppercase tracking-widest border border-zinc-800 rounded-full px-6 py-3 inline-block">
-                Across {tripData.activitiesCount} recorded waypoints.
+                Across {tripData.activitiesCount} recorded waypoints
               </motion.p>
             </motion.div>
           )}
