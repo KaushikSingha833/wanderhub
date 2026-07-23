@@ -36,20 +36,29 @@ export default function TripChatPage() {
   const [newMessage, setNewMessage] = useState("");
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isMobile, setIsMobile] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
 
-  // Feature States
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [infoMessageId, setInfoMessageId] = useState<string | null>(null);
   const [typingUsers, setTypingUsers] = useState<string[]>([]);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const touchTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
@@ -111,6 +120,14 @@ export default function TripChatPage() {
 
   const handleInputText = (text: string) => {
     setNewMessage(text);
+    
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto';
+      const scrollH = textareaRef.current.scrollHeight;
+      textareaRef.current.style.height = Math.min(scrollH, 120) + 'px';
+      setIsScrolled(scrollH > 120);
+    }
+
     if (!user) return;
 
     setDoc(doc(db, "trips", tripId, "typing", user.uid), { 
@@ -132,6 +149,11 @@ export default function TripChatPage() {
     const messageText = newMessage.trim();
     setNewMessage(""); 
     setShowEmojiPicker(false);
+    setIsScrolled(false);
+    
+    if (textareaRef.current) {
+      textareaRef.current.style.height = isMobile ? '44px' : '56px';
+    }
     
     if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     setDoc(doc(db, "trips", tripId, "typing", user.uid), { isTyping: false }, { merge: true });
@@ -517,44 +539,51 @@ export default function TripChatPage() {
           )}
         </main>
 
-        <div className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 p-4 md:p-6 shrink-0 z-20 sticky bottom-0" onClick={e => e.stopPropagation()}>
-          <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto relative flex items-end gap-3">
+        <div className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 p-2 md:p-6 shrink-0 z-20 sticky bottom-0" onClick={e => e.stopPropagation()}>
+          <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto relative flex items-end gap-2 md:gap-3">
             
-            <div className="relative flex-1">
+            <div className="relative flex-1 flex items-center">
               {showEmojiPicker && (
-                <div className="absolute bottom-full mb-4 left-0 z-50 shadow-2xl animate-in slide-in-from-bottom-2">
+                <div className="absolute bottom-full mb-2 md:mb-4 left-0 z-50 shadow-2xl animate-in slide-in-from-bottom-2">
                   <EmojiPicker 
-                    onEmojiClick={(emojiData) => { setNewMessage(prev => prev + emojiData.emoji); setShowEmojiPicker(false); }}
+                    onEmojiClick={(emojiData) => { 
+                      handleInputText(newMessage + emojiData.emoji); 
+                      setShowEmojiPicker(false); 
+                    }}
                     theme={"auto" as any}
+                    width={isMobile ? window.innerWidth - 16 : 350}
+                    height={400}
                   />
                 </div>
               )}
 
-              <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-emerald-500 transition-colors p-2">
-                <Smile className="h-6 w-6" />
+              <button type="button" onClick={() => setShowEmojiPicker(!showEmojiPicker)} className="absolute left-2 md:left-4 bottom-[8px] md:bottom-3 text-zinc-400 hover:text-emerald-500 transition-colors p-2">
+                <Smile className="h-5 w-5 md:h-6 md:w-6" />
               </button>
 
               <textarea
+                ref={textareaRef}
                 value={newMessage}
                 onChange={(e) => handleInputText(e.target.value)}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
+                  if (e.key === 'Enter' && !e.shiftKey && !isMobile) {
                     e.preventDefault();
                     handleSendMessage(e);
                   }
                 }}
-                placeholder="Type your message... (Shift+Enter for new line)"
-                className="w-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-full pl-14 pr-6 py-4 outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium text-zinc-900 dark:text-white placeholder-zinc-500 resize-none overflow-hidden h-[56px] leading-[24px]"
+                placeholder={isMobile ? "Message..." : "Type your message... (Shift+Enter for new line)"}
+                className={`w-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-3xl md:rounded-[28px] pl-12 pr-4 md:pl-14 md:pr-6 py-3 md:py-4 outline-none focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 transition-all font-medium text-sm md:text-base text-zinc-900 dark:text-white placeholder-zinc-500 resize-none ${isScrolled ? 'overflow-y-auto' : 'overflow-hidden'} min-h-[44px] md:min-h-[56px] max-h-[120px] leading-tight md:leading-[24px] custom-scrollbar`}
                 rows={1}
+                style={{ height: newMessage ? undefined : (isMobile ? '44px' : '56px') }}
               />
             </div>
 
             <button
               type="submit"
               disabled={!newMessage.trim()}
-              className="h-[56px] w-[56px] shrink-0 bg-emerald-500 text-zinc-950 rounded-full flex items-center justify-center hover:bg-emerald-400 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:shadow-none disabled:bg-zinc-200 dark:disabled:bg-zinc-800 active:scale-95 group"
+              className="h-[44px] w-[44px] md:h-[56px] md:w-[56px] shrink-0 bg-emerald-500 text-zinc-950 rounded-full flex items-center justify-center hover:bg-emerald-400 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] disabled:opacity-50 disabled:shadow-none disabled:bg-zinc-200 dark:disabled:bg-zinc-800 active:scale-95 group mb-[0px]"
             >
-              <Send className="h-6 w-6 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
+              <Send className="h-5 w-5 md:h-6 w-6 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
             </button>
           </form>
         </div>

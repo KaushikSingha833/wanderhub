@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { doc, getDoc, collection, addDoc, onSnapshot, query, where, orderBy, updateDoc, arrayRemove, deleteField, deleteDoc } from "firebase/firestore"; 
 import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
@@ -13,13 +13,14 @@ interface Trip {
   adminId?: string; members?: string[]; memberNames?: Record<string, string>;
   imageUrl?: string; 
 }
+
 interface Activity { 
   id: string; title: string; type: string; date: string; time: string; 
   location?: string; notes?: string; trackingNumber?: string; 
 }
+
 interface PackingItem { id: string; name: string; isChecked: boolean; }
 
-// ✨ NEW: HOTEL POLL INTERFACE
 interface HotelPoll {
   id: string;
   name: string;
@@ -50,6 +51,39 @@ const getTripImage = (id: string) => {
   return TRAVEL_IMAGES[hash % TRAVEL_IMAGES.length];
 };
 
+const SpotlightCard = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => {
+  const divRef = useRef<HTMLDivElement>(null);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const [opacity, setOpacity] = useState(0);
+
+  const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!divRef.current) return;
+    const rect = divRef.current.getBoundingClientRect();
+    setPosition({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+  };
+
+  return (
+    <div
+      ref={divRef}
+      onMouseMove={handleMouseMove}
+      onMouseEnter={() => setOpacity(1)}
+      onMouseLeave={() => setOpacity(0)}
+      className={`relative overflow-hidden ${className}`}
+    >
+      <div
+        className="pointer-events-none absolute -inset-px transition-opacity duration-300 z-0"
+        style={{
+          opacity,
+          background: `radial-gradient(800px circle at ${position.x}px ${position.y}px, rgba(16,185,129,0.15), transparent 40%)`,
+        }}
+      />
+      <div className="relative z-10 w-full h-full">
+        {children}
+      </div>
+    </div>
+  );
+};
+
 export default function TripDetails() {
   const params = useParams(); 
   const router = useRouter(); 
@@ -62,14 +96,12 @@ export default function TripDetails() {
   const [activities, setActivities] = useState<Activity[]>([]);
   const [packingItems, setPackingItems] = useState<PackingItem[]>([]);
   
-  // ✨ NEW: VOTING ROOM STATE
   const [activeTab, setActiveTab] = useState<"itinerary" | "voting">("itinerary");
   const [polls, setPolls] = useState<HotelPoll[]>([]);
   const [swipeDirection, setSwipeDirection] = useState<"left" | "right" | null>(null);
 
   const [isLoading, setIsLoading] = useState(true);
 
-  // Modal & Activity State
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [editingActivityId, setEditingActivityId] = useState<string | null>(null); 
@@ -80,42 +112,35 @@ export default function TripDetails() {
   const [actNotes, setActNotes] = useState("");
   const [actTrackingNum, setActTrackingNum] = useState("");
   
-  // Packing List State
   const [newItemName, setNewItemName] = useState("");
 
-  // 🛡️ 1. SECURITY GUARD: Check if logged in
   useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-    if (!currentUser) {
-      router.push("/"); // Kick to landing page if not logged in
-    } else {
-      try {
-        // Fetch user profile to check their role
-        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-        
-        if (userDoc.exists() && userDoc.data().role === "hotel_partner") {
-          // Bouncer: Kick Hotel Partners OUT of the customer site!
-          router.push("/partner/dashboard");
-          return;
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (!currentUser) {
+        router.push("/"); 
+      } else {
+        try {
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          
+          if (userDoc.exists() && userDoc.data().role === "hotel_partner") {
+            router.push("/partner/dashboard");
+            return;
+          }
+
+          setUser(currentUser);
+          setIsAuthLoading(false);
+          
+        } catch (error) {
+          console.error("Auth check error:", error);
         }
-
-        // If they pass, let them in
-        setUser(currentUser);
-        setIsAuthLoading(false);
-        
-      } catch (error) {
-        console.error("Auth check error:", error);
       }
-    }
-  });
-  return () => unsubscribe();
-}, [router]);
+    });
+    return () => unsubscribe();
+  }, [router]);
 
-  // 2. Fetch Data (UPGRADED: Trip is now real-time!)
   useEffect(() => {
     if (!tripId || !user) return;
 
-    // Real-time trip listener
     const unsubTrip = onSnapshot(doc(db, "trips", tripId), (docSnap) => {
       if (docSnap.exists()) {
         const data = docSnap.data();
@@ -128,20 +153,17 @@ export default function TripDetails() {
       }
     });
 
-    // Fetch Activities
     const qActivities = query(collection(db, "activities"), where("tripId", "==", tripId), orderBy("date", "asc"), orderBy("time", "asc"));
     const unsubActivities = onSnapshot(qActivities, (snapshot) => {
       setActivities(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as Activity));
       setIsLoading(false);
     });
 
-    // Fetch Packing List
     const qPacking = query(collection(db, "packingList"), where("tripId", "==", tripId), orderBy("createdAt", "asc"));
     const unsubPacking = onSnapshot(qPacking, (snapshot) => {
       setPackingItems(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as PackingItem));
     });
 
-    // ✨ NEW: Fetch Hotel Polls
     const qPolls = query(collection(db, "trips", tripId, "hotel_polls"));
     const unsubPolls = onSnapshot(qPolls, (snapshot) => {
       setPolls(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }) as HotelPoll));
@@ -150,7 +172,6 @@ export default function TripDetails() {
     return () => { unsubTrip(); unsubActivities(); unsubPacking(); unsubPolls(); };
   }, [tripId, user, router]);
 
-  // The Self-Healing Name Sync
   useEffect(() => {
     if (!trip || !user || !trip.members?.includes(user.uid)) return;
 
@@ -164,7 +185,6 @@ export default function TripDetails() {
     }
   }, [trip, user, tripId]);
 
-  // --- MEMBER LOGIC ---
   const handleRemoveMember = async (memberUid: string, memberName: string) => {
     const isSelf = memberUid === user?.uid;
     const confirmMessage = isSelf ? "Are you sure you want to leave this trip?" : `Are you sure you want to kick ${memberName} out?`;
@@ -179,7 +199,6 @@ export default function TripDetails() {
     } catch (error) { console.error("Error removing member:", error); }
   };
 
-  // --- ACTIVITY LOGIC ---
   const openAddModal = () => {
     setEditingActivityId(null);
     setActTitle(""); setActType("activity"); setActDate(""); setActTime("");
@@ -229,7 +248,6 @@ export default function TripDetails() {
     setEditingActivityId(null);
   };
 
-  // --- PACKING LIST LOGIC ---
   const handleAddPackingItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemName.trim()) return;
@@ -249,7 +267,6 @@ export default function TripDetails() {
     catch (error) { console.error("Error deleting item:", error); }
   };
 
-  // --- FEATURE: Voting Logic ---
   const handleVote = async (pollId: string, vote: "yes" | "no") => {
     if (!user) return;
     setSwipeDirection(vote === "yes" ? "right" : "left");
@@ -260,7 +277,6 @@ export default function TripDetails() {
           [`votes.${user.uid}`]: vote
         });
         
-        // Trigger the Global Notification
         await sendGroupNotification(
           tripId, 
           user.uid, 
@@ -285,7 +301,6 @@ export default function TripDetails() {
     }
   };
 
-  // 🛡️ LOADING SCREEN: Hide page until verified
   if (isAuthLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950">
@@ -294,7 +309,6 @@ export default function TripDetails() {
     );
   }
 
-  // Backup loader for data fetch
   if (isLoading || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 transition-colors">
@@ -318,10 +332,8 @@ export default function TripDetails() {
   const isAdmin = user.uid === trip.adminId;
   const tripImageUrl = trip.imageUrl || getTripImage(trip.id);
 
-  // ✨ COMPUTE VOTING DATA
   const unvotedPolls = polls.filter(p => !p.votes || !p.votes[user.uid]);
   
-  // Calculate Leaderboard
   const leaderboard = [...polls].sort((a, b) => {
     const scoreA = Object.values(a.votes || {}).reduce((acc, v) => acc + (v === 'yes' ? 1 : 0), 0);
     const scoreB = Object.values(b.votes || {}).reduce((acc, v) => acc + (v === 'yes' ? 1 : 0), 0);
@@ -331,7 +343,6 @@ export default function TripDetails() {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 pb-24 selection:bg-emerald-500/30 transition-colors duration-300">
       
-      {/* EDITORIAL HERO BANNER SECTION */}
       <div className="relative h-[40vh] md:h-[50vh] w-full bg-zinc-900 dark:bg-black overflow-hidden">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={tripImageUrl} alt={trip.title} className="absolute inset-0 w-full h-full object-cover opacity-70 dark:opacity-50 transition-opacity" />
@@ -365,13 +376,10 @@ export default function TripDetails() {
         </div>
       </div>
 
-      {/* MAIN CONTENT OVERLAP */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 -mt-6 md:-mt-8 relative z-30 grid grid-cols-1 xl:grid-cols-3 gap-8 md:gap-12">
         
-        {/* LEFT COLUMN: MAIN CONTENT AREA */}
         <div className="xl:col-span-2">
           
-          {/* ✨ EDITORIAL TAB NAVIGATION */}
           <div className="flex gap-8 mb-8 border-b border-zinc-200 dark:border-zinc-800 w-full overflow-x-auto custom-scrollbar pb-1">
             <button 
               onClick={() => setActiveTab("itinerary")} 
@@ -388,9 +396,6 @@ export default function TripDetails() {
             </button>
           </div>
 
-          {/* ==================================================== */}
-          {/* TAB 1: ITINERARY VIEW                                */}
-          {/* ==================================================== */}
           {activeTab === "itinerary" && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
               <div className="flex items-center justify-between mb-8 transition-colors">
@@ -404,13 +409,13 @@ export default function TripDetails() {
               </div>
 
               {activities.length === 0 ? (
-                <div className="bg-white dark:bg-zinc-900/50 rounded-[2rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm p-12 text-center flex flex-col items-center justify-center min-h-[300px] transition-colors">
+                <SpotlightCard className="bg-white dark:bg-zinc-900/50 rounded-[2rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm p-12 text-center flex flex-col items-center justify-center min-h-[300px] transition-colors group">
                   <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center mb-6">
                     <MapIcon className="h-8 w-8 text-zinc-400 dark:text-zinc-500" />
                   </div>
                   <h2 className="text-xl font-bold text-zinc-800 dark:text-white mb-2">Blank Canvas</h2>
                   <p className="text-zinc-500 dark:text-zinc-400 font-medium max-w-sm mx-auto text-sm">Your itinerary is currently empty. Start adding flights, hotels, or dinner reservations.</p>
-                </div>
+                </SpotlightCard>
               ) : (
                 <div className="relative transition-colors">
                   <div className="absolute left-6 md:left-8 top-8 bottom-8 w-[2px] bg-zinc-200 dark:bg-zinc-800"></div>
@@ -421,7 +426,7 @@ export default function TripDetails() {
                         <div className="relative z-10 flex items-center justify-center w-12 h-12 md:w-16 md:h-16 rounded-full border-4 border-zinc-50 dark:border-zinc-950 bg-white dark:bg-zinc-900 shadow-sm group-hover:scale-110 transition-all duration-300 shrink-0">
                           {getIcon(act.type)}
                         </div>
-                        <div className="flex-1 relative bg-white dark:bg-zinc-900/50 p-6 md:p-8 rounded-[2rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-300 group-hover:-translate-y-1">
+                        <SpotlightCard className="flex-1 relative bg-white dark:bg-zinc-900/50 p-6 md:p-8 rounded-[2rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-300 group-hover:-translate-y-1">
                           
                           <div className="absolute top-4 right-4 flex opacity-0 group-hover:opacity-100 transition-opacity bg-white dark:bg-zinc-900 backdrop-blur-sm rounded-full p-1 border border-zinc-200 dark:border-zinc-800">
                             <button onClick={() => openEditModal(act)} className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors" title="Edit Activity">
@@ -463,7 +468,7 @@ export default function TripDetails() {
                               )}
                             </div>
                           )}
-                        </div>
+                        </SpotlightCard>
                       </div>
                     ))}
                   </div>
@@ -472,13 +477,9 @@ export default function TripDetails() {
             </div>
           )}
 
-          {/* ==================================================== */}
-          {/* TAB 2: VOTING ROOM (Tinder Swiper & Consensus)         */}
-          {/* ==================================================== */}
           {activeTab === "voting" && (
             <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 min-h-[600px] flex flex-col">
               
-              {/* 1. TINDER SWIPE STACK */}
               {unvotedPolls.length > 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center relative w-full pt-4 sm:pt-8">
                   <div className="absolute top-0 text-center w-full px-4">
@@ -564,8 +565,7 @@ export default function TripDetails() {
                 </div>
               ) : (
                 
-              /* 2. CONSENSUS LEADERBOARD */
-                <div className="flex-1 bg-white dark:bg-zinc-900/50 rounded-[2rem] sm:rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm p-6 sm:p-10 animate-in zoom-in-95 duration-500">
+                <SpotlightCard className="flex-1 bg-white dark:bg-zinc-900/50 rounded-[2rem] sm:rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm p-6 sm:p-10 animate-in zoom-in-95 duration-500 group">
                   <div className="text-center mb-10">
                     <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-800 rounded-full flex items-center justify-center text-zinc-900 dark:text-white mx-auto mb-6">
                       <Trophy className="h-8 w-8" />
@@ -587,63 +587,63 @@ export default function TripDetails() {
                         const isWinner = index === 0 && yesVotes > 0;
 
                         return (
-                          <div key={hotel.id} className={`relative flex items-center gap-4 p-4 rounded-[1.5rem] border ${isWinner ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-900/30' : 'bg-zinc-50 dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800'} transition-colors overflow-hidden`}>
+                          <SpotlightCard key={hotel.id} className={`relative flex flex-col sm:flex-row sm:items-center gap-4 p-4 sm:p-5 rounded-[1.5rem] border ${isWinner ? 'bg-emerald-50/50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-900/30' : 'bg-zinc-50 dark:bg-zinc-950/50 border-zinc-200 dark:border-zinc-800'} transition-colors overflow-hidden group`}>
                             
                             {isWinner && (
-                              <div className="absolute -top-2 -left-2 bg-emerald-500 text-zinc-950 h-8 w-8 rounded-full flex items-center justify-center shadow-lg transform -rotate-12 border-2 border-white dark:border-zinc-900">
+                              <div className="absolute -top-2 -left-2 bg-emerald-500 text-zinc-950 h-8 w-8 rounded-full flex items-center justify-center shadow-lg transform -rotate-12 border-2 border-white dark:border-zinc-900 z-20">
                                 <Crown className="h-4 w-4" />
                               </div>
                             )}
 
-                            <div className="font-black text-xl sm:text-2xl text-zinc-300 dark:text-zinc-700 w-6 text-center">#{index + 1}</div>
-                            
-                            {/* eslint-disable-next-line @next/next/no-img-element */}
-                            <img src={hotel.imageUrl} alt="" className="h-14 w-14 sm:h-16 sm:w-16 rounded-xl object-cover shrink-0" />
-                            
-                            <div className="flex-1 min-w-0 pr-2">
-                              <h4 className="font-bold text-zinc-900 dark:text-white text-base sm:text-lg truncate tracking-tight">{hotel.name}</h4>
-                              <p className="text-[11px] sm:text-xs font-bold text-zinc-500 dark:text-zinc-400 mt-0.5">₹{hotel.pricePerNight} / night</p>
-                            </div>
-
-                            <div className="flex items-center gap-3 sm:gap-5 px-3 sm:px-5 border-x border-zinc-200 dark:border-zinc-800 shrink-0">
-                              <div className="text-center">
-                                <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">Yes</p>
-                                <p className="text-base sm:text-lg font-black text-emerald-500">{yesVotes}</p>
-                              </div>
-                              <div className="text-center">
-                                <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">No</p>
-                                <p className="text-base sm:text-lg font-black text-rose-500">{noVotes}</p>
+                            <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto flex-1">
+                              <div className="font-black text-lg sm:text-2xl text-zinc-300 dark:text-zinc-700 w-5 sm:w-6 text-center shrink-0">#{index + 1}</div>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={hotel.imageUrl} alt="" className="h-12 w-12 sm:h-16 sm:w-16 rounded-xl object-cover shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <h4 className="font-bold text-zinc-900 dark:text-white text-sm sm:text-lg truncate tracking-tight">{hotel.name}</h4>
+                                <p className="text-[10px] sm:text-xs font-bold text-zinc-500 dark:text-zinc-400 mt-0.5">₹{hotel.pricePerNight} <span className="font-medium">/ night</span></p>
                               </div>
                             </div>
 
-                            <div className="pl-2 shrink-0">
-                              {isWinner ? (
-                                <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer" className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-4 sm:px-6 py-2.5 sm:py-3 rounded-full font-bold text-xs uppercase tracking-widest transition-all hover:opacity-90 flex items-center whitespace-nowrap active:scale-95">
-                                  Book <ExternalLink className="hidden sm:block h-3.5 w-3.5 ml-2" />
-                                </a>
-                              ) : (
-                                <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white p-3 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center">
-                                  <ExternalLink className="h-4 w-4 sm:h-5 sm:w-5" />
-                                </a>
-                              )}
+                            <div className="flex items-center justify-between sm:justify-end gap-4 sm:gap-6 w-full sm:w-auto mt-1 sm:mt-0 pt-3 sm:pt-0 border-t sm:border-t-0 sm:border-l border-zinc-200 dark:border-zinc-800 sm:pl-6 shrink-0">
+                              <div className="flex items-center gap-4 sm:gap-6">
+                                <div className="text-center">
+                                  <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">Yes</p>
+                                  <p className="text-sm sm:text-lg font-black text-emerald-500">{yesVotes}</p>
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400">No</p>
+                                  <p className="text-sm sm:text-lg font-black text-rose-500">{noVotes}</p>
+                                </div>
+                              </div>
+
+                              <div className="shrink-0">
+                                {isWinner ? (
+                                  <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer" className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-5 sm:px-6 py-2 sm:py-3 rounded-full font-bold text-[10px] sm:text-xs uppercase tracking-widest transition-all hover:opacity-90 flex items-center whitespace-nowrap active:scale-95 shadow-md">
+                                    Book <ExternalLink className="hidden sm:block h-3 w-3 ml-2" />
+                                  </a>
+                                ) : (
+                                  <a href={hotel.bookingUrl} target="_blank" rel="noopener noreferrer" className="text-zinc-400 hover:text-zinc-900 dark:hover:text-white p-2 sm:p-3 rounded-full hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors flex items-center justify-center border border-zinc-200 dark:border-zinc-800 sm:border-transparent">
+                                    <ExternalLink className="h-4 w-4 sm:h-5 sm:w-5" />
+                                  </a>
+                                )}
+                              </div>
                             </div>
-                          </div>
+                          </SpotlightCard>
                         );
                       })}
                     </div>
                   )}
-                </div>
+                </SpotlightCard>
               )}
             </div>
           )}
 
         </div>
 
-        {/* RIGHT COLUMN: GROUPS & PACKING LIST */}
         <div className="xl:col-span-1 space-y-8">
           
-          {/* GROUP MEMBERS WIDGET */}
-          <div className="bg-white dark:bg-zinc-900/50 rounded-[2rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm p-8 transition-colors">
+          <SpotlightCard className="bg-white dark:bg-zinc-900/50 rounded-[2rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm p-8 transition-colors group">
             <h3 className="text-lg font-black text-zinc-900 dark:text-white mb-6 flex items-center uppercase tracking-widest"><Users className="h-5 w-5 mr-3 text-zinc-400"/> Travel Crew</h3>
             <div className="space-y-3 mb-8">
               {trip.members?.map((memberUid) => {
@@ -652,7 +652,7 @@ export default function TripDetails() {
                 const memberName = trip.memberNames?.[memberUid] || "Unknown Traveler";
 
                 return (
-                  <div key={memberUid} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-950/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 transition-colors group">
+                  <div key={memberUid} className="flex items-center justify-between p-3 bg-zinc-50 dark:bg-zinc-950/50 rounded-2xl border border-zinc-200 dark:border-zinc-800 transition-colors group/member">
                     <div className="flex items-center gap-4">
                       <div className="h-10 w-10 rounded-full bg-zinc-200 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold flex items-center justify-center text-sm shadow-inner">
                         {memberName.charAt(0).toUpperCase()}
@@ -665,7 +665,7 @@ export default function TripDetails() {
                       </div>
                     </div>
                     {isAdmin && !isMe && (
-                      <button onClick={() => handleRemoveMember(memberUid, memberName)} className="text-zinc-400 hover:text-rose-500 transition-colors p-2 bg-white dark:bg-zinc-900 rounded-full opacity-0 group-hover:opacity-100 shadow-sm border border-zinc-200 dark:border-zinc-800 hover:border-rose-200 dark:hover:border-rose-900/50" title="Remove Member">
+                      <button onClick={() => handleRemoveMember(memberUid, memberName)} className="text-zinc-400 hover:text-rose-500 transition-colors p-2 bg-white dark:bg-zinc-900 rounded-full opacity-0 group-hover/member:opacity-100 shadow-sm border border-zinc-200 dark:border-zinc-800 hover:border-rose-200 dark:hover:border-rose-900/50" title="Remove Member">
                         <UserMinus className="h-4 w-4" />
                       </button>
                     )}
@@ -678,10 +678,9 @@ export default function TripDetails() {
                 <LogOut className="h-4 w-4 mr-2" /> Leave Adventure
               </button>
             )}
-          </div>
+          </SpotlightCard>
 
-          {/* PACKING LIST WIDGET */}
-          <div className="bg-white dark:bg-zinc-900/50 rounded-[2rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm p-8 sticky top-32 transition-colors">
+          <SpotlightCard className="bg-white dark:bg-zinc-900/50 rounded-[2rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm p-8 sticky top-32 transition-colors group">
             <h3 className="text-lg font-black text-zinc-900 dark:text-white mb-6 flex items-center uppercase tracking-widest"><BaggageClaim className="h-5 w-5 mr-3 text-zinc-400"/> Checklist</h3>
             
             <form onSubmit={handleAddPackingItem} className="flex gap-2 mb-6 relative">
@@ -705,7 +704,7 @@ export default function TripDetails() {
                 </div>
               ) : (
                 packingItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between group p-3 bg-zinc-50 dark:bg-zinc-950/50 hover:bg-white dark:hover:bg-zinc-900 rounded-2xl transition-all border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 cursor-pointer" onClick={() => handleTogglePackingItem(item.id, item.isChecked)}>
+                  <div key={item.id} className="flex items-center justify-between group/item p-3 bg-zinc-50 dark:bg-zinc-950/50 hover:bg-white dark:hover:bg-zinc-900 rounded-2xl transition-all border border-transparent hover:border-zinc-200 dark:hover:border-zinc-800 cursor-pointer" onClick={() => handleTogglePackingItem(item.id, item.isChecked)}>
                     <div className="flex items-center gap-4 flex-1">
                       {item.isChecked ? (
                         <div className="h-5 w-5 rounded border-2 border-emerald-500 bg-emerald-500 text-zinc-950 flex items-center justify-center shrink-0"><CheckSquare className="h-3 w-3" /></div>
@@ -714,19 +713,18 @@ export default function TripDetails() {
                       )}
                       <span className={`text-sm font-bold transition-all ${item.isChecked ? 'line-through text-zinc-400 dark:text-zinc-600' : 'text-zinc-700 dark:text-zinc-200'}`}>{item.name}</span>
                     </div>
-                    <button onClick={(e) => { e.stopPropagation(); handleDeletePackingItem(item.id); }} className="text-zinc-300 dark:text-zinc-600 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all p-2 bg-white dark:bg-zinc-800 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full border border-zinc-100 dark:border-transparent" title="Delete item">
+                    <button onClick={(e) => { e.stopPropagation(); handleDeletePackingItem(item.id); }} className="text-zinc-300 dark:text-zinc-600 hover:text-rose-500 opacity-0 group-hover/item:opacity-100 transition-all p-2 bg-white dark:bg-zinc-800 hover:bg-rose-50 dark:hover:bg-rose-900/20 rounded-full border border-zinc-100 dark:border-transparent" title="Delete item">
                       <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
                 ))
               )}
             </div>
-          </div>
+          </SpotlightCard>
 
         </div>
       </div>
 
-      {/* ACTIVITY MODAL (MINIMAL EDITORIAL) */}
       {isActivityModalOpen && (
         <div className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="bg-white dark:bg-zinc-950 rounded-[2rem] p-8 md:p-10 w-full max-w-lg shadow-2xl relative transform transition-all border border-zinc-200 dark:border-zinc-800">

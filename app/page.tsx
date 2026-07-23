@@ -16,6 +16,7 @@ import {
 } from "firebase/auth";
 import { auth, db } from "./lib/firebase";
 import { Map, Calendar, CreditCard, Settings, Plus, PlaneTakeoff, Globe, Clock, User as UserIcon, Users, LogOut, BedDouble, Menu, X, ArrowRight, Archive, Mail, Lock, AlertCircle, Receipt, Sun, ShieldCheck, Sparkles, Globe2, Building2, Smartphone, Star, Zap, ChevronRight, BarChart, Loader2, Plane, CheckCircle2, MessageSquare, Info, History, AlertTriangle } from "lucide-react";
+import TripWrappedModal from "./components/TripWrappedModal";
 
 interface Trip {
   id: string;
@@ -81,6 +82,10 @@ export default function Home() {
   const [isJoinModalOpen, setIsJoinModalOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // ✨ TRIP WRAPPED STATE
+  const [isWrapOpen, setIsWrapOpen] = useState(false);
+  const [completedWrapTrip, setCompletedWrapTrip] = useState<Trip | null>(null);
 
   // ✨ EXTEND TRIP STATE
   const [isExtendModalOpen, setIsExtendModalOpen] = useState(false);
@@ -169,18 +174,21 @@ export default function Home() {
       const todayStr = `${today.getFullYear()}-${localMonth}-${localDay}`; // Safely gets local YYYY-MM-DD
       
       const activeTrips: Trip[] = [];
+      let recentlyCompleted: Trip | null = null; // Track if a trip just ended
 
       tripsData.forEach((trip) => {
         // If the trip's end date is strictly before today, it's over.
         if (trip.endDate && trip.endDate < todayStr) {
           // Auto-archive it in Firebase so it moves to the History page permanently
           updateDoc(doc(db, "trips", trip.id), { status: "archived" }).catch(console.error);
+          if (!recentlyCompleted) recentlyCompleted = trip; // Set the wrapped trip
         } else {
           activeTrips.push(trip);
         }
       });
 
       setTrips(activeTrips);
+      if (recentlyCompleted) setCompletedWrapTrip(recentlyCompleted);
       setIsLoading(false);
     });
     
@@ -951,6 +959,16 @@ export default function Home() {
             <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
           </div>
           <div className="flex items-center gap-2">
+            {/* ✨ TRIP WRAPPED BUTTON */}
+            {completedWrapTrip && (
+              <button 
+                onClick={() => setIsWrapOpen(true)}
+                className="flex items-center justify-center bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 p-2 rounded-full transition-all animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:bg-emerald-500/20 active:scale-95"
+                title="View Trip Wrapped"
+              >
+                <Zap className="h-5 w-5" />
+              </button>
+            )}
             {/* ✨ UPDATED MOBILE DP */}
             <img 
               src={user.photoURL || fallbackAvatar} 
@@ -969,6 +987,16 @@ export default function Home() {
         {/* DESKTOP HEADER (MINIMALIST) */}
         <header className="hidden md:flex h-24 items-center justify-end px-12 z-20 shrink-0 sticky top-0 transition-all">
           <div className="flex items-center gap-5">
+            {/* ✨ TRIP WRAPPED BUTTON */}
+            {completedWrapTrip && (
+              <button 
+                onClick={() => setIsWrapOpen(true)}
+                className="flex items-center justify-center bg-emerald-500/10 text-emerald-500 border border-emerald-500/30 p-2.5 rounded-full transition-all animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.3)] hover:bg-emerald-500/20 active:scale-95"
+                title="View Trip Wrapped"
+              >
+                <Zap className="h-5 w-5" />
+              </button>
+            )}
             <button onClick={() => setIsJoinModalOpen(true)} className="flex items-center text-zinc-500 dark:text-zinc-400 px-4 py-2 rounded-full font-bold hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all text-sm active:scale-95">
               <Users className="h-4 w-4 mr-2" /> Join Trip
             </button>
@@ -1269,6 +1297,23 @@ export default function Home() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* ✨ TRIP WRAPPED MODAL */}
+      {completedWrapTrip && (
+        <TripWrappedModal
+          isOpen={isWrapOpen}
+          onClose={() => setIsWrapOpen(false)}
+          tripData={{
+            title: completedWrapTrip.title,
+            memberCount: completedWrapTrip.members?.length || 1,
+            distanceKm: 3420, 
+            totalSpend: 42800, 
+            topHotelName: "The Grand Basecamp",
+            topHotelVotes: 4,
+            activitiesCount: 12
+          }}
+        />
       )}
 
     </div>
