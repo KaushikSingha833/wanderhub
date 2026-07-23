@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 import { collection, onSnapshot, query, where, orderBy, deleteDoc, doc, addDoc, setDoc, serverTimestamp, getDoc } from "firebase/firestore"; 
-import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { onAuthStateChanged, User as FirebaseUser, signOut } from "firebase/auth";
 import { auth, db } from "../lib/firebase"; 
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Printer, Clock, MapPin, Plane, Hotel, Utensils, Trash2, Map as MapIcon, CalendarPlus, ChevronDown, ChevronUp, AlignLeft, Navigation, BedDouble, Sparkles, Loader2, Menu, X, Sun, CloudRain, Hash, Info, ArrowRight, Radio, Users, MessageSquare, History } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Printer, Clock, MapPin, Plane, Hotel, Utensils, Trash2, Map as MapIcon, CalendarPlus, ChevronDown, ChevronUp, AlignLeft, Navigation, BedDouble, Sparkles, Loader2, Menu, X, Sun, CloudRain, Hash, Info, ArrowRight, Radio, Users, MessageSquare, History, LogOut, AlertTriangle } from "lucide-react";
 
 // ✨ Dynamically load the map component (Bypasses the "window is not defined" SSR error)
 const DynamicRadarMap = dynamic(() => import('../components/RadarMap'), { 
@@ -68,33 +68,54 @@ export default function ItinerariesPage() {
   const [liveMembers, setLiveMembers] = useState<any[]>([]);
   const [myLatestCoords, setMyLatestCoords] = useState<[number, number] | null>(null);
 
-  // 🛡️ SECURITY GUARD: Check if logged in
-  // 🛡️ SECURITY GUARD: Travelers Only
-useEffect(() => {
-  const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
-    if (!currentUser) {
-      router.push("/"); // Kick to landing page if not logged in
-    } else {
-      try {
-        // Fetch user profile to check their role
-        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
-        
-        if (userDoc.exists() && userDoc.data().role === "hotel_partner") {
-          // Bouncer: Kick Hotel Partners OUT of the customer site!
-          router.push("/partner/dashboard");
-          return;
-        }
-
-        // If they pass, let them in
-        setUser(currentUser);
-        setIsAuthLoading(false);
-        
-      } catch (error) {
-        console.error("Auth check error:", error);
-      }
-    }
+  // ✨ CUSTOM DIALOG STATE
+  const [dialog, setDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "info" | "warning" | "danger";
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
   });
-  return () => unsubscribe();
+
+  const showDialog = (title: string, message: string, type: "info" | "warning" | "danger" = "info", onConfirm?: () => void, confirmText = "OK", cancelText?: string) => {
+    setDialog({ isOpen: true, title, message, type, confirmText, cancelText, onConfirm });
+  };
+
+  const closeDialog = () => setDialog(prev => ({ ...prev, isOpen: false }));
+
+  // 🛡️ SECURITY GUARD: Travelers Only
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+      if (!currentUser) {
+        router.push("/"); // Kick to landing page if not logged in
+      } else {
+        try {
+          // Fetch user profile to check their role
+          const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+          
+          if (userDoc.exists() && userDoc.data().role === "hotel_partner") {
+            // Bouncer: Kick Hotel Partners OUT of the customer site!
+            router.push("/partner/dashboard");
+            return;
+          }
+
+          // If they pass, let them in
+          setUser(currentUser);
+          setIsAuthLoading(false);
+          
+        } catch (error) {
+          console.error("Auth check error:", error);
+        }
+      }
+    });
+    return () => unsubscribe();
   }, [router]);
 
   // FETCH TRIPS (Only runs once user is verified)
@@ -121,7 +142,7 @@ useEffect(() => {
 
     if (isBroadcasting && selectedTripId && user) {
       if (!navigator.geolocation) {
-        alert("Geolocation is not supported by your browser.");
+        showDialog("Not Supported", "Geolocation is not supported by your browser.", "warning");
         setIsBroadcasting(false);
         return;
       }
@@ -144,7 +165,7 @@ useEffect(() => {
         },
         (error) => {
           console.error("GPS Error:", error);
-          alert("Make sure location permissions are allowed.");
+          showDialog("Permission Denied", "Make sure location permissions are allowed.", "warning");
           setIsBroadcasting(false);
         },
         { enableHighAccuracy: true, maximumAge: 5000, timeout: 5000 }
@@ -279,11 +300,11 @@ useEffect(() => {
         setAiPrompt("");
         setShowAiModal(false);
       } else {
-        alert("The AI couldn't generate a trip for that prompt. Try being more specific!");
+        showDialog("Generation Failed", "The AI couldn't generate a trip for that prompt. Try being more specific!", "warning");
       }
     } catch (error) {
       console.error("AI Error:", error);
-      alert("Failed to connect to the AI engine.");
+      showDialog("Connection Error", "Failed to connect to the AI engine.", "danger");
     } finally {
       setIsAiLoading(false);
     }
@@ -342,13 +363,22 @@ useEffect(() => {
   }, [selectedTripId, trips]);
 
   const handleDeleteActivity = async (activityId: string) => {
-    if (!confirm("Are you sure you want to remove this from the itinerary?")) return;
-    try {
-      await deleteDoc(doc(db, "activities", activityId));
-    } catch (error) {
-      console.error("Error deleting activity:", error);
-      alert("Failed to delete. Please try again.");
-    }
+    showDialog(
+      "Delete Activity?",
+      "Are you sure you want to remove this from the itinerary?",
+      "danger",
+      async () => {
+        closeDialog();
+        try {
+          await deleteDoc(doc(db, "activities", activityId));
+        } catch (error) {
+          console.error("Error deleting activity:", error);
+          showDialog("Error", "Failed to delete. Please try again.", "danger");
+        }
+      },
+      "Delete",
+      "Cancel"
+    );
   };
 
   const handleExportCalendar = () => {
@@ -411,7 +441,16 @@ useEffect(() => {
     );
   }
 
-  // Fallback state if user somehow bypasses but is still not loaded (technically caught by isAuthLoading)
+  if (!user) return null;
+
+  // ✨ DYNAMIC AVATAR GENERATION
+  let rawName = user.displayName || "";
+  let avatarName = (rawName.trim() === "" || rawName.trim().toLowerCase() === "traveler") 
+    ? (user.email?.charAt(0).toUpperCase() || "U") 
+    : rawName;
+  const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(avatarName)}&background=10b981&color=fff&length=1`;
+
+  // Fallback state if user somehow bypasses but is still not loaded
   if (isLoading && trips.length === 0 && !selectedTripId) {
       return <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950 transition-colors"><div className="animate-spin h-10 w-10 border-4 border-emerald-500 border-t-transparent rounded-full"></div></div>;
   }
@@ -468,7 +507,20 @@ useEffect(() => {
             </div>
             <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
           </div>
-          <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
+          <div className="flex items-center gap-2">
+            {/* ✨ UPDATED MOBILE DP */}
+            <img 
+              src={user.photoURL || fallbackAvatar} 
+              alt="Profile" 
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.onerror = null; 
+                e.currentTarget.src = fallbackAvatar;
+              }}
+              className="h-8 w-8 rounded-full border border-zinc-200 dark:border-zinc-800 object-cover shadow-sm" 
+            />
+            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
+          </div>
         </div>
 
         {/* DESKTOP/TABLET HEADER */}
@@ -506,6 +558,24 @@ useEffect(() => {
               <button onClick={() => window.print()} disabled={activities.length === 0} className="flex items-center bg-transparent border border-zinc-200 dark:border-zinc-800 text-zinc-700 dark:text-zinc-300 px-4 py-2.5 rounded-full font-bold hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-all disabled:opacity-50 text-sm active:scale-95 group" title="Print Itinerary">
                 <Printer className="h-4 w-4 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors md:mr-2" /> <span className="hidden lg:inline">Print</span>
               </button>
+
+              {/* ✨ UPDATED DESKTOP DP */}
+              <div className="hidden md:flex ml-2 border-l border-zinc-200 dark:border-zinc-800 pl-4 items-center gap-3">
+                <img 
+                  src={user.photoURL || fallbackAvatar} 
+                  alt="Profile" 
+                  referrerPolicy="no-referrer"
+                  onError={(e) => {
+                    e.currentTarget.onerror = null; 
+                    e.currentTarget.src = fallbackAvatar;
+                  }}
+                  className="h-10 w-10 rounded-full border border-zinc-200 dark:border-zinc-800 object-cover shadow-inner" 
+                />
+                <button onClick={() => signOut(auth)} className="text-zinc-400 hover:text-rose-500 transition-colors p-2 rounded-full hover:bg-rose-50 dark:hover:bg-rose-500/10" title="Log Out">
+                  <LogOut className="h-5 w-5" />
+                </button>
+              </div>
+
             </div>
           </div>
         </header>
@@ -885,6 +955,52 @@ useEffect(() => {
           </div>
         </div>
       )}
+
+      {/* ✨ CUSTOM ALERT DIALOG MODAL */}
+      {dialog.isOpen && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-zinc-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] p-8 md:p-10 max-w-md w-full shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95 duration-200 relative">
+            <button onClick={closeDialog} className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors active:scale-95">
+              <X className="h-4 w-4" />
+            </button>
+            
+            <div className="flex items-center gap-4 mb-6">
+              <div className={`h-14 w-14 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
+                dialog.type === 'danger' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500 border-rose-200 dark:border-rose-500/20' :
+                dialog.type === 'warning' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-500 border-amber-200 dark:border-amber-500/20' :
+                'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 border-emerald-200 dark:border-emerald-500/20'
+              }`}>
+                {dialog.type === 'danger' ? <AlertTriangle className="h-6 w-6" /> : 
+                 dialog.type === 'warning' ? <AlertTriangle className="h-6 w-6" /> : 
+                 <Info className="h-6 w-6" />}
+              </div>
+              <h3 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">{dialog.title}</h3>
+            </div>
+            
+            <p className="text-zinc-600 dark:text-zinc-400 font-medium mb-10 leading-relaxed text-sm">
+              {dialog.message}
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-3 justify-end">
+              {dialog.cancelText && (
+                <button onClick={closeDialog} className="px-8 py-4 rounded-full font-bold text-[10px] uppercase tracking-widest text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors w-full sm:w-auto text-center active:scale-95">
+                  {dialog.cancelText}
+                </button>
+              )}
+              <button 
+                onClick={dialog.onConfirm || closeDialog} 
+                className={`px-8 py-4 rounded-full font-bold text-[10px] uppercase tracking-widest transition-all w-full sm:w-auto text-center active:scale-95 ${
+                  dialog.type === 'danger' ? 'bg-rose-500 hover:bg-rose-400 text-zinc-950 shadow-[0_0_15px_rgba(244,63,94,0.2)]' : 
+                  'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                }`}
+              >
+                {dialog.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

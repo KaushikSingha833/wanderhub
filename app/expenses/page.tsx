@@ -3,10 +3,10 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { collection, addDoc, onSnapshot, query, where, orderBy, doc, deleteDoc, getDoc } from "firebase/firestore"; 
-import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
 import { auth, db } from "../lib/firebase"; 
 import { useCurrency } from "../lib/useCurrency"; 
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Plus, Receipt, Trash2, BedDouble, Menu, X, DollarSign, Users, PieChart as PieChartIcon, TrendingUp, Camera, Loader2, Plane, MessageSquare, Info, ChevronDown, History } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Plus, Receipt, Trash2, BedDouble, Menu, X, DollarSign, Users, PieChart as PieChartIcon, TrendingUp, Camera, Loader2, Plane, MessageSquare, Info, ChevronDown, History, LogOut } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 
 interface Trip { id: string; title: string; members?: string[]; }
@@ -160,6 +160,16 @@ export default function ExpensesPage() {
     }
   };
 
+  // HANDLE LOGOUT
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push("/");
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   // ENHANCED MATH & LOGIC
   const totalSpent = useMemo(() => expenses.reduce((sum, exp) => sum + exp.amount, 0), [expenses]);
   const currentTrip = useMemo(() => trips.find(t => t.id === selectedTripId), [trips, selectedTripId]);
@@ -243,9 +253,7 @@ export default function ExpensesPage() {
           <Link href="/settings" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Settings className="h-5 w-5 mr-3 opacity-70" /> Settings</Link>
           
           <div className="mt-auto pt-6 border-t border-zinc-200 dark:border-zinc-800">
-            <Link href="/about" className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all">
-              <Info className="h-5 w-5 mr-3 opacity-70" /> About Us
-            </Link>
+            <Link href="/about" onClick={() => setIsMobileMenuOpen(false)} className="flex items-center px-4 py-3 text-zinc-500 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 hover:text-zinc-900 dark:hover:text-white rounded-2xl font-medium transition-all"><Info className="h-5 w-5 mr-3 opacity-70" /> About Us</Link>
           </div>
         </nav>
       </aside>
@@ -261,7 +269,17 @@ export default function ExpensesPage() {
             </div>
             <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
           </div>
-          <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
+          
+          <div className="flex items-center gap-3">
+            <div className="h-8 w-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold flex items-center justify-center text-xs shadow-inner border border-zinc-200 dark:border-zinc-700 overflow-hidden shrink-0">
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt="Profile" className="h-full w-full object-cover" />
+              ) : (
+                user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"
+              )}
+            </div>
+            <button onClick={() => setIsMobileMenuOpen(true)} className="p-1 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors -mr-1"><Menu className="h-6 w-6" /></button>
+          </div>
         </div>
 
         {/* DESKTOP HEADER (MINIMALIST) */}
@@ -270,12 +288,35 @@ export default function ExpensesPage() {
             <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter hidden md:block">Group Finances</h2>
             <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 hidden md:block mt-0.5">Track, split, and settle up easily.</p>
           </div>
-          <div className="relative w-full md:w-auto group">
-            <select value={selectedTripId} onChange={(e) => setSelectedTripId(e.target.value)} className="w-full md:w-64 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-full pl-5 pr-10 py-3 md:py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-zinc-50 dark:bg-zinc-900 font-bold text-zinc-900 dark:text-white transition-all cursor-pointer appearance-none shadow-sm">
-              {trips.length === 0 ? <option>No trips found</option> : trips.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
-            </select>
-            <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
-              <ChevronDown className="h-4 w-4 text-zinc-400" />
+          
+          <div className="flex flex-col md:flex-row items-stretch md:items-center gap-4 md:gap-6 w-full md:w-auto">
+            <div className="relative w-full md:w-auto group">
+              <select value={selectedTripId} onChange={(e) => setSelectedTripId(e.target.value)} className="w-full md:w-64 border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 rounded-full pl-5 pr-10 py-3 md:py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 bg-zinc-50 dark:bg-zinc-900 font-bold text-zinc-900 dark:text-white transition-all cursor-pointer appearance-none shadow-sm">
+                {trips.length === 0 ? <option>No trips found</option> : trips.map(t => <option key={t.id} value={t.id}>{t.title}</option>)}
+              </select>
+              <div className="absolute inset-y-0 right-4 flex items-center pointer-events-none">
+                <ChevronDown className="h-4 w-4 text-zinc-400" />
+              </div>
+            </div>
+
+            <div className="hidden md:block h-8 w-px bg-zinc-200 dark:bg-zinc-800/80"></div>
+
+            <div className="hidden md:flex items-center gap-4">
+              <div className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold flex items-center justify-center text-sm shadow-inner border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+                {user?.photoURL ? (
+                  <img src={user.photoURL} alt="Profile" className="h-full w-full object-cover" />
+                ) : (
+                  user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"
+                )}
+              </div>
+
+              <button 
+                onClick={handleLogout} 
+                title="Log Out"
+                className="flex items-center justify-center h-10 w-10 rounded-full text-zinc-400 dark:text-zinc-500 hover:text-rose-500 dark:hover:text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/50 transition-all"
+              >
+                <LogOut className="h-[22px] w-[22px]" strokeWidth={2} />
+              </button>
             </div>
           </div>
         </header>

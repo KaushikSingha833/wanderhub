@@ -2,11 +2,11 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
 import { collection, query, where, onSnapshot, doc, updateDoc, deleteDoc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase"; 
 import { useCurrency } from "../lib/useCurrency"; 
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, BedDouble, Menu, X, Clock, CheckCircle2, XCircle, Trash2, MapPin, Users, Shield, Loader2, ArrowLeft, History, Search, PlusSquare, Info, MessageSquare, Plane, Building2, ArrowRight } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, BedDouble, Menu, X, Clock, CheckCircle2, XCircle, Trash2, MapPin, Users, Shield, Loader2, ArrowLeft, History, Search, PlusSquare, Info, MessageSquare, Plane, Building2, ArrowRight, LogOut } from "lucide-react";
 
 interface Booking {
   id: string;
@@ -69,6 +69,15 @@ export default function MyBookingsPage() {
 
     return () => unsubscribeAuth();
   }, [router]);
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push("/");
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const handleCancelBooking = async (bookingId: string) => {
     if (!confirm("Are you sure you want to cancel this booking request?")) return;
@@ -185,7 +194,20 @@ export default function MyBookingsPage() {
             </div>
             <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
           </div>
-          <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
+          
+          <div className="flex items-center gap-3">
+            <Link href="/hotels" className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-colors"><Search className="h-5 w-5 text-emerald-500" /></Link>
+            
+            <div className="h-8 w-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold flex items-center justify-center text-xs shadow-inner border border-zinc-200 dark:border-zinc-700 overflow-hidden shrink-0">
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt="Profile" className="h-full w-full object-cover" />
+              ) : (
+                user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"
+              )}
+            </div>
+
+            <button onClick={() => setIsMobileMenuOpen(true)} className="p-1 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors -mr-1"><Menu className="h-6 w-6" /></button>
+          </div>
         </div>
 
         {/* DESKTOP HEADER (MINIMALIST) */}
@@ -194,9 +216,32 @@ export default function MyBookingsPage() {
             <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">My Bookings</h2>
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mt-1">Manage your WanderHub Partner reservations.</p>
           </div>
-          <Link href="/hotels" className="flex items-center bg-transparent border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all px-6 py-3 rounded-full font-bold text-zinc-900 dark:text-white text-xs uppercase tracking-widest active:scale-95">
-            <Search className="h-4 w-4 mr-2 text-emerald-500" /> Find a Hotel
-          </Link>
+          
+          <div className="flex items-center gap-6">
+            <Link href="/hotels" className="flex items-center bg-transparent border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all px-6 py-3 rounded-full font-bold text-zinc-900 dark:text-white text-xs uppercase tracking-widest active:scale-95">
+              <Search className="h-4 w-4 mr-2 text-emerald-500" /> Find a Hotel
+            </Link>
+
+            <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800/80"></div>
+
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold flex items-center justify-center text-sm shadow-inner border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+                {user?.photoURL ? (
+                  <img src={user.photoURL} alt="Profile" className="h-full w-full object-cover" />
+                ) : (
+                  user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"
+                )}
+              </div>
+
+              <button 
+                onClick={handleLogout} 
+                title="Log Out"
+                className="flex items-center justify-center h-10 w-10 rounded-full text-zinc-400 dark:text-zinc-500 hover:text-rose-500 dark:hover:text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/50 transition-all"
+              >
+                <LogOut className="h-[22px] w-[22px]" strokeWidth={2} />
+              </button>
+            </div>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-12 custom-scrollbar relative z-10">

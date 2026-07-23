@@ -1,11 +1,11 @@
 "use client";
 import { useState, useEffect, Suspense, useMemo } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
-import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
 import { collection, query, where, getDocs, addDoc, doc, updateDoc, arrayUnion, arrayRemove, onSnapshot, serverTimestamp, orderBy } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase";
 import { useCurrency } from "../../lib/useCurrency";
-import { MapPin, Star, Wifi, BedDouble, Users, Calendar, ArrowLeft, CheckCircle2, Shield, Loader2, Sparkles, X, Tv, Wind, ChevronDown, AlertCircle, ChevronLeft, ChevronRight, Image as ImageIcon, MessageSquare, ThumbsUp, ThumbsDown, Map as MapIcon, ArrowDownUp, PlaneTakeoff, CreditCard, Settings, Plane, Info, Search, Menu, Phone, Mail, Building2, Send, History } from "lucide-react";
+import { MapPin, Star, Wifi, BedDouble, Users, Calendar, ArrowLeft, CheckCircle2, Shield, Loader2, Sparkles, X, Tv, Wind, ChevronDown, AlertCircle, ChevronLeft, ChevronRight, Image as ImageIcon, MessageSquare, ThumbsUp, ThumbsDown, Map as MapIcon, ArrowDownUp, PlaneTakeoff, CreditCard, Settings, Plane, Info, Search, Menu, Phone, Mail, Building2, Send, History, LogOut } from "lucide-react";
 import Link from "next/link";
 
 // --- RAZORPAY SCRIPT LOADER ---
@@ -282,6 +282,15 @@ function PartnerHotelContent() {
   const totalPriceInBase = selectedRoom ? selectedRoom.price * nights : 0;
   
   const isRoomCurrentlyOccupied = selectedRoom ? occupiedRoomIds.has(selectedRoom.id) : false;
+
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push("/");
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -575,9 +584,18 @@ function PartnerHotelContent() {
             </div>
             <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Link href="/hotels" className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-colors"><Search className="h-5 w-5" /></Link>
-            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
+            
+            <div className="h-8 w-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold flex items-center justify-center text-xs shadow-inner border border-zinc-200 dark:border-zinc-700 overflow-hidden shrink-0">
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt="Profile" className="h-full w-full object-cover" />
+              ) : (
+                user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"
+              )}
+            </div>
+
+            <button onClick={() => setIsMobileMenuOpen(true)} className="p-1 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors -mr-1"><Menu className="h-6 w-6" /></button>
           </div>
         </div>
 
@@ -586,9 +604,32 @@ function PartnerHotelContent() {
             <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Property Details</h2>
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mt-1">Review rooms and availability.</p>
           </div>
-          <Link href="/hotels" className="flex items-center bg-transparent border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all px-6 py-3 rounded-full font-bold text-zinc-900 dark:text-white text-xs uppercase tracking-widest active:scale-95">
-            <ArrowLeft className="h-4 w-4 mr-2 text-zinc-500" /> Back to Search
-          </Link>
+          
+          <div className="flex items-center gap-6">
+            <Link href="/hotels" className="flex items-center bg-transparent border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all px-6 py-3 rounded-full font-bold text-zinc-900 dark:text-white text-xs uppercase tracking-widest active:scale-95">
+              <ArrowLeft className="h-4 w-4 mr-2 text-zinc-500" /> Back to Search
+            </Link>
+
+            <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800/80"></div>
+
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold flex items-center justify-center text-sm shadow-inner border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+                {user?.photoURL ? (
+                  <img src={user.photoURL} alt="Profile" className="h-full w-full object-cover" />
+                ) : (
+                  user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"
+                )}
+              </div>
+
+              <button 
+                onClick={handleLogout} 
+                title="Log Out"
+                className="flex items-center justify-center h-10 w-10 rounded-full text-zinc-400 dark:text-zinc-500 hover:text-rose-500 dark:hover:text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/50 transition-all"
+              >
+                <LogOut className="h-[22px] w-[22px]" strokeWidth={2} />
+              </button>
+            </div>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto custom-scrollbar relative z-10">
@@ -649,24 +690,32 @@ function PartnerHotelContent() {
                   </div>
                 </div>
                 
-                <div className="flex w-full md:w-auto gap-3 shrink-0">
+                {/* ✨ UPDATED: Contact Box - Now wraps on mobile and includes the new Mail button */}
+                <div className="flex flex-wrap w-full md:w-auto gap-3 shrink-0">
                   {hotelContact.phone && (
                     <a 
                       href={`tel:${hotelContact.phone}`}
-                      className="flex-1 md:flex-none px-6 py-3.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-sm active:scale-95"
+                      className="flex-1 md:flex-none px-5 py-3.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-sm active:scale-95"
                     >
-                      <Phone className="h-4 w-4 mr-2" /> Call Hotel
+                      <Phone className="h-4 w-4 mr-2" /> Call
                     </a>
                   )}
-                  {/* ✨ UPDATED: Chat Button now opens modal instead of redirecting */}
+                  {hotelContact.email && (
+                    <a 
+                      href={`mailto:${hotelContact.email}`}
+                      className="flex-1 md:flex-none px-5 py-3.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-full text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-sm active:scale-95"
+                    >
+                      <Mail className="h-4 w-4 mr-2" /> Mail
+                    </a>
+                  )}
                   <button 
                     onClick={() => {
                       if(!user) { alert("Please log in to chat with the host."); return; }
                       setIsChatOpen(true);
                     }}
-                    className="flex-1 md:flex-none px-6 py-3.5 bg-emerald-500 text-zinc-950 hover:bg-emerald-400 rounded-full text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.2)] active:scale-95"
+                    className="flex-1 md:flex-none px-5 py-3.5 bg-emerald-500 text-zinc-950 hover:bg-emerald-400 rounded-full text-xs font-bold uppercase tracking-widest transition-colors flex items-center justify-center shadow-[0_0_15px_rgba(16,185,129,0.2)] active:scale-95"
                   >
-                    <MessageSquare className="h-4 w-4 mr-2" /> Chat Now
+                    <MessageSquare className="h-4 w-4 mr-2" /> Chat
                   </button>
                 </div>
               </div>

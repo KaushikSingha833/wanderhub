@@ -15,7 +15,7 @@ import {
   sendPasswordResetEmail
 } from "firebase/auth";
 import { auth, db } from "./lib/firebase";
-import { Map, Calendar, CreditCard, Settings, Plus, PlaneTakeoff, Globe, Clock, User as UserIcon, Users, LogOut, BedDouble, Menu, X, ArrowRight, Archive, Mail, Lock, AlertCircle, Receipt, Sun, ShieldCheck, Sparkles, Globe2, Building2, Smartphone, Star, Zap, ChevronRight, BarChart, Loader2, Plane, CheckCircle2, MessageSquare, Info, History } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, Plus, PlaneTakeoff, Globe, Clock, User as UserIcon, Users, LogOut, BedDouble, Menu, X, ArrowRight, Archive, Mail, Lock, AlertCircle, Receipt, Sun, ShieldCheck, Sparkles, Globe2, Building2, Smartphone, Star, Zap, ChevronRight, BarChart, Loader2, Plane, CheckCircle2, MessageSquare, Info, History, AlertTriangle } from "lucide-react";
 
 interface Trip {
   id: string;
@@ -92,6 +92,28 @@ export default function Home() {
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [joinCode, setJoinCode] = useState("");
+
+  // ✨ CUSTOM DIALOG STATE
+  const [dialog, setDialog] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    type: "info" | "warning" | "danger";
+    confirmText?: string;
+    cancelText?: string;
+    onConfirm?: () => void;
+  }>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
+
+  const showDialog = (title: string, message: string, type: "info" | "warning" | "danger" = "info", onConfirm?: () => void, confirmText = "OK", cancelText?: string) => {
+    setDialog({ isOpen: true, title, message, type, confirmText, cancelText, onConfirm });
+  };
+
+  const closeDialog = () => setDialog(prev => ({ ...prev, isOpen: false }));
 
   // 🛡️ SECURITY GUARD: Travelers Only
   useEffect(() => {
@@ -378,7 +400,7 @@ export default function Home() {
       const querySnapshot = await getDocs(q);
 
       if (querySnapshot.empty) {
-        alert("Invalid invite code! Please check and try again.");
+        showDialog("Invalid Code", "Invalid invite code! Please check and try again.", "warning");
       } else {
         const tripDoc = querySnapshot.docs[0];
         await updateDoc(doc(db, "trips", tripDoc.id), {
@@ -386,10 +408,11 @@ export default function Home() {
         });
         setIsJoinModalOpen(false);
         setJoinCode("");
-        alert("Successfully joined the trip!");
+        showDialog("Success", "Successfully joined the trip!", "info");
       }
     } catch (error) {
       console.error("Error joining trip:", error);
+      showDialog("Error", "Failed to join trip.", "danger");
     } finally {
       setIsSubmitting(false);
     }
@@ -398,16 +421,24 @@ export default function Home() {
   const handleArchiveTrip = async (e: React.MouseEvent, tripId: string, tripTitle: string) => {
     e.stopPropagation();
 
-    if (confirm(`Are you sure you want to archive "${tripTitle}"? It will be moved to your History.`)) {
-      try {
-        await updateDoc(doc(db, "trips", tripId), {
-          status: "archived"
-        });
-      } catch (error) {
-        console.error("Error archiving trip:", error);
-        alert("Failed to archive trip.");
-      }
-    }
+    showDialog(
+      "Archive Trip?",
+      `Are you sure you want to archive "${tripTitle}"? It will be moved to your History.`,
+      "warning",
+      async () => {
+        closeDialog();
+        try {
+          await updateDoc(doc(db, "trips", tripId), {
+            status: "archived"
+          });
+        } catch (error) {
+          console.error("Error archiving trip:", error);
+          showDialog("Error", "Failed to archive trip.", "danger");
+        }
+      },
+      "Archive",
+      "Cancel"
+    );
   };
 
   const handleExtendTripSubmit = async (e: React.FormEvent) => {
@@ -421,10 +452,10 @@ export default function Home() {
       setIsExtendModalOpen(false);
       setSelectedTripToExtend(null);
       setNewEndDate("");
-      alert("Trip extended successfully!");
+      showDialog("Success", "Trip extended successfully!", "info");
     } catch (error) {
       console.error("Error extending trip:", error);
-      alert("Failed to extend trip.");
+      showDialog("Error", "Failed to extend trip.", "danger");
     } finally {
       setIsExtending(false);
     }
@@ -862,6 +893,13 @@ export default function Home() {
     );
   }
 
+  // ✨ DYNAMIC AVATAR GENERATION
+  let rawName = user.displayName || "";
+  let avatarName = (rawName.trim() === "" || rawName.trim().toLowerCase() === "traveler") 
+    ? (user.email?.charAt(0).toUpperCase() || "U") 
+    : rawName;
+  const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(avatarName)}&background=10b981&color=fff&length=1`;
+
   // ==========================================
   // AUTHENTICATED FLOW (DASHBOARD)
   // ==========================================
@@ -913,9 +951,17 @@ export default function Home() {
             <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center text-zinc-900 dark:text-white font-bold text-sm">
-              {user.displayName?.charAt(0) || "U"}
-            </div>
+            {/* ✨ UPDATED MOBILE DP */}
+            <img 
+              src={user.photoURL || fallbackAvatar} 
+              alt="Profile" 
+              referrerPolicy="no-referrer"
+              onError={(e) => {
+                e.currentTarget.onerror = null; 
+                e.currentTarget.src = fallbackAvatar;
+              }}
+              className="h-8 w-8 rounded-full border border-zinc-200 dark:border-zinc-800 object-cover shadow-sm" 
+            />
             <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
           </div>
         </div>
@@ -933,9 +979,17 @@ export default function Home() {
             <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800 mx-2"></div>
 
             <div className="flex items-center gap-4">
-              <div className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold flex items-center justify-center text-sm shadow-inner">
-                {user.displayName?.charAt(0) || "U"}
-              </div>
+              {/* ✨ UPDATED DESKTOP DP */}
+              <img 
+                src={user.photoURL || fallbackAvatar} 
+                alt="Profile" 
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  e.currentTarget.onerror = null; 
+                  e.currentTarget.src = fallbackAvatar;
+                }}
+                className="h-10 w-10 rounded-full border border-zinc-200 dark:border-zinc-800 object-cover shadow-inner" 
+              />
               <button onClick={() => signOut(auth)} className="text-zinc-400 hover:text-red-500 transition-colors p-2 rounded-full hover:bg-red-50 dark:hover:bg-red-500/10" title="Log Out">
                 <LogOut className="h-5 w-5" />
               </button>
@@ -1171,6 +1225,52 @@ export default function Home() {
           </div>
         </div>
       )}
+
+      {/* ✨ CUSTOM ALERT DIALOG MODAL */}
+      {dialog.isOpen && (
+        <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-zinc-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] p-8 md:p-10 max-w-md w-full shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95 duration-200 relative">
+            <button onClick={closeDialog} className="absolute top-6 right-6 text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-colors active:scale-95">
+              <X className="h-4 w-4" />
+            </button>
+            
+            <div className="flex items-center gap-4 mb-6">
+              <div className={`h-14 w-14 rounded-full flex items-center justify-center shrink-0 border shadow-sm ${
+                dialog.type === 'danger' ? 'bg-rose-50 dark:bg-rose-500/10 text-rose-500 border-rose-200 dark:border-rose-500/20' :
+                dialog.type === 'warning' ? 'bg-amber-50 dark:bg-amber-500/10 text-amber-500 border-amber-200 dark:border-amber-500/20' :
+                'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-500 border-emerald-200 dark:border-emerald-500/20'
+              }`}>
+                {dialog.type === 'danger' ? <AlertTriangle className="h-6 w-6" /> : 
+                 dialog.type === 'warning' ? <AlertTriangle className="h-6 w-6" /> : 
+                 <Info className="h-6 w-6" />}
+              </div>
+              <h3 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">{dialog.title}</h3>
+            </div>
+            
+            <p className="text-zinc-600 dark:text-zinc-400 font-medium mb-10 leading-relaxed text-sm">
+              {dialog.message}
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-3 justify-end">
+              {dialog.cancelText && (
+                <button onClick={closeDialog} className="px-8 py-4 rounded-full font-bold text-[10px] uppercase tracking-widest text-zinc-600 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-900 hover:bg-zinc-200 dark:hover:bg-zinc-800 transition-colors w-full sm:w-auto text-center active:scale-95">
+                  {dialog.cancelText}
+                </button>
+              )}
+              <button 
+                onClick={dialog.onConfirm || closeDialog} 
+                className={`px-8 py-4 rounded-full font-bold text-[10px] uppercase tracking-widest transition-all w-full sm:w-auto text-center active:scale-95 ${
+                  dialog.type === 'danger' ? 'bg-rose-500 hover:bg-rose-400 text-zinc-950 shadow-[0_0_15px_rgba(244,63,94,0.2)]' : 
+                  'bg-emerald-500 hover:bg-emerald-400 text-zinc-950 shadow-[0_0_15px_rgba(16,185,129,0.2)]'
+                }`}
+              >
+                {dialog.confirmText}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }

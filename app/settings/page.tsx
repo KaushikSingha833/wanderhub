@@ -306,7 +306,17 @@ export default function SettingsPage() {
   
   if (!user) return null;
 
+  // ✨ IDENTIFY USER TYPE
   const isEmailUser = user?.providerData.some(provider => provider.providerId === 'password');
+  const isGoogleUser = user?.providerData.some(provider => provider.providerId === 'google.com');
+
+  // ✨ DYNAMIC AVATAR GENERATION (Strictly 1st Alphabet of actual name or email)
+  let rawName = displayName || user?.displayName || "";
+  let avatarName = (rawName.trim() === "" || rawName.trim().toLowerCase() === "traveler") 
+    ? (user?.email?.charAt(0).toUpperCase() || "U") 
+    : rawName;
+    
+  const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(avatarName)}&background=10b981&color=fff&length=1`;
 
   return (
     <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors duration-300 selection:bg-emerald-500/20">
@@ -404,16 +414,37 @@ export default function SettingsPage() {
                     
                     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-8 pb-10 border-b border-zinc-100 dark:border-zinc-800">
                       <div className="relative group">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={user?.photoURL || "https://ui-avatars.com/api/?name=Traveler&background=10b981&color=fff"} alt="Profile" className="h-28 w-28 rounded-full border border-zinc-200 dark:border-zinc-800 shadow-md object-cover" />
-                        <div onClick={() => handleGoogleAlert("photo")} className="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
-                          <Camera className="h-6 w-6 text-white" />
-                        </div>
+                        {/* ✨ UPDATED AVATAR IMPLEMENTATION */}
+                        <img 
+                          src={user?.photoURL || fallbackAvatar} 
+                          alt="Profile" 
+                          referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null; 
+                            e.currentTarget.src = fallbackAvatar;
+                          }}
+                          className="h-28 w-28 rounded-full border border-zinc-200 dark:border-zinc-800 shadow-md object-cover" 
+                        />
+                        {isGoogleUser && (
+                          <div onClick={() => handleGoogleAlert("photo")} className="absolute inset-0 bg-black/60 rounded-full opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer">
+                            <Camera className="h-6 w-6 text-white" />
+                          </div>
+                        )}
                       </div>
                       <div>
                         <p className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 mb-2 uppercase tracking-widest">Profile Picture</p>
-                        <p className="text-xs md:text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-5 max-w-sm leading-relaxed">Your photo is securely managed by your Google Account.</p>
-                        <button onClick={() => handleGoogleAlert("photo")} className="bg-transparent text-zinc-900 dark:text-white px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border border-zinc-300 dark:border-zinc-700 active:scale-95">Update on Google</button>
+                        
+                        {isGoogleUser ? (
+                          <>
+                            <p className="text-xs md:text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-5 max-w-sm leading-relaxed">Your photo is securely managed by your Google Account.</p>
+                            <button onClick={() => handleGoogleAlert("photo")} className="bg-transparent text-zinc-900 dark:text-white px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors border border-zinc-300 dark:border-zinc-700 active:scale-95">Update on Google</button>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-xs md:text-sm font-medium text-zinc-900 dark:text-zinc-300 mb-5 max-w-sm leading-relaxed">Your avatar is automatically generated from your display name.</p>
+                            <div className="bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 px-6 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest inline-block border border-transparent">Managed Locally</div>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -553,13 +584,16 @@ export default function SettingsPage() {
                     </div>
 
                     <div className="pt-2 space-y-6">
-                      <div className="bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition-colors">
-                        <div>
-                          <p className="font-bold text-lg text-zinc-900 dark:text-white flex items-center tracking-tight mb-2"><Globe className="h-5 w-5 mr-3 text-zinc-400"/> Google Authentication</p>
-                          <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-md">Your primary account security is managed by Google. To change external settings, visit your Google Account.</p>
+                      
+                      {isGoogleUser && (
+                        <div className="bg-zinc-50 dark:bg-zinc-950/50 border border-zinc-200 dark:border-zinc-800 rounded-[2rem] p-8 flex flex-col sm:flex-row sm:items-center justify-between gap-6 transition-colors">
+                          <div>
+                            <p className="font-bold text-lg text-zinc-900 dark:text-white flex items-center tracking-tight mb-2"><Globe className="h-5 w-5 mr-3 text-zinc-400"/> Google Authentication</p>
+                            <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 leading-relaxed max-w-md">Your primary account security is managed by Google. To change external settings, visit your Google Account.</p>
+                          </div>
+                          <button onClick={() => handleGoogleAlert("security")} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white px-6 py-4 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shrink-0 shadow-sm active:scale-95">Manage on Google</button>
                         </div>
-                        <button onClick={() => handleGoogleAlert("security")} className="bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 text-zinc-900 dark:text-white px-6 py-4 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors shrink-0 shadow-sm active:scale-95">Manage on Google</button>
-                      </div>
+                      )}
 
                       {/* SECURE PASSWORD CHANGE FORM */}
                       {isEmailUser && (

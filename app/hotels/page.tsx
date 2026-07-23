@@ -2,13 +2,12 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
 import { collection, getDocs, query, where, onSnapshot, addDoc, serverTimestamp, getDoc, doc } from "firebase/firestore";
 import { auth, db } from "../lib/firebase"; 
 import { useCurrency } from "../lib/useCurrency"; 
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Search, MapPin, Star, Wifi, Coffee, ExternalLink, BedDouble, Menu, X, Sparkles, Users, Loader2, Plane, ArrowDownUp, LocateFixed, CheckCircle2, MessageSquare, Info, ChevronDown, History } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Search, MapPin, Star, Wifi, Coffee, ExternalLink, BedDouble, Menu, X, Sparkles, Users, Loader2, Plane, ArrowDownUp, LocateFixed, CheckCircle2, MessageSquare, Info, ChevronDown, History, LogOut } from "lucide-react";
 
-// --- HAVERSINE DISTANCE FORMULA ---
 function getDistanceFromLatLonInKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371; 
   const dLat = (lat2 - lat1) * (Math.PI / 180);
@@ -40,7 +39,7 @@ export default function HotelsPage() {
 
   const [user, setUser] = useState<FirebaseUser | null>(null);
   
-  const [destination, setDestination] = useState("Mumbai, India");
+  const [destination, setDestination] = useState("");
   const [checkIn, setCheckIn] = useState("");
   const [checkOut, setCheckOut] = useState("");
   const [guests, setGuests] = useState("2");
@@ -68,23 +67,53 @@ export default function HotelsPage() {
   const [isSuggesting, setIsSuggesting] = useState(false);
   const [suggestSuccess, setSuggestSuccess] = useState(false);
 
-  // 🛡️ SECURITY GUARD: Travelers Only
+  useEffect(() => {
+    const savedDest = sessionStorage.getItem("wanderhub_dest");
+    if (savedDest) setDestination(savedDest);
+    
+    const savedCheckIn = sessionStorage.getItem("wanderhub_checkIn");
+    if (savedCheckIn) setCheckIn(savedCheckIn);
+    
+    const savedCheckOut = sessionStorage.getItem("wanderhub_checkOut");
+    if (savedCheckOut) setCheckOut(savedCheckOut);
+    
+    const savedGuests = sessionStorage.getItem("wanderhub_guests");
+    if (savedGuests) setGuests(savedGuests);
+    
+    const savedHotels = sessionStorage.getItem("wanderhub_hotels");
+    if (savedHotels) {
+      try {
+        setHotels(JSON.parse(savedHotels));
+        setHasSearched(true);
+      } catch (e) {
+        console.error("Failed to parse saved hotels", e);
+      }
+    }
+  }, []);
+
+  useEffect(() => { sessionStorage.setItem("wanderhub_dest", destination); }, [destination]);
+  useEffect(() => { sessionStorage.setItem("wanderhub_checkIn", checkIn); }, [checkIn]);
+  useEffect(() => { sessionStorage.setItem("wanderhub_checkOut", checkOut); }, [checkOut]);
+  useEffect(() => { sessionStorage.setItem("wanderhub_guests", guests); }, [guests]);
+  useEffect(() => {
+    if (hasSearched) {
+      sessionStorage.setItem("wanderhub_hotels", JSON.stringify(hotels));
+    }
+  }, [hotels, hasSearched]);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
-        router.push("/"); // Kick to landing page if not logged in
+        router.push("/");
       } else {
         try {
-          // Fetch user profile to check their role
           const userDoc = await getDoc(doc(db, "users", currentUser.uid));
           
           if (userDoc.exists() && userDoc.data().role === "hotel_partner") {
-            // Bouncer: Kick Hotel Partners OUT of the customer site!
             router.push("/partner/dashboard");
             return;
           }
 
-          // If they pass, let them in
           setUser(currentUser);
           setIsAuthLoading(false);
           
@@ -96,7 +125,6 @@ export default function HotelsPage() {
     return () => unsubscribe();
   }, [router]);
 
-  // FETCH TRIPS (Only runs once user is verified)
   useEffect(() => {
     if (!user) return;
     const q = query(
@@ -192,12 +220,10 @@ export default function HotelsPage() {
 
     let internalRooms: HotelResult[] = [];
     try {
-      // 1. ✨ "TRAIN BOOKING" LOGIC: Find Occupied Rooms
       const reqStart = new Date(checkIn).getTime();
       const reqEnd = new Date(checkOut).getTime();
       const requiredGuests = parseInt(guests.replace(/\D/g, '')) || 2;
 
-      // Query all Approved/Confirmed bookings
       const qBookings = query(
         collection(db, "bookings"),
         where("status", "in", ["Approved", "Confirmed"])
@@ -211,13 +237,11 @@ export default function HotelsPage() {
         const bStart = new Date(b.checkIn).getTime();
         const bEnd = new Date(b.checkOut).getTime();
         
-        // OVERLAP FORMULA: If (UserStart < BookingEnd) AND (UserEnd > BookingStart)
         if (reqStart < bEnd && reqEnd > bStart) {
-          occupiedRoomIds.add(b.roomId); // This room is blocked for these dates
+          occupiedRoomIds.add(b.roomId); 
         }
       });
 
-      // 2. Fetch Ratings & Locations
       const reviewsSnapshot = await getDocs(collection(db, "hotelReviews"));
       const hotelRatings: Record<string, { total: number; count: number }> = {};
       
@@ -239,7 +263,6 @@ export default function HotelsPage() {
         }
       });
 
-      // 3. Process Rooms through the Availability Filter
       const roomsSnapshot = await getDocs(collection(db, "rooms"));
       const searchDestinationLower = destination.toLowerCase();
       const hotelGroups: Record<string, HotelResult> = {};
@@ -248,13 +271,10 @@ export default function HotelsPage() {
         const roomData = doc.data() as any;
         const roomId = doc.id;
 
-        // ✨ FILTER 1: Skip if room is already occupied (Overlapping Dates)
         if (occupiedRoomIds.has(roomId)) return;
 
-        // ✨ FILTER 2: Skip if room cannot fit the requested number of guests
         if (roomData.maxGuests && roomData.maxGuests < requiredGuests) return;
 
-        // Filter 3: City Match
         if (destination !== "Current Location" && (!roomData.city || !searchDestinationLower.includes(roomData.city.toLowerCase()))) return;
 
         const hotelName = roomData.hotelName || "WanderHub Partner Hotel";
@@ -284,7 +304,7 @@ export default function HotelsPage() {
             rating: realRating, 
             reviews: realReviewsCount, 
             pricePerNight: roomData.price || 5000,
-            imageUrl: roomData.imageUrl || "https://images.unsplash.com/photo-1542314831-c6a4d1409a54?w=800&q=80",
+            imageUrl: roomData.imageUrl || "https://images.unsplash.com/photo-1542314831-c6a4d1409a54?auto=format&fit=crop&w=800&q=80",
             provider: "WanderHub Direct",
             bookingUrl: `/partner-hotel/${encodeURIComponent(hotelName)}?checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}`,
             isExclusive: true,
@@ -321,36 +341,40 @@ export default function HotelsPage() {
       const destType = locationData[0].dest_type;
       
       const searchUrl = `https://booking-com.p.rapidapi.com/v1/hotels/search?dest_id=${destId}&dest_type=${destType}&checkin_date=${checkIn}&checkout_date=${checkOut}&adults_number=${cleanGuestCount}&room_number=1&order_by=popularity&units=metric&locale=en-gb&filter_by_currency=INR`;
-      const searchRes = await fetch(searchUrl, { method: 'GET', headers });
-      if (!searchRes.ok) throw new Error(`Search API Error: ${searchRes.status}`);
-      const searchData = await searchRes.json();
-      if (!searchData || !searchData.result || searchData.result.length === 0) throw new Error("Search succeeded, but 0 hotels were available for these dates."); 
-      
-      const mappedHotels = searchData.result.map((h: any) => ({
-        id: h.hotel_id?.toString() || Math.random().toString(),
-        name: h.hotel_name || "Unknown Hotel",
-        location: h.city_trans || destination,
-        rating: h.review_score || 4.0,
-        reviews: h.review_nr || 0,
-        pricePerNight: h.min_total_price || 5000,
-        imageUrl: h.max_photo_url || "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=800&q=80",
-        provider: "Booking.com",
-        bookingUrl: h.url || "#",
-        distance: (userLocation && h.latitude && h.longitude) 
-          ? getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, Number(h.latitude), Number(h.longitude))
-          : undefined
-      }));
+        const searchRes = await fetch(searchUrl, { method: 'GET', headers });
+        if (!searchRes.ok) throw new Error(`Search API Error: ${searchRes.status}`);
+        const searchData = await searchRes.json();
+        if (!searchData || !searchData.result || searchData.result.length === 0) throw new Error("Search succeeded, but 0 hotels were available for these dates."); 
+
+        const checkInDate = new Date(checkIn);
+        const checkOutDate = new Date(checkOut);
+        const nights = Math.max(1, Math.round((checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 3600 * 24)));
+              
+        const mappedHotels = searchData.result.map((h: any) => ({
+          id: h.hotel_id?.toString() || Math.random().toString(),
+          name: h.hotel_name || "Unknown Hotel",
+          location: h.city_trans || destination,
+          rating: h.review_score || 4.0,
+          reviews: h.review_nr || 0,
+          pricePerNight: h.min_total_price ? (h.min_total_price / nights) : 5000, 
+          imageUrl: h.max_photo_url || "https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80",
+          provider: "Booking.com",
+          bookingUrl: h.url || "#",
+          distance: (userLocation && h.latitude && h.longitude) 
+            ? getDistanceFromLatLonInKm(userLocation.lat, userLocation.lng, Number(h.latitude), Number(h.longitude))
+            : undefined
+        }));
       
       setHotels([...internalRooms, ...mappedHotels]);
 
     } catch (error: any) {
-      console.error("🔴 EXTERNAL API ERROR CAUGHT:", error.message);
+      console.error("EXTERNAL API ERROR CAUGHT:", error.message);
       await new Promise(resolve => setTimeout(resolve, 1500)); 
 
       setHotels([
         ...internalRooms,
-        { id: "1", name: "Taj Mahal Palace", location: "Colaba, Mumbai", rating: 4.9, reviews: 12450, pricePerNight: 18500, imageUrl: "https://images.unsplash.com/photo-1582719508461-905c673771fd?w=800&q=80", provider: "Agoda", bookingUrl: "https://agoda.com" },
-        { id: "2", name: "The Oberoi", location: "Nariman Point, Mumbai", rating: 4.8, reviews: 8920, pricePerNight: 15200, imageUrl: "https://images.unsplash.com/photo-1542314831-c6a4d1409a54?w=800&q=80", provider: "MakeMyTrip", bookingUrl: "https://makemytrip.com" }
+        { id: "1", name: "Taj Mahal Palace", location: "Colaba, Mumbai", rating: 4.9, reviews: 12450, pricePerNight: 18500, imageUrl: "https://images.unsplash.com/photo-1582719508461-905c673771fd?auto=format&fit=crop&w=800&q=80", provider: "Agoda", bookingUrl: "https://agoda.com" },
+        { id: "2", name: "The Oberoi", location: "Nariman Point, Mumbai", rating: 4.8, reviews: 8920, pricePerNight: 15200, imageUrl: "https://images.unsplash.com/photo-1542314831-c6a4d1409a54?auto=format&fit=crop&w=800&q=80", provider: "MakeMyTrip", bookingUrl: "https://makemytrip.com" }
       ]);
     } finally {
       setIsSearching(false);
@@ -394,7 +418,20 @@ export default function HotelsPage() {
     }
   };
 
-  const borderClass = "border-zinc-200 dark:border-zinc-800/50";
+  const handleLogout = async () => {
+    try {
+      sessionStorage.removeItem("wanderhub_dest");
+      sessionStorage.removeItem("wanderhub_checkIn");
+      sessionStorage.removeItem("wanderhub_checkOut");
+      sessionStorage.removeItem("wanderhub_guests");
+      sessionStorage.removeItem("wanderhub_hotels");
+      
+      await signOut(auth);
+      router.push("/");
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   const displayedHotels = [...hotels].sort((a, b) => {
     if (sortBy === "price_asc") return a.pricePerNight - b.pricePerNight;
@@ -403,7 +440,6 @@ export default function HotelsPage() {
     return 0; 
   });
 
-  // 🛡️ LOADING SCREEN: Hide page until verified
   if (isAuthLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-zinc-950">
@@ -419,7 +455,6 @@ export default function HotelsPage() {
         <div className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-md z-40 md:hidden transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
       )}
 
-      {/* FLOATING SIDEBAR (EDITORIAL STYLE) */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col transform transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] print:hidden ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} md:relative md:translate-x-0`}>
         <div className="h-20 flex items-center px-8 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
           <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-3 shadow-sm">
@@ -447,11 +482,9 @@ export default function HotelsPage() {
         </nav>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
         <div className="absolute top-[10%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
 
-        {/* MOBILE TOP BAR */}
         <div className="md:hidden h-20 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-6 shrink-0 z-30 sticky top-0 transition-colors">
           <div className="flex items-center">
             <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-2 shadow-sm">
@@ -459,34 +492,71 @@ export default function HotelsPage() {
             </div>
             <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <Link href="/my-bookings" className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-colors"><Calendar className="h-5 w-5 text-emerald-500" /></Link>
-            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
+            
+            <div className="h-8 w-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold flex items-center justify-center text-xs shadow-inner border border-zinc-200 dark:border-zinc-700 overflow-hidden shrink-0">
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt="Profile" className="h-full w-full object-cover" />
+              ) : (
+                user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"
+              )}
+            </div>
+
+            <button onClick={() => setIsMobileMenuOpen(true)} className="p-1 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors -mr-1"><Menu className="h-6 w-6" /></button>
           </div>
         </div>
 
-        {/* DESKTOP HEADER (MINIMALIST) */}
         <header className="hidden md:flex h-24 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 items-center justify-between px-12 z-20 shrink-0 sticky top-0 transition-all">
           <div>
             <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">Hotel Search</h2>
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mt-1">Find the perfect stay for your trip.</p>
           </div>
-          <Link href="/my-bookings" className="flex items-center bg-transparent border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all px-6 py-3 rounded-full font-bold text-zinc-900 dark:text-white text-xs uppercase tracking-widest active:scale-95">
-            <Calendar className="h-4 w-4 mr-2 text-emerald-500" /> My Bookings
-          </Link>
+          
+          <div className="flex items-center gap-6">
+            <Link href="/my-bookings" className="flex items-center bg-transparent border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-900 transition-all px-6 py-3 rounded-full font-bold text-zinc-900 dark:text-white text-xs uppercase tracking-widest active:scale-95">
+              <Calendar className="h-4 w-4 mr-2 text-emerald-500" /> My Bookings
+            </Link>
+
+            <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800/80"></div>
+
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold flex items-center justify-center text-sm shadow-inner border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+                {user?.photoURL ? (
+                  <img src={user.photoURL} alt="Profile" className="h-full w-full object-cover" />
+                ) : (
+                  user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"
+                )}
+              </div>
+
+              <button 
+                onClick={handleLogout} 
+                title="Log Out"
+                className="flex items-center justify-center h-10 w-10 rounded-full text-zinc-400 dark:text-zinc-500 hover:text-rose-500 dark:hover:text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/50 transition-all"
+              >
+                <LogOut className="h-[22px] w-[22px]" strokeWidth={2} />
+              </button>
+            </div>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-4 md:p-12 custom-scrollbar relative z-10">
           <div className="max-w-6xl mx-auto pb-24">
             
-            {/* EDITORIAL HERO SEARCH SECTION */}
-            <div className="relative rounded-[2.5rem] p-8 md:p-14 mb-14 shadow-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-950 overflow-hidden">
-              <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] mix-blend-overlay pointer-events-none"></div>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://images.unsplash.com/photo-1542314831-c6a4d1409a54?w=1200&q=80" alt="Luxury Hotel" className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity filter grayscale-[0.5]" />
-              <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent"></div>
-              
-              <div className="relative z-10 animate-in fade-in slide-in-from-top-4 duration-700">
+            <div className="relative rounded-[2.5rem] p-8 md:p-14 mb-14 shadow-2xl border border-zinc-200 dark:border-zinc-800 bg-zinc-950">
+  
+                <div className="absolute inset-0 overflow-hidden rounded-[2.5rem] pointer-events-none">
+                  <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] mix-blend-overlay pointer-events-none"></div>
+                  <img 
+                    src="https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=1200&q=80" 
+                    alt="Luxury Hotel" 
+                    className="absolute inset-0 w-full h-full object-cover opacity-30 mix-blend-luminosity filter grayscale-[0.5]"
+                    onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1551882547-ff40c0d1219b?auto=format&fit=crop&w=1200&q=80'; }} 
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent"></div>
+                </div>
+                
+                <div className="relative z-10 animate-in fade-in slide-in-from-top-4 duration-700">
                 <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-500/10 backdrop-blur-md border border-emerald-500/20 text-emerald-400 text-[10px] font-bold uppercase tracking-widest mb-6 shadow-sm">
                   <Sparkles className="h-3 w-3" /> Best Price Guarantee
                 </div>
@@ -505,7 +575,7 @@ export default function HotelsPage() {
                         onFocus={() => { if (destination.trim().length >= 3) setShowSuggestions(true); }}
                         onBlur={() => setTimeout(() => setShowSuggestions(false), 200)}
                         className="w-full bg-transparent border-none outline-none text-white font-bold placeholder-zinc-500 truncate text-base" 
-                        placeholder="City or Hotel Name" required autoComplete="off"
+                        placeholder="Search city..." required autoComplete="off"
                       />
                     </div>
                     <button type="button" onClick={handleNearMeClick} className="absolute right-4 top-1/2 -translate-y-1/2 p-2.5 bg-white/5 hover:bg-white/10 border border-white/10 text-white rounded-full transition-all shadow-sm flex items-center" title="Find Hotels Near Me">
@@ -601,8 +671,12 @@ export default function HotelsPage() {
                       )}
 
                       <div className="h-64 bg-zinc-200 dark:bg-zinc-800 relative overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={hotel.imageUrl} alt={hotel.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
+                        <img 
+                          src={hotel.imageUrl} 
+                          alt={hotel.name} 
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" 
+                          onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80'; }}
+                        />
                         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
                         <div className="absolute bottom-5 left-5 bg-white/20 dark:bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full text-xs font-bold text-white flex items-center shadow-md border border-white/20">
                           <Star className="h-3 w-3 mr-1 text-white fill-white" /> {hotel.rating} <span className="text-zinc-300 font-medium ml-1">({hotel.reviews})</span>
@@ -635,6 +709,11 @@ export default function HotelsPage() {
                                 {symbol}{convert(hotel.pricePerNight).toLocaleString(undefined, {maximumFractionDigits: 0})}
                                 <span className="text-xs font-medium text-zinc-500 tracking-normal ml-1">/night</span>
                               </p>
+                              {checkIn && checkOut && (
+                                <p className="text-[10px] font-bold text-zinc-500 mt-0.5 tracking-tight">
+                                  {symbol}{convert(hotel.pricePerNight * Math.max(1, Math.round((new Date(checkOut).getTime() - new Date(checkIn).getTime()) / (1000 * 3600 * 24)))).toLocaleString(undefined, {maximumFractionDigits: 0})} total
+                                </p>
+                              )}
                             </div>
                             <p className="text-[9px] font-bold text-zinc-400 text-right shrink-0 uppercase tracking-widest">
                               Provided by<br/><span className="font-black text-zinc-600 dark:text-zinc-300">{hotel.provider}</span>
@@ -684,8 +763,12 @@ export default function HotelsPage() {
             </div>
 
             <div className="flex items-center gap-4 p-4 bg-zinc-50 dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 mb-8">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={hotelToSuggest.imageUrl} alt="" className="h-16 w-16 rounded-xl object-cover shadow-sm" />
+              <img 
+                src={hotelToSuggest.imageUrl} 
+                alt="" 
+                className="h-16 w-16 rounded-xl object-cover shadow-sm" 
+                onError={(e) => { e.currentTarget.src = 'https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=200&q=80'; }}
+              />
               <div className="min-w-0">
                 <h4 className="font-bold text-zinc-900 dark:text-white truncate text-base">{hotelToSuggest.name}</h4>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 truncate mt-1">{hotelToSuggest.location}</p>

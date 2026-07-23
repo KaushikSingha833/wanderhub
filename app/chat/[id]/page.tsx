@@ -2,12 +2,12 @@
 import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { onAuthStateChanged, User as FirebaseUser } from "firebase/auth";
+import { onAuthStateChanged, signOut, User as FirebaseUser } from "firebase/auth";
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, getDoc, updateDoc, deleteDoc, arrayUnion, arrayRemove, setDoc } from "firebase/firestore";
 import { auth, db } from "../../lib/firebase";
 import NotificationBell from "../../components/NotificationBell";
 import { sendGroupNotification } from "../../lib/notifications";
-import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Menu, X, BedDouble, Plane, MessageSquare, Send, Loader2, ArrowLeft, Trash2, Smile, Check, CheckCheck, Clock, Eye, Info, History } from "lucide-react";
+import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Menu, X, BedDouble, Plane, MessageSquare, Send, Loader2, ArrowLeft, Trash2, Smile, Check, CheckCheck, Clock, Eye, Info, History, LogOut } from "lucide-react";
 import EmojiPicker from 'emoji-picker-react';
 
 interface Message {
@@ -51,14 +51,13 @@ export default function TripChatPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   };
 
-  // 🛡️ SECURITY GUARD: Check if logged in
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
-        router.push("/"); // Kick to landing page if not logged in
+        router.push("/"); 
       } else {
         setUser(currentUser);
-        setIsAuthLoading(false); // Show the page
+        setIsAuthLoading(false);
       }
     });
     return () => unsubscribeAuth();
@@ -67,7 +66,6 @@ export default function TripChatPage() {
   useEffect(() => {
     if (!tripId || !user) return;
 
-    // 1. Fetch Trip Data & Member Names
     const fetchTrip = async () => {
       const tripDoc = await getDoc(doc(db, "trips", tripId));
       if (tripDoc.exists()) {
@@ -83,7 +81,6 @@ export default function TripChatPage() {
     };
     fetchTrip();
 
-    // 2. Listen to Messages
     const q = query(collection(db, "trips", tripId, "messages"), orderBy("createdAt", "asc"));
     const unsubscribeMessages = onSnapshot(q, (snapshot) => {
       const msgs = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Message[];
@@ -91,7 +88,6 @@ export default function TripChatPage() {
       setIsLoading(false);
       setTimeout(scrollToBottom, 100);
 
-      // Read Receipts Update: Mark unseen messages as seen
       msgs.forEach(msg => {
         if (msg.senderId !== user.uid && (!msg.seenBy || !msg.seenBy.includes(user.uid))) {
           updateDoc(doc(db, "trips", tripId, "messages", msg.id), {
@@ -101,7 +97,6 @@ export default function TripChatPage() {
       });
     });
 
-    // 3. Listen to Typing Indicators
     const tq = query(collection(db, "trips", tripId, "typing"));
     const unsubscribeTyping = onSnapshot(tq, (snapshot) => {
       const typing = snapshot.docs
@@ -114,7 +109,6 @@ export default function TripChatPage() {
     return () => { unsubscribeMessages(); unsubscribeTyping(); };
   }, [tripId, user, router]);
 
-  // Typing Indicator Sync
   const handleInputText = (text: string) => {
     setNewMessage(text);
     if (!user) return;
@@ -131,7 +125,6 @@ export default function TripChatPage() {
     }, 2000);
   };
 
-  // Send Message
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !user) return;
@@ -168,7 +161,6 @@ export default function TripChatPage() {
     }
   };
 
-  // Delete Message
   const handleDeleteMessage = async (msgId: string) => {
     if (confirm("Delete this message for everyone?")) {
       try {
@@ -180,7 +172,6 @@ export default function TripChatPage() {
     }
   };
 
-  // Smart Reactions
   const handleReact = async (msgId: string, emoji: string) => {
     if (!user) return;
     
@@ -209,17 +200,25 @@ export default function TripChatPage() {
     }
   };
 
-  // Long Press Logic (Mobile)
+  const handleLogout = async () => {
+    try {
+      await signOut(auth);
+      router.push("/");
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const handleTouchStart = (msgId: string) => {
     touchTimerRef.current = setTimeout(() => {
       setSelectedMessageId(msgId);
     }, 500);
   };
+  
   const handleTouchEnd = () => {
     if (touchTimerRef.current) clearTimeout(touchTimerRef.current);
   };
 
-  // Formatting Utils
   const formatTime = (timestamp: any) => {
     if (!timestamp) return "";
     return timestamp.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -252,7 +251,6 @@ export default function TripChatPage() {
     ));
   };
 
-  // 🛡️ LOADING SCREEN: Hide page until verified
   if (isAuthLoading || !user) {
     return (
       <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950">
@@ -264,7 +262,6 @@ export default function TripChatPage() {
   return (
     <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors duration-300 selection:bg-emerald-500/20" onClick={() => setSelectedMessageId(null)}>
       
-      {/* MESSAGE INFO MODAL (Seen By) */}
       {infoMessageId && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setInfoMessageId(null)}>
           <div className="bg-white dark:bg-zinc-900 p-8 rounded-3xl w-[320px] shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95" onClick={e => e.stopPropagation()}>
@@ -298,12 +295,10 @@ export default function TripChatPage() {
         </div>
       )}
 
-      {/* Mobile Sidebar Overlay */}
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-md z-40 md:hidden" onClick={(e) => { e.stopPropagation(); setIsMobileMenuOpen(false); }} />
       )}
 
-      {/* FLOATING SIDEBAR (EDITORIAL STYLE) */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col transform transition-all duration-300 md:relative md:translate-x-0 ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"}`} onClick={e => e.stopPropagation()}>
         <div className="h-20 flex items-center justify-between px-8 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
           <div className="flex items-center">
@@ -333,26 +328,31 @@ export default function TripChatPage() {
         </nav>
       </aside>
 
-      {/* MAIN CHAT AREA */}
       <div className="flex-1 flex flex-col h-screen relative bg-zinc-50 dark:bg-zinc-950">
         <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.03] dark:opacity-[0.1] mix-blend-overlay pointer-events-none"></div>
         <div className="absolute top-[10%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/5 rounded-full blur-[120px] pointer-events-none"></div>
 
-        {/* MOBILE HEADER */}
         <div className="md:hidden h-20 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-4 shrink-0 z-30 sticky top-0" onClick={e => e.stopPropagation()}>
           <button onClick={() => router.push(`/trips/${tripId}`)} className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-colors"><ArrowLeft className="h-5 w-5" /></button>
+          
           <div className="flex flex-col items-center flex-1 min-w-0 px-2">
             <span className="font-bold text-zinc-900 dark:text-white truncate w-full text-center tracking-tight">{tripName}</span>
             {typingUsers.length > 0 && <span className="text-[10px] font-bold uppercase tracking-widest text-emerald-500 truncate w-full text-center">{typingUsers.join(', ')} is typing</span>}
           </div>
           
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-2">
             <NotificationBell />
-            <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
+            <div className="h-8 w-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold flex items-center justify-center text-xs shadow-inner border border-zinc-200 dark:border-zinc-700 overflow-hidden shrink-0">
+              {user?.photoURL ? (
+                <img src={user.photoURL} alt="Profile" className="h-full w-full object-cover" />
+              ) : (
+                user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"
+              )}
+            </div>
+            <button onClick={() => setIsMobileMenuOpen(true)} className="p-1.5 -mr-1.5 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
           </div>
         </div>
 
-        {/* DESKTOP HEADER */}
         <header className="hidden md:flex h-24 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 items-center justify-between px-10 z-20 shrink-0 sticky top-0" onClick={e => e.stopPropagation()}>
           <div>
             <div className="flex items-center gap-3">
@@ -371,10 +371,29 @@ export default function TripChatPage() {
             <Link href={`/trips/${tripId}`} className="flex items-center text-xs font-bold uppercase tracking-widest text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-900 px-5 py-3 rounded-full transition-colors border border-zinc-200 dark:border-zinc-800 shadow-sm active:scale-95">
               <ArrowLeft className="h-4 w-4 mr-2" /> Itinerary
             </Link>
+            
+            <div className="h-8 w-px bg-zinc-200 dark:bg-zinc-800/80"></div>
+
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-10 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold flex items-center justify-center text-sm shadow-inner border border-zinc-200 dark:border-zinc-700 overflow-hidden">
+                {user?.photoURL ? (
+                  <img src={user.photoURL} alt="Profile" className="h-full w-full object-cover" />
+                ) : (
+                  user?.displayName?.charAt(0).toUpperCase() || user?.email?.charAt(0).toUpperCase() || "U"
+                )}
+              </div>
+
+              <button 
+                onClick={handleLogout} 
+                title="Log Out"
+                className="flex items-center justify-center h-10 w-10 rounded-full text-zinc-400 dark:text-zinc-500 hover:text-rose-500 dark:hover:text-rose-500 hover:bg-rose-100 dark:hover:bg-rose-950/50 transition-all"
+              >
+                <LogOut className="h-[22px] w-[22px]" strokeWidth={2} />
+              </button>
+            </div>
           </div>
         </header>
 
-        {/* MESSAGES FEED */}
         <main className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar z-10 flex flex-col relative">
           {isLoading ? (
             <div className="flex-1 flex items-center justify-center"><Loader2 className="h-8 w-8 text-emerald-500 animate-spin" /></div>
@@ -427,7 +446,6 @@ export default function TripChatPage() {
                           </div>
                         )}
 
-                        {/* Interactive Bubble */}
                         <div 
                           className={`px-5 py-3.5 rounded-3xl shadow-sm relative cursor-pointer ${
                             isMe ? "bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 rounded-br-sm" : "bg-white dark:bg-zinc-900 text-zinc-900 dark:text-zinc-100 border border-zinc-200 dark:border-zinc-800 rounded-bl-sm"
@@ -439,7 +457,6 @@ export default function TripChatPage() {
                         >
                           <p className="text-[15px] font-medium leading-relaxed break-words whitespace-pre-wrap">{renderMessageText(msg.text)}</p>
                           
-                          {/* Reactions Display */}
                           {msg.reactions && Object.keys(msg.reactions).length > 0 && (
                             <div className={`absolute -bottom-3 ${isMe ? 'right-2' : 'left-2'} flex gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-full px-2 py-0.5 shadow-md text-xs z-10`}>
                               {Object.entries(msg.reactions).map(([emoji, users]) => (
@@ -458,25 +475,21 @@ export default function TripChatPage() {
                           )}
                         </div>
 
-                        {/* Action Menu (Bento Box Style) */}
                         {selectedMessageId === msg.id && (
                           <div className={`absolute top-full mt-3 flex flex-col gap-1 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 shadow-2xl rounded-2xl p-2 z-50 animate-in zoom-in-95 duration-100 ${isMe ? 'right-0' : 'left-12'}`}>
                             
-                            {/* Quick Reactions */}
                             <div className="flex items-center gap-2 px-2 border-b border-zinc-100 dark:border-zinc-800 pb-2 mb-1">
                               {REACTION_EMOJIS.map(emoji => (
                                 <button key={emoji} onClick={() => handleReact(msg.id, emoji)} className="hover:scale-125 transition-transform p-1.5 text-xl bg-zinc-50 dark:bg-zinc-800 rounded-full">{emoji}</button>
                               ))}
                             </div>
 
-                            {/* Info Option */}
                             {isMe && (
                               <button onClick={() => { setInfoMessageId(msg.id); setSelectedMessageId(null); }} className="flex items-center gap-3 w-full px-3 py-2 text-sm font-bold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 rounded-xl transition-colors">
                                 <Info className="h-4 w-4 text-zinc-400" /> Message Info
                               </button>
                             )}
 
-                            {/* Delete Option */}
                             {isMe && (
                               <button onClick={() => handleDeleteMessage(msg.id)} className="flex items-center gap-3 w-full px-3 py-2 text-sm font-bold text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-500/10 rounded-xl transition-colors">
                                 <Trash2 className="h-4 w-4" /> Delete for everyone
@@ -486,7 +499,6 @@ export default function TripChatPage() {
                         )}
                       </div>
                       
-                      {/* Meta Footer */}
                       <div className={`flex items-center gap-1.5 mt-1.5 ${isMe ? "mr-2" : "ml-12"}`}>
                         <span className="text-[10px] font-bold text-zinc-400">{formatTime(msg.createdAt)}</span>
                         {isMe && (
@@ -505,12 +517,10 @@ export default function TripChatPage() {
           )}
         </main>
 
-        {/* MESSAGE INPUT AREA (FROSTED PILL) */}
         <div className="bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-t border-zinc-200 dark:border-zinc-800 p-4 md:p-6 shrink-0 z-20 sticky bottom-0" onClick={e => e.stopPropagation()}>
           <form onSubmit={handleSendMessage} className="max-w-4xl mx-auto relative flex items-end gap-3">
             
             <div className="relative flex-1">
-              {/* Full Emoji Picker Popover */}
               {showEmojiPicker && (
                 <div className="absolute bottom-full mb-4 left-0 z-50 shadow-2xl animate-in slide-in-from-bottom-2">
                   <EmojiPicker 
