@@ -8,7 +8,6 @@ import { useCurrency } from "../../lib/useCurrency";
 import { MapPin, Star, Wifi, BedDouble, Users, Calendar, ArrowLeft, CheckCircle2, Shield, Loader2, Sparkles, X, Tv, Wind, ChevronDown, AlertCircle, ChevronLeft, ChevronRight, Image as ImageIcon, MessageSquare, ThumbsUp, ThumbsDown, Map as MapIcon, ArrowDownUp, PlaneTakeoff, CreditCard, Settings, Plane, Info, Search, Menu, Phone, Mail, Building2, Send, History, LogOut } from "lucide-react";
 import Link from "next/link";
 
-// --- RAZORPAY SCRIPT LOADER ---
 const loadRazorpayScript = () => {
   return new Promise((resolve) => {
     const script = document.createElement("script");
@@ -63,7 +62,6 @@ function PartnerHotelContent() {
   
   const decodedHotelName = decodeURIComponent(params.hotelName as string);
   
-  // 🛡️ SECURITY GUARD STATE
   const [isAuthLoading, setIsAuthLoading] = useState(true);
   
   const [checkIn, setCheckIn] = useState(searchParams.get("checkIn") || "");
@@ -82,7 +80,6 @@ function PartnerHotelContent() {
   const [hotelCoords, setHotelCoords] = useState<{lat: number, lng: number} | null>(null);
   const [hotelContact, setHotelContact] = useState<{phone: string, email: string, uid: string} | null>(null);
 
-  // ✨ NEW: Integrated Chat States
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatInput, setChatInput] = useState("");
@@ -113,14 +110,13 @@ function PartnerHotelContent() {
 
   const { symbol, convert } = useCurrency();
 
-  // 🛡️ SECURITY GUARD: Kick out unauthenticated users immediately
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       if (!currentUser) {
-        router.push("/"); // Redirect straight to landing if not logged in
+        router.push("/");
       } else {
         setUser(currentUser);
-        setIsAuthLoading(false); // Authentication verified, unlock page loading
+        setIsAuthLoading(false);
         
         const qTrips = query(
           collection(db, "trips"), 
@@ -182,7 +178,6 @@ function PartnerHotelContent() {
     if (decodedHotelName) fetchData();
   }, [decodedHotelName]);
 
-  // ✨ NEW: Fetch Dedicated Hotel Chat Messages
   useEffect(() => {
     if (!isChatOpen || !user || !hotelContact) return;
     
@@ -493,7 +488,6 @@ function PartnerHotelContent() {
     }
   };
 
-  // ✨ NEW: Handle Sending General Hotel Messages
   const handleSendHotelMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim() || !user || !hotelContact) return;
@@ -526,7 +520,6 @@ function PartnerHotelContent() {
     setCurrentPhotoIndex((prev) => prev === 0 ? viewingPhotosFor.imageUrls!.length - 1 : prev - 1);
   };
 
-  // 🛡️ LOADING INTERCEPTOR: Prevents layout flashing
   if (isAuthLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950">
@@ -636,7 +629,6 @@ function PartnerHotelContent() {
           
           <div className="relative h-[40vh] md:h-[50vh] w-full bg-zinc-900 dark:bg-black overflow-hidden mb-8 md:mb-12 border-b border-zinc-800">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] mix-blend-overlay pointer-events-none"></div>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={heroImage} alt={decodedHotelName} className="absolute inset-0 w-full h-full object-cover opacity-50 dark:opacity-40 filter grayscale-[0.2]" />
             <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/40 to-transparent"></div>
             <div className="absolute top-[-50%] right-[-10%] w-[500px] h-[500px] bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none"></div>
@@ -690,7 +682,6 @@ function PartnerHotelContent() {
                   </div>
                 </div>
                 
-                {/* ✨ UPDATED: Contact Box - Now wraps on mobile and includes the new Mail button */}
                 <div className="flex flex-wrap w-full md:w-auto gap-3 shrink-0">
                   {hotelContact.phone && (
                     <a 
@@ -759,9 +750,17 @@ function PartnerHotelContent() {
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                   {displayedRooms.map(room => (
-                    <div key={room.id} className="bg-white dark:bg-zinc-900/40 rounded-[2rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm overflow-hidden flex flex-col hover:shadow-2xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-500 group relative hover:-translate-y-2">
-                      <div className="h-56 relative overflow-hidden">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <div 
+                      key={room.id} 
+                      onMouseMove={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        e.currentTarget.style.setProperty('--x', `${e.clientX - rect.left}px`);
+                        e.currentTarget.style.setProperty('--y', `${e.clientY - rect.top}px`);
+                      }}
+                      className="bg-white dark:bg-zinc-900/40 rounded-[2rem] border border-zinc-200 dark:border-zinc-800/50 shadow-sm overflow-hidden flex flex-col hover:shadow-2xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-500 group relative hover:-translate-y-2"
+                    >
+                      <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10" style={{ background: `radial-gradient(400px circle at var(--x, 0) var(--y, 0), rgba(16, 185, 129, 0.08), transparent 40%)` }} />
+                      <div className="h-56 relative overflow-hidden z-20">
                         <img src={room.imageUrls?.[0] || room.imageUrl || "https://images.unsplash.com/photo-1518733057094-95b53143d2a7?w=800"} alt={room.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out" />
                         <div className="absolute inset-0 bg-gradient-to-t from-zinc-950/80 via-transparent to-transparent opacity-60 group-hover:opacity-80 transition-opacity duration-300"></div>
                         
@@ -775,7 +774,7 @@ function PartnerHotelContent() {
                           </div>
                         )}
                       </div>
-                      <div className="p-6 md:p-8 flex-1 flex flex-col">
+                      <div className="p-6 md:p-8 flex-1 flex flex-col relative z-20">
                         <h3 className="font-black text-2xl text-zinc-900 dark:text-white mb-5 tracking-tight">{room.name}</h3>
                         <div className="flex flex-wrap gap-2 mb-6">
                           <span className="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-400 text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full flex items-center"><Wifi className="h-3 w-3 mr-1.5 text-zinc-500"/> Free WiFi</span>
@@ -993,7 +992,6 @@ function PartnerHotelContent() {
         </main>
       </div>
 
-      {/* FULLSCREEN PHOTO SLIDER MODAL */}
       {viewingPhotosFor && viewingPhotosFor.imageUrls && (
         <div className="fixed inset-0 bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center z-[100] animate-in fade-in duration-300">
           <div className="absolute top-0 w-full p-6 md:p-8 flex justify-between items-center z-10 bg-gradient-to-b from-black/80 to-transparent">
@@ -1010,7 +1008,6 @@ function PartnerHotelContent() {
             <button onClick={handlePrevPhoto} className="absolute left-4 md:left-8 bg-white/10 hover:bg-white/20 text-white p-3 md:p-4 rounded-full backdrop-blur-md transition-all hover:scale-110 active:scale-95 z-10 border border-white/10">
               <ChevronLeft className="h-6 w-6 md:h-8 md:w-8" />
             </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={viewingPhotosFor.imageUrls[currentPhotoIndex]} alt={`Photo ${currentPhotoIndex + 1}`} className="max-h-[70vh] w-auto object-contain rounded-[2rem] shadow-[0_0_50px_rgba(0,0,0,0.5)] animate-in zoom-in-95 duration-200 border border-white/10" />
             <button onClick={handleNextPhoto} className="absolute right-4 md:right-8 bg-white/10 hover:bg-white/20 text-white p-3 md:p-4 rounded-full backdrop-blur-md transition-all hover:scale-110 active:scale-95 z-10 border border-white/10">
               <ChevronRight className="h-6 w-6 md:h-8 md:w-8" />
@@ -1020,7 +1017,6 @@ function PartnerHotelContent() {
           <div className="h-28 w-full bg-black/80 p-5 flex justify-center gap-3 overflow-x-auto custom-scrollbar border-t border-white/10 backdrop-blur-md">
             {viewingPhotosFor.imageUrls.map((url, idx) => (
               <button key={idx} onClick={() => setCurrentPhotoIndex(idx)} className={`h-full w-24 shrink-0 rounded-xl overflow-hidden transition-all border-2 ${currentPhotoIndex === idx ? 'border-emerald-500 opacity-100 scale-105 shadow-[0_0_15px_rgba(16,185,129,0.3)]' : 'border-transparent opacity-40 hover:opacity-70'}`}>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={url} alt="Thumbnail" className="h-full w-full object-cover" />
               </button>
             ))}
@@ -1028,7 +1024,6 @@ function PartnerHotelContent() {
         </div>
       )}
 
-      {/* SECURE RAZORPAY BOOKING MODAL (FINTECH) */}
       {selectedRoom && (
         <div className="fixed inset-0 bg-zinc-900/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[100] animate-in fade-in duration-200">
           <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] p-8 md:p-10 w-full max-w-[500px] shadow-2xl relative border border-transparent dark:border-zinc-800 animate-in zoom-in-95 duration-300">
@@ -1061,7 +1056,6 @@ function PartnerHotelContent() {
                 )}
 
                 <div className="bg-zinc-50 dark:bg-zinc-900/50 p-5 rounded-2xl border border-zinc-200 dark:border-zinc-800 mb-8 flex items-center gap-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={selectedRoom.imageUrls?.[0] || selectedRoom.imageUrl} alt="Room" className="h-16 w-16 rounded-xl object-cover shadow-sm" />
                   <div className="min-w-0">
                     <p className="font-bold text-zinc-900 dark:text-white truncate text-base">{selectedRoom.name}</p>
@@ -1133,13 +1127,11 @@ function PartnerHotelContent() {
         </div>
       )}
 
-      {/* ✨ HOTEL CHAT DRAWER */}
       {isChatOpen && (
         <div className="fixed inset-0 z-[110] flex justify-end">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm transition-opacity" onClick={() => setIsChatOpen(false)}></div>
           <div className="relative w-full max-w-md bg-zinc-950 h-full border-l border-zinc-800 flex flex-col shadow-2xl animate-in slide-in-from-right duration-300">
             
-            {/* Header */}
             <div className="h-24 border-b border-zinc-800 flex items-center justify-between px-6 bg-zinc-900/80 backdrop-blur-md shrink-0">
               <div className="flex items-center gap-4">
                 <div className="h-12 w-12 bg-emerald-500/10 text-emerald-500 rounded-full flex items-center justify-center border border-emerald-500/20 shadow-sm">
@@ -1155,7 +1147,6 @@ function PartnerHotelContent() {
               <button onClick={() => setIsChatOpen(false)} className="h-10 w-10 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-full flex items-center justify-center transition-colors active:scale-95 border border-zinc-800"><X className="h-5 w-5" /></button>
             </div>
 
-            {/* Messages Feed */}
             <div className="flex-1 overflow-y-auto p-6 custom-scrollbar flex flex-col gap-4 bg-zinc-950 relative">
               {chatMessages.length === 0 ? (
                 <div className="h-full flex flex-col items-center justify-center text-zinc-500 opacity-70 z-10">
@@ -1184,7 +1175,6 @@ function PartnerHotelContent() {
               )}
             </div>
 
-            {/* Input Form */}
             <form onSubmit={handleSendHotelMessage} className="p-5 border-t border-zinc-800 bg-zinc-900/80 backdrop-blur-md flex gap-3 shrink-0 z-10">
                <input 
                  value={chatInput} 

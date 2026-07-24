@@ -53,6 +53,9 @@ export default function FlightsPage() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
+  // --- CUSTOM UI ALERT STATE ---
+  const [alertData, setAlertData] = useState<{ message: string; type: "success" | "error" | "info" } | null>(null);
+
   const [activeTab, setActiveTab] = useState<"book" | "my_bookings">("book");
   const [myFlights, setMyFlights] = useState<any[]>([]);
   const [viewingTicket, setViewingTicket] = useState<any>(null);
@@ -90,6 +93,14 @@ export default function FlightsPage() {
   const [generatedPnr, setGeneratedPnr] = useState("");
   const [isPdfGenerating, setIsPdfGenerating] = useState(false);
   const [isEmailSending, setIsEmailSending] = useState(false);
+
+  // --- CUSTOM ALERT HELPER FUNCTION ---
+  const showAlert = (message: string, type: "success" | "error" | "info" = "info") => {
+    setAlertData({ message, type });
+    setTimeout(() => {
+      setAlertData(null);
+    }, 5000); 
+  };
 
   useEffect(() => {
     const oName = sessionStorage.getItem("wh_flight_origin_name");
@@ -252,10 +263,12 @@ export default function FlightsPage() {
     }
 
     if (!resolvedOriginCode || !resolvedDestCode || !flightDate) {
-      return alert("Please select origin and destination from suggestions, and specify departure date.");
+      return showAlert("Please select origin and destination from suggestions, and specify departure date.", "error");
     }
 
-    if (tripType === "roundtrip" && !returnDate) return alert("Please select a return date.");
+    if (tripType === "roundtrip" && !returnDate) {
+      return showAlert("Please select a return date.", "error");
+    }
     
     setIsFlightLoading(true); setHasSearched(true); setFlightResults([]); setBookingStep("SEARCH");
     
@@ -272,7 +285,7 @@ export default function FlightsPage() {
       setFlightResults(data);
     } catch (err) {
       console.error(err);
-      alert("Flight search failed. Ensure you selected a valid airport location.");
+      showAlert("Flight search failed. Ensure you selected a valid airport location.", "error");
     } finally {
       setIsFlightLoading(false);
     }
@@ -287,7 +300,7 @@ export default function FlightsPage() {
     e.preventDefault();
 
     const isScriptLoaded = await loadRazorpayScript();
-    if (!isScriptLoaded) return alert("Razorpay SDK failed to load. Check your internet connection.");
+    if (!isScriptLoaded) return showAlert("Razorpay SDK failed to load. Check your internet connection.", "error");
 
     const amountInINR = convertUSDToINR(selectedOffer.total_amount);
     const amountInPaise = amountInINR * 100;
@@ -298,7 +311,7 @@ export default function FlightsPage() {
         body: JSON.stringify({ amount: amountInPaise })
       });
       const orderData = await orderRes.json();
-      if (orderData.error) return alert("Error creating Razorpay Order: " + orderData.error);
+      if (orderData.error) return showAlert("Error creating Razorpay Order: " + orderData.error, "error");
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_SZpnRvlSEBfADP",
@@ -364,7 +377,7 @@ export default function FlightsPage() {
 
     } catch (err) {
       console.error(err);
-      alert("Payment initialization failed.");
+      showAlert("Payment initialization failed.", "error");
     }
   };
 
@@ -387,7 +400,7 @@ export default function FlightsPage() {
       pdf.save(`WanderHub_Ticket_${filename}.pdf`);
     } catch (error) {
       console.error("PDF Generation Failed:", error);
-      alert("Failed to generate PDF.");
+      showAlert("Failed to generate PDF.", "error");
     } finally {
       setIsPdfGenerating(false);
     }
@@ -438,10 +451,10 @@ export default function FlightsPage() {
         throw new Error(data.error || `Server Error: ${res.status}`);
       }
       
-      alert(`Success! Detailed E-Ticket emailed to ${contactEmail}`);
+      showAlert(`Success! Detailed E-Ticket emailed to ${contactEmail}`, "success");
     } catch (error: any) {
       console.error("Email Failed:", error);
-      alert(`Failed to send email: ${error.message}. Please check your server logs.`);
+      showAlert(`Failed to send email: ${error.message}. Please check your server logs.`, "error");
     } finally {
       setIsEmailSending(false);
     }
@@ -460,8 +473,27 @@ export default function FlightsPage() {
   }
 
   return (
-    <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden selection:bg-emerald-500/20 transition-colors duration-300">
+    <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden selection:bg-emerald-500/20 transition-colors duration-300 relative">
       
+      {/* --- UI ALERT BOX --- */}
+      {alertData && (
+        <div className="fixed top-6 right-6 z-[200] animate-in slide-in-from-top-4 fade-in duration-300">
+          <div className={`flex items-center gap-3 px-5 py-4 rounded-2xl shadow-2xl border backdrop-blur-xl ${
+            alertData.type === 'success' 
+              ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' 
+              : alertData.type === 'error'
+              ? 'bg-rose-50 dark:bg-rose-500/10 border-rose-500/20 text-rose-600 dark:text-rose-400'
+              : 'bg-zinc-50 dark:bg-zinc-900/10 border-zinc-200 dark:border-white/20 text-zinc-900 dark:text-white'
+          }`}>
+            {alertData.type === 'success' ? <CheckCircle2 className="h-5 w-5" /> : <AlertCircle className="h-5 w-5" />}
+            <p className="text-sm font-bold tracking-tight">{alertData.message}</p>
+            <button onClick={() => setAlertData(null)} className="ml-4 opacity-70 hover:opacity-100 transition-opacity">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       {isMobileMenuOpen && (
         <div className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-md z-40 md:hidden transition-opacity" onClick={() => setIsMobileMenuOpen(false)} />
       )}
@@ -584,8 +616,17 @@ export default function FlightsPage() {
                       const status = checkFlightStatus(flight);
 
                       return (
-                        <div key={flight.id} className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/50 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden group hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col">
-                          <div className={`bg-zinc-900 dark:bg-black px-8 py-6 flex justify-between items-center text-white relative overflow-hidden border-b border-zinc-800 ${status === 'EXPIRED' ? 'opacity-80 grayscale' : ''}`}>
+                        <div key={flight.id} 
+                          onMouseMove={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            e.currentTarget.style.setProperty('--x', `${e.clientX - rect.left}px`);
+                            e.currentTarget.style.setProperty('--y', `${e.clientY - rect.top}px`);
+                          }}
+                          className="bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/50 rounded-[2rem] shadow-sm hover:shadow-2xl transition-all duration-300 overflow-hidden group hover:border-zinc-300 dark:hover:border-zinc-700 flex flex-col relative"
+                        >
+                          <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 hidden dark:block z-0" style={{ background: `radial-gradient(600px circle at var(--x, 0) var(--y, 0), rgba(16, 185, 129, 0.08), transparent 40%)` }} />
+                          
+                          <div className={`relative z-10 bg-zinc-900 dark:bg-black px-8 py-6 flex justify-between items-center text-white overflow-hidden border-b border-zinc-800 ${status === 'EXPIRED' ? 'opacity-80 grayscale' : ''}`}>
                             <div className={`absolute right-0 top-0 w-32 h-32 rounded-full blur-[40px] ${status === 'ACTIVE' ? 'bg-emerald-500/20' : 'bg-zinc-500/20'}`}></div>
                             <div className="relative z-10">
                               <p className="text-[9px] font-bold uppercase tracking-widest text-zinc-400 mb-1 flex items-center">
@@ -601,7 +642,7 @@ export default function FlightsPage() {
                             </div>
                           </div>
                           
-                          <div className={`p-8 flex-1 flex flex-col ${status === 'EXPIRED' ? 'opacity-70' : ''}`}>
+                          <div className={`relative z-10 p-8 flex-1 flex flex-col ${status === 'EXPIRED' ? 'opacity-70' : ''}`}>
                             <div className="flex justify-between items-center mb-8">
                               <div className="flex-1">
                                 <p className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">{flight.location.split('➔')[0].trim()}</p>
@@ -630,7 +671,7 @@ export default function FlightsPage() {
                             <div className="mt-auto">
                               <button 
                                 onClick={() => setViewingTicket(flight)}
-                                className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-6 py-3.5 rounded-full font-bold text-xs uppercase tracking-widest transition-opacity hover:opacity-90 active:scale-95 flex items-center justify-center"
+                                className="w-full bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-6 py-3.5 rounded-full font-bold text-xs uppercase tracking-widest transition-opacity hover:opacity-90 active:scale-95 flex items-center justify-center relative z-20"
                               >
                                 <Ticket className="h-4 w-4 mr-2" /> View Ticket
                               </button>
@@ -648,7 +689,17 @@ export default function FlightsPage() {
               <div className="relative z-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-[3rem] transform -rotate-1 opacity-5 dark:opacity-10 blur-xl"></div>
                 
-                <div className="bg-white dark:bg-zinc-900/80 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-12 border border-zinc-200 dark:border-zinc-800 shadow-2xl relative overflow-visible">
+                <div 
+                  onMouseMove={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    e.currentTarget.style.setProperty('--x', `${e.clientX - rect.left}px`);
+                    e.currentTarget.style.setProperty('--y', `${e.clientY - rect.top}px`);
+                  }}
+                  className="group bg-white dark:bg-zinc-900/80 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-12 border border-zinc-200 dark:border-zinc-800 shadow-2xl relative overflow-visible"
+                >
+                  <div className="pointer-events-none absolute inset-0 rounded-[2.5rem] overflow-hidden z-0">
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 hidden dark:block" style={{ background: `radial-gradient(1000px circle at var(--x, 0) var(--y, 0), rgba(16, 185, 129, 0.08), transparent 40%)` }} />
+                  </div>
                   
                   <div className="relative z-10">
                     <div className="flex items-center gap-5 mb-10 border-b border-zinc-100 dark:border-zinc-800 pb-8">
@@ -671,14 +722,14 @@ export default function FlightsPage() {
                           <button type="button" onClick={() => setTripType("roundtrip")} className={`px-5 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${tripType === "roundtrip" ? "bg-white dark:bg-zinc-800 shadow-sm text-zinc-900 dark:text-white" : "text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"}`}>Round Trip</button>
                         </div>
 
-                        <div className="flex items-center bg-white dark:bg-zinc-900 rounded-full border border-zinc-200 dark:border-zinc-800 px-5 group shadow-sm transition-colors hover:border-zinc-300 dark:hover:border-zinc-700">
-                          <Users className="h-4 w-4 text-zinc-400 mr-2 group-focus-within:text-emerald-500 transition-colors" />
+                        <div className="flex items-center bg-white dark:bg-zinc-900 rounded-full border border-zinc-200 dark:border-zinc-800 px-5 shadow-sm transition-colors focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500">
+                          <Users className="h-4 w-4 text-zinc-400 mr-2 transition-colors" />
                           <select value={passengers} onChange={(e) => setPassengers(Number(e.target.value))} className="bg-transparent text-xs font-bold text-zinc-900 dark:text-white outline-none cursor-pointer py-3 appearance-none">
                             {[1, 2, 3, 4, 5, 6].map(num => <option key={num} value={num} className="text-zinc-900 dark:text-white bg-white dark:bg-zinc-900">{num} Traveler{num > 1 ? 's' : ''}</option>)}
                           </select>
                         </div>
 
-                        <div className="flex items-center bg-white dark:bg-zinc-900 rounded-full border border-zinc-200 dark:border-zinc-800 px-5 group shadow-sm transition-colors hover:border-zinc-300 dark:hover:border-zinc-700">
+                        <div className="flex items-center bg-white dark:bg-zinc-900 rounded-full border border-zinc-200 dark:border-zinc-800 px-5 shadow-sm transition-colors focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500">
                           <select value={cabinClass} onChange={(e) => setCabinClass(e.target.value)} className="bg-transparent text-xs font-bold text-zinc-900 dark:text-white outline-none cursor-pointer py-3 uppercase tracking-widest appearance-none">
                             <option value="economy" className="text-zinc-900 dark:text-white bg-white dark:bg-zinc-900">Economy</option>
                             <option value="premium_economy" className="text-zinc-900 dark:text-white bg-white dark:bg-zinc-900">Premium Econ</option>
@@ -690,8 +741,8 @@ export default function FlightsPage() {
 
                       <div className="bg-zinc-50 dark:bg-zinc-950 p-3 md:p-4 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 flex flex-col md:flex-row gap-3 items-center shadow-inner relative">
                         
-                        <div className="relative flex-1 w-full group bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
-                          <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none"><MapPin className="h-4 w-4 text-zinc-400 group-focus-within:text-emerald-500 transition-colors" /></div>
+                        <div className="relative flex-1 w-full bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-colors">
+                          <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none"><MapPin className="h-4 w-4 text-zinc-400 transition-colors" /></div>
                           <input 
                             type="text" 
                             value={originInput} 
@@ -725,8 +776,8 @@ export default function FlightsPage() {
                           <ArrowRightLeft className="h-4 w-4 md:rotate-0 rotate-90" />
                         </div>
 
-                        <div className="relative flex-1 w-full group bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
-                          <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none"><MapPin className="h-4 w-4 text-zinc-400 group-focus-within:text-emerald-500 transition-colors" /></div>
+                        <div className="relative flex-1 w-full bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-colors">
+                          <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none"><MapPin className="h-4 w-4 text-zinc-400 transition-colors" /></div>
                           <input 
                             type="text" 
                             value={destInput} 
@@ -756,151 +807,159 @@ export default function FlightsPage() {
                           )}
                         </div>
 
-                        <div className="relative flex-1 w-full group bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors">
-                          <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none"><Calendar className="h-4 w-4 text-zinc-400 group-focus-within:text-emerald-500 transition-colors" /></div>
+                        <div className="relative flex-1 w-full bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-colors">
+                          <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none"><Calendar className="h-4 w-4 text-zinc-400 transition-colors" /></div>
                           <input type="date" value={flightDate} onChange={(e)=>setFlightDate(e.target.value)} className="w-full bg-transparent border-none py-4 pl-12 pr-4 text-sm font-bold outline-none text-zinc-900 dark:text-white dark:[color-scheme:dark]" required />
                         </div>
 
                         {tripType === "roundtrip" && (
-                          <div className="relative flex-1 w-full group bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 hover:border-zinc-300 dark:hover:border-zinc-700 transition-colors animate-in slide-in-from-right-4 duration-300">
-                            <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none"><Calendar className="h-4 w-4 text-zinc-400 group-focus-within:text-emerald-500 transition-colors" /></div>
+                          <div className="relative flex-1 w-full bg-white dark:bg-zinc-900 rounded-[1.5rem] border border-zinc-200 dark:border-zinc-800 focus-within:border-emerald-500 focus-within:ring-1 focus-within:ring-emerald-500 transition-colors animate-in slide-in-from-right-4 duration-300">
+                            <div className="absolute inset-y-0 left-5 flex items-center pointer-events-none"><Calendar className="h-4 w-4 text-zinc-400 transition-colors" /></div>
                             <input type="date" value={returnDate} onChange={(e)=>setReturnDate(e.target.value)} className="w-full bg-transparent border-none py-4 pl-12 pr-4 text-sm font-bold outline-none text-zinc-900 dark:text-white dark:[color-scheme:dark]" required />
                           </div>
                         )}
 
-                        <button type="submit" disabled={isFlightLoading} className="w-full md:w-auto h-full bg-emerald-500 text-zinc-950 px-10 py-4 md:py-0 rounded-[1.5rem] font-bold text-xs uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center justify-center shrink-0 active:scale-95 disabled:opacity-50">
+                        <button type="submit" disabled={isFlightLoading} className="w-full md:w-auto h-full bg-emerald-500 text-zinc-950 px-10 py-4 md:py-0 rounded-[1.5rem] font-bold text-xs uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] flex items-center justify-center shrink-0 active:scale-95 disabled:opacity-50 relative z-20">
                           {isFlightLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Search"}
                         </button>
                       </div>
                     </form>
-
-                    {isFlightLoading && (
-                      <div className="mt-12 py-16 animate-in fade-in duration-500 bg-white/40 dark:bg-zinc-950/40 backdrop-blur-2xl rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl">
-                        <TravelLoader 
-                          messages={[
-                            "Scanning Global Airlines...", 
-                            "Connecting to Duffel Sandbox...", 
-                            "Checking real-time seat capacity...", 
-                            "Finding the best routes..."
-                          ]} 
-                        />
-                      </div>
-                    )}
-
-                    {!isFlightLoading && hasSearched && flightResults.length === 0 && (
-                      <div className="mt-10 py-12 text-center bg-rose-50 dark:bg-rose-500/10 rounded-3xl border border-rose-100 dark:border-rose-500/20">
-                        <p className="text-rose-600 dark:text-rose-400 font-bold text-sm">No flights found. Try selecting different locations or dates.</p>
-                      </div>
-                    )}
-
-                    {!isFlightLoading && flightResults.length > 0 && (
-                      <div className="mt-12 space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
-                        <div className="flex items-center justify-between px-2 mb-4 border-b border-zinc-100 dark:border-zinc-800 pb-2">
-                          <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Live Inventory</p>
-                          <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-100 dark:border-emerald-500/20">{flightResults.length} Offers Available</p>
-                        </div>
-                        
-                        {flightResults.map((offer: any) => {
-                          const inrAmount = convertUSDToINR(offer.total_amount);
-                          const originalInrAmount = tripType === "roundtrip" ? Math.round(inrAmount * 1.15) : null;
-                          
-                          return (
-                            <div key={offer.id} className="group bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/50 rounded-[2rem] p-6 md:p-8 flex flex-col lg:flex-row lg:items-center justify-between hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-2xl transition-all duration-300 relative overflow-hidden">
-                              
-                              {tripType === "roundtrip" && (
-                                <div className="absolute top-0 right-0 bg-emerald-500 text-zinc-950 text-[8px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-bl-2xl flex items-center shadow-sm">
-                                  <Tag className="h-3 w-3 mr-1.5" /> 15% Round-Trip Saver
-                                </div>
-                              )}
-
-                              <div className="flex items-center gap-5 lg:w-1/4 mb-8 lg:mb-0">
-                                <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-inner shrink-0">
-                                  {offer.owner.logo_symbol_url ? (
-                                    <img src={offer.owner.logo_symbol_url} alt={offer.owner.name} className="h-10 w-10 object-contain filter drop-shadow-sm" />
-                                  ) : (
-                                    <Plane className="h-8 w-8 text-zinc-400" />
-                                  )}
-                                </div>
-                                <div className="min-w-0">
-                                  <p className="text-xl font-black text-zinc-900 dark:text-white leading-tight tracking-tight mb-2 truncate">{offer.owner.name}</p>
-                                  <div className="flex flex-col gap-2">
-                                    {offer.slices.map((s: any, i: number) => (
-                                      <div key={i} className="flex items-center gap-2">
-                                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest border border-zinc-200 dark:border-zinc-700 px-2 py-0.5 rounded-md bg-zinc-50 dark:bg-zinc-950 whitespace-nowrap">
-                                          {s.segments[0].marketing_carrier_flight_number}
-                                        </p>
-                                        {s.segments[0].available_capacity < 5 && (
-                                           <span className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-md flex items-center border border-rose-100 dark:border-rose-500/20 whitespace-nowrap">
-                                             <AlertCircle className="h-3 w-3 mr-1"/> {s.segments[0].available_capacity} Left
-                                           </span>
-                                        )}
-                                      </div>
-                                    ))}
-                                    <div className="flex items-center text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">
-                                      <Briefcase className="h-3 w-3 mr-1.5" /> 7kg Cabin • 23kg Checked
-                                    </div>
-                                  </div>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col flex-1 px-0 lg:px-12 mb-8 lg:mb-0 relative gap-6 justify-center">
-                                {offer.slices.map((slice: any, sIdx: number) => {
-                                  const segment = slice.segments[0];
-                                  return (
-                                    <div key={sIdx} className="flex items-center justify-between w-full">
-                                      <div className="text-center w-24">
-                                        <p className="text-2xl md:text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">{formatFlightTime(segment.departing_at)}</p>
-                                        <p className="text-[10px] font-bold text-zinc-500 mt-1 uppercase tracking-widest">{slice.origin.iata_code} {sIdx === 1 && '(Return)'}</p>
-                                      </div>
-                                      
-                                      <div className="flex-1 px-4 md:px-6 flex flex-col items-center relative">
-                                        <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-2 bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-full z-10 border border-zinc-200 dark:border-zinc-700">
-                                          {slice.duration.replace('PT','').replace('H','h ').replace('M','m')}
-                                        </p>
-                                        <div className="w-full border-t border-dashed border-zinc-300 dark:border-zinc-700 relative flex items-center justify-center">
-                                           <div className="absolute h-2 w-2 rounded-full bg-zinc-300 dark:bg-zinc-600 left-0 -translate-x-1/2"></div>
-                                           <Plane className={`h-4 w-4 text-zinc-300 dark:text-zinc-600 absolute bg-white dark:bg-zinc-900 px-1 ${sIdx === 1 ? '-scale-x-100' : ''}`} />
-                                           <div className="absolute h-2 w-2 rounded-full bg-zinc-300 dark:bg-zinc-600 right-0 translate-x-1/2"></div>
-                                        </div>
-                                        <p className="text-[9px] font-bold text-zinc-400 mt-2 uppercase tracking-widest">{cabinClass}</p>
-                                      </div>
-
-                                      <div className="text-center w-24">
-                                        <p className="text-2xl md:text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">{formatFlightTime(segment.arriving_at)}</p>
-                                        <p className="text-[10px] font-bold text-zinc-500 mt-1 uppercase tracking-widest">{slice.destination.iata_code}</p>
-                                      </div>
-                                    </div>
-                                  );
-                                })}
-                              </div>
-
-                              <div className="lg:w-1/4 flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-center border-t lg:border-t-0 lg:border-l border-zinc-100 dark:border-zinc-800 pt-5 lg:pt-0 lg:pl-8">
-                                <div className="text-left lg:text-right">
-                                  <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center justify-end">
-                                    <Users className="h-3 w-3 mr-1"/> For {passengers} Traveler{passengers > 1 ? 's' : ''}
-                                  </p>
-                                  {originalInrAmount && (
-                                    <p className="text-xs font-black text-zinc-400 line-through decoration-rose-500/50">{symbol} {originalInrAmount.toLocaleString()}</p>
-                                  )}
-                                  <p className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">
-                                    {symbol} {inrAmount.toLocaleString()}
-                                  </p>
-                                </div>
-                                <button 
-                                   onClick={() => handleBookClick(offer)} 
-                                   className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-8 py-3.5 rounded-full text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-opacity shadow-md mt-0 lg:mt-4 active:scale-95"
-                                >
-                                  Book Seat
-                                </button>
-                              </div>
-
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
                   </div>
                 </div>
+
+                {isFlightLoading && (
+                  <div className="mt-12 py-16 animate-in fade-in duration-500 bg-white/40 dark:bg-zinc-950/40 backdrop-blur-2xl rounded-[2.5rem] border border-zinc-200 dark:border-zinc-800 shadow-xl">
+                    <TravelLoader 
+                      messages={[
+                        "Scanning Global Airlines...", 
+                        "Connecting to Duffel Sandbox...", 
+                        "Checking real-time seat capacity...", 
+                        "Finding the best routes..."
+                      ]} 
+                    />
+                  </div>
+                )}
+
+                {!isFlightLoading && hasSearched && flightResults.length === 0 && (
+                  <div className="mt-10 py-12 text-center bg-rose-50 dark:bg-rose-500/10 rounded-3xl border border-rose-100 dark:border-rose-500/20">
+                    <p className="text-rose-600 dark:text-rose-400 font-bold text-sm">No flights found. Try selecting different locations or dates.</p>
+                  </div>
+                )}
+
+                {!isFlightLoading && flightResults.length > 0 && (
+                  <div className="mt-12 space-y-6 animate-in fade-in slide-in-from-bottom-8 duration-700">
+                    <div className="flex items-center justify-between px-2 mb-4 border-b border-zinc-100 dark:border-zinc-800 pb-2">
+                      <p className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Live Inventory</p>
+                      <p className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-widest bg-emerald-50 dark:bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-100 dark:border-emerald-500/20">{flightResults.length} Offers Available</p>
+                    </div>
+                    
+                    {flightResults.map((offer: any) => {
+                      const inrAmount = convertUSDToINR(offer.total_amount);
+                      const originalInrAmount = tripType === "roundtrip" ? Math.round(inrAmount * 1.15) : null;
+                      
+                      return (
+                        <div key={offer.id} 
+                          onMouseMove={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            e.currentTarget.style.setProperty('--x', `${e.clientX - rect.left}px`);
+                            e.currentTarget.style.setProperty('--y', `${e.clientY - rect.top}px`);
+                          }}
+                          className="group bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/50 rounded-[2rem] p-6 md:p-8 flex flex-col lg:flex-row lg:items-center justify-between hover:border-zinc-400 dark:hover:border-zinc-600 hover:shadow-2xl transition-all duration-300 relative overflow-hidden"
+                        >
+                          <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 hidden dark:block z-0" style={{ background: `radial-gradient(800px circle at var(--x, 0) var(--y, 0), rgba(16, 185, 129, 0.08), transparent 40%)` }} />
+                          
+                          {tripType === "roundtrip" && (
+                            <div className="absolute top-0 right-0 bg-emerald-500 text-zinc-950 text-[8px] font-bold uppercase tracking-widest px-4 py-1.5 rounded-bl-2xl flex items-center shadow-sm z-10">
+                              <Tag className="h-3 w-3 mr-1.5" /> 15% Round-Trip Saver
+                            </div>
+                          )}
+
+                          <div className="relative z-10 flex items-center gap-5 lg:w-1/4 mb-8 lg:mb-0">
+                            <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex items-center justify-center border border-zinc-200 dark:border-zinc-700 shadow-inner shrink-0">
+                              {offer.owner.logo_symbol_url ? (
+                                <img src={offer.owner.logo_symbol_url} alt={offer.owner.name} className="h-10 w-10 object-contain filter drop-shadow-sm" />
+                              ) : (
+                                <Plane className="h-8 w-8 text-zinc-400" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xl font-black text-zinc-900 dark:text-white leading-tight tracking-tight mb-2 truncate">{offer.owner.name}</p>
+                              <div className="flex flex-col gap-2">
+                                {offer.slices.map((s: any, i: number) => (
+                                  <div key={i} className="flex items-center gap-2">
+                                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest border border-zinc-200 dark:border-zinc-700 px-2 py-0.5 rounded-md bg-zinc-50 dark:bg-zinc-950 whitespace-nowrap">
+                                      {s.segments[0].marketing_carrier_flight_number}
+                                    </p>
+                                    {s.segments[0].available_capacity < 5 && (
+                                       <span className="text-[10px] font-bold text-rose-500 bg-rose-50 dark:bg-rose-500/10 px-2 py-0.5 rounded-md flex items-center border border-rose-100 dark:border-rose-500/20 whitespace-nowrap">
+                                         <AlertCircle className="h-3 w-3 mr-1"/> {s.segments[0].available_capacity} Left
+                                       </span>
+                                    )}
+                                  </div>
+                                ))}
+                                <div className="flex items-center text-[10px] font-bold text-zinc-400 uppercase tracking-widest mt-1">
+                                  <Briefcase className="h-3 w-3 mr-1.5" /> 7kg Cabin • 23kg Checked
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="relative z-10 flex flex-col flex-1 px-0 lg:px-12 mb-8 lg:mb-0 gap-6 justify-center">
+                            {offer.slices.map((slice: any, sIdx: number) => {
+                              const segment = slice.segments[0];
+                              return (
+                                <div key={sIdx} className="flex items-center justify-between w-full">
+                                  <div className="text-center w-24">
+                                    <p className="text-2xl md:text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">{formatFlightTime(segment.departing_at)}</p>
+                                    <p className="text-[10px] font-bold text-zinc-500 mt-1 uppercase tracking-widest">{slice.origin.iata_code} {sIdx === 1 && '(Return)'}</p>
+                                  </div>
+                                  
+                                  <div className="flex-1 px-4 md:px-6 flex flex-col items-center relative">
+                                    <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest mb-2 bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-full z-10 border border-zinc-200 dark:border-zinc-700">
+                                      {slice.duration.replace('PT','').replace('H','h ').replace('M','m')}
+                                    </p>
+                                    <div className="w-full border-t border-dashed border-zinc-300 dark:border-zinc-700 relative flex items-center justify-center">
+                                       <div className="absolute h-2 w-2 rounded-full bg-zinc-300 dark:bg-zinc-600 left-0 -translate-x-1/2"></div>
+                                       <Plane className={`h-4 w-4 text-zinc-300 dark:text-zinc-600 absolute bg-white dark:bg-zinc-900 px-1 ${sIdx === 1 ? '-scale-x-100' : ''}`} />
+                                       <div className="absolute h-2 w-2 rounded-full bg-zinc-300 dark:bg-zinc-600 right-0 translate-x-1/2"></div>
+                                    </div>
+                                    <p className="text-[9px] font-bold text-zinc-400 mt-2 uppercase tracking-widest">{cabinClass}</p>
+                                  </div>
+
+                                  <div className="text-center w-24">
+                                    <p className="text-2xl md:text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">{formatFlightTime(segment.arriving_at)}</p>
+                                    <p className="text-[10px] font-bold text-zinc-500 mt-1 uppercase tracking-widest">{slice.destination.iata_code}</p>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div className="relative z-10 lg:w-1/4 flex flex-row lg:flex-col items-center lg:items-end justify-between lg:justify-center border-t lg:border-t-0 lg:border-l border-zinc-100 dark:border-zinc-800 pt-5 lg:pt-0 lg:pl-8">
+                            <div className="text-left lg:text-right">
+                              <p className="text-[9px] font-bold text-zinc-400 uppercase tracking-widest mb-1 flex items-center justify-end">
+                                <Users className="h-3 w-3 mr-1"/> For {passengers} Traveler{passengers > 1 ? 's' : ''}
+                              </p>
+                              {originalInrAmount && (
+                                <p className="text-xs font-black text-zinc-400 line-through decoration-rose-500/50">{symbol} {originalInrAmount.toLocaleString()}</p>
+                              )}
+                              <p className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">
+                                {symbol} {inrAmount.toLocaleString()}
+                              </p>
+                            </div>
+                            <button 
+                               onClick={() => handleBookClick(offer)} 
+                               className="bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-8 py-3.5 rounded-full text-[10px] font-bold uppercase tracking-widest hover:opacity-90 transition-opacity shadow-md mt-0 lg:mt-4 active:scale-95"
+                            >
+                              Book Seat
+                            </button>
+                          </div>
+
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             )}
 
@@ -908,87 +967,109 @@ export default function FlightsPage() {
               <div className="relative z-10 animate-in slide-in-from-right-10 duration-500">
                 <div className="absolute inset-0 bg-gradient-to-r from-emerald-500 to-teal-500 rounded-[3rem] transform -rotate-1 opacity-5 dark:opacity-10 blur-xl"></div>
                 
-                <div className="bg-white dark:bg-zinc-900/80 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-12 border border-zinc-200 dark:border-zinc-800 shadow-2xl relative overflow-hidden">
-                  <button onClick={() => setBookingStep("SEARCH")} className="text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-white mb-10 flex items-center transition-colors active:scale-95">&larr; Back to Flights</button>
+                <div 
+                  onMouseMove={(e) => {
+                    const rect = e.currentTarget.getBoundingClientRect();
+                    e.currentTarget.style.setProperty('--x', `${e.clientX - rect.left}px`);
+                    e.currentTarget.style.setProperty('--y', `${e.clientY - rect.top}px`);
+                  }}
+                  className="group bg-white dark:bg-zinc-900/80 backdrop-blur-xl rounded-[2.5rem] p-8 md:p-12 border border-zinc-200 dark:border-zinc-800 shadow-2xl relative overflow-hidden"
+                >
+                  <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 hidden dark:block z-0" style={{ background: `radial-gradient(1000px circle at var(--x, 0) var(--y, 0), rgba(16, 185, 129, 0.06), transparent 40%)` }} />
                   
-                  <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-10 pb-8 border-b border-zinc-200 dark:border-zinc-800 gap-8">
-                    <div className="flex items-center gap-5">
-                      <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-full flex items-center justify-center shadow-inner border border-zinc-200 dark:border-zinc-700"><UserIcon className="h-7 w-7" /></div>
-                      <div>
-                        <h3 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter mb-1">Passenger Details</h3>
-                        <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Booking for {passengers} passenger{passengers > 1 ? 's' : ''} in {cabinClass}.</p>
-                      </div>
-                    </div>
-
-                    <div className="bg-zinc-50 dark:bg-zinc-950 p-4 md:p-5 rounded-3xl border border-zinc-200 dark:border-zinc-800 shrink-0">
-                      <label className="text-[9px] font-bold uppercase text-zinc-500 tracking-widest block mb-2 pl-1">Attach to Itinerary (Optional)</label>
-                      <div className="relative flex items-center group">
-                        <MapIcon className="absolute left-4 h-4 w-4 text-zinc-400 pointer-events-none group-focus-within:text-emerald-500 transition-colors" />
-                        <select 
-                          value={selectedTripId} 
-                          onChange={(e) => setSelectedTripId(e.target.value)}
-                          className="appearance-none bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-full pl-11 pr-10 py-3 text-xs font-bold uppercase tracking-widest text-zinc-900 dark:text-white outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer w-full min-w-[250px] shadow-sm transition-all"
-                        >
-                          <option value="" className="text-zinc-900 dark:text-white bg-white dark:bg-zinc-900">None</option>
-                          {trips.map(t => <option key={t.id} value={t.id} className="text-zinc-900 dark:text-white bg-white dark:bg-zinc-900">{t.title}</option>)}
-                        </select>
-                        <ChevronDown className="absolute right-4 h-4 w-4 text-zinc-400 pointer-events-none" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <form onSubmit={handlePaymentAndBooking} className="space-y-6">
-                    {passengerDetails.map((p, idx) => (
-                      <div key={idx} className="bg-zinc-50 dark:bg-zinc-950 p-6 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 space-y-6">
-                        <h4 className="text-sm font-bold uppercase tracking-widest text-zinc-900 dark:text-white flex items-center">
-                          <UserIcon className="h-4 w-4 mr-2 text-emerald-500" /> Passenger {idx + 1}
-                        </h4>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-2"><label className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest ml-1">First Name</label><input type="text" value={p.firstName} onChange={(e) => updatePassenger(idx, 'firstName', e.target.value)} className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-sm font-bold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors text-zinc-900 dark:text-white placeholder-zinc-400" required /></div>
-                          <div className="space-y-2"><label className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest ml-1">Last Name</label><input type="text" value={p.lastName} onChange={(e) => updatePassenger(idx, 'lastName', e.target.value)} className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-sm font-bold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors text-zinc-900 dark:text-white placeholder-zinc-400" required /></div>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest ml-1">Date of Birth</label>
-                            <input 
-                              type="date" 
-                              value={p.dob} 
-                              onChange={(e) => updatePassenger(idx, 'dob', e.target.value)} 
-                              className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-sm font-bold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors text-zinc-900 dark:text-white dark:[color-scheme:dark]" 
-                              required 
-                            />
-                            {p.age && <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest ml-1">Calculated Age: {p.age} years old</p>}
-                          </div>
-                          <div className="space-y-2">
-                            <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest ml-1">Gender</label>
-                            <select value={p.gender} onChange={(e) => updatePassenger(idx, 'gender', e.target.value)} className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-sm font-bold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors text-zinc-900 dark:text-white appearance-none cursor-pointer">
-                              <option value="m" className="text-zinc-900 dark:text-white bg-white dark:bg-zinc-900">Male</option>
-                              <option value="f" className="text-zinc-900 dark:text-white bg-white dark:bg-zinc-900">Female</option>
-                            </select>
-                          </div>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="relative z-10">
+                    <button onClick={() => setBookingStep("SEARCH")} className="text-xs font-bold uppercase tracking-widest text-zinc-400 hover:text-zinc-900 dark:hover:text-white mb-10 flex items-center transition-colors active:scale-95">&larr; Back to Flights</button>
                     
-                    <div className="space-y-2 pt-4">
-                      <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest ml-1">Contact Email for E-Tickets</label>
-                      <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-sm font-bold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors text-zinc-900 dark:text-white placeholder-zinc-400" required />
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between mb-10 pb-8 border-b border-zinc-200 dark:border-zinc-800 gap-8">
+                      <div className="flex items-center gap-5">
+                        <div className="h-16 w-16 bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white rounded-full flex items-center justify-center shadow-inner border border-zinc-200 dark:border-zinc-700"><UserIcon className="h-7 w-7" /></div>
+                        <div>
+                          <h3 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter mb-1">Passenger Details</h3>
+                          <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">Booking for {passengers} passenger{passengers > 1 ? 's' : ''} in {cabinClass}.</p>
+                        </div>
+                      </div>
+
+                      <div className="bg-zinc-50 dark:bg-zinc-950 p-4 md:p-5 rounded-3xl border border-zinc-200 dark:border-zinc-800 shrink-0">
+                        <label className="text-[9px] font-bold uppercase text-zinc-500 tracking-widest block mb-2 pl-1">Attach to Itinerary (Optional)</label>
+                        <div className="relative flex items-center focus-within:text-emerald-500 transition-colors">
+                          <MapIcon className="absolute left-4 h-4 w-4 text-zinc-400 pointer-events-none" />
+                          <select 
+                            value={selectedTripId} 
+                            onChange={(e) => setSelectedTripId(e.target.value)}
+                            className="appearance-none bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-700 rounded-full pl-11 pr-10 py-3 text-xs font-bold uppercase tracking-widest text-zinc-900 dark:text-white outline-none focus:ring-1 focus:ring-emerald-500 cursor-pointer w-full min-w-[250px] shadow-sm transition-all"
+                          >
+                            <option value="" className="text-zinc-900 dark:text-white bg-white dark:bg-zinc-900">None</option>
+                            {trips.map(t => <option key={t.id} value={t.id} className="text-zinc-900 dark:text-white bg-white dark:bg-zinc-900">{t.title}</option>)}
+                          </select>
+                          <ChevronDown className="absolute right-4 h-4 w-4 text-zinc-400 pointer-events-none" />
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="bg-zinc-50 dark:bg-zinc-950 rounded-[2rem] p-8 md:p-10 mt-12 flex flex-col md:flex-row justify-between items-center border border-zinc-200 dark:border-zinc-800 shadow-inner">
-                      <div className="mb-8 md:mb-0 text-center md:text-left">
-                        <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center justify-center md:justify-start">
-                           <Users className="h-3.5 w-3.5 mr-1.5"/> Total Amount ({passengers} {passengers > 1 ? 'Travelers' : 'Traveler'})
-                        </p>
-                        <p className="text-4xl md:text-5xl font-black text-zinc-900 dark:text-white tracking-tighter">
-                          {symbol} {convertUSDToINR(selectedOffer.total_amount).toLocaleString()}
-                        </p>
+                    <form onSubmit={handlePaymentAndBooking} className="space-y-6">
+                      {passengerDetails.map((p, idx) => (
+                        <div key={idx} 
+                          onMouseMove={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
+                            e.currentTarget.style.setProperty('--x', `${e.clientX - rect.left}px`);
+                            e.currentTarget.style.setProperty('--y', `${e.clientY - rect.top}px`);
+                          }}
+                          className="group/pass relative bg-zinc-50 dark:bg-zinc-950 p-6 rounded-[2rem] border border-zinc-200 dark:border-zinc-800 space-y-6 overflow-hidden"
+                        >
+                          <div className="pointer-events-none absolute inset-0 opacity-0 group-hover/pass:opacity-100 transition-opacity duration-500 hidden dark:block z-0" style={{ background: `radial-gradient(600px circle at var(--x, 0) var(--y, 0), rgba(16, 185, 129, 0.08), transparent 40%)` }} />
+                          
+                          <div className="relative z-10">
+                            <h4 className="text-sm font-bold uppercase tracking-widest text-zinc-900 dark:text-white flex items-center mb-6">
+                              <UserIcon className="h-4 w-4 mr-2 text-emerald-500" /> Passenger {idx + 1}
+                            </h4>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                              <div className="space-y-2"><label className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest ml-1">First Name</label><input type="text" value={p.firstName} onChange={(e) => updatePassenger(idx, 'firstName', e.target.value)} className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-sm font-bold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors text-zinc-900 dark:text-white placeholder-zinc-400 relative z-20" required /></div>
+                              <div className="space-y-2"><label className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest ml-1">Last Name</label><input type="text" value={p.lastName} onChange={(e) => updatePassenger(idx, 'lastName', e.target.value)} className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-sm font-bold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors text-zinc-900 dark:text-white placeholder-zinc-400 relative z-20" required /></div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                              <div className="space-y-2">
+                                <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest ml-1">Date of Birth</label>
+                                <input 
+                                  type="date" 
+                                  value={p.dob} 
+                                  onChange={(e) => updatePassenger(idx, 'dob', e.target.value)} 
+                                  className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-sm font-bold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors text-zinc-900 dark:text-white dark:[color-scheme:dark] relative z-20" 
+                                  required 
+                                />
+                                {p.age && <p className="text-[10px] font-bold text-emerald-500 uppercase tracking-widest ml-1">Calculated Age: {p.age} years old</p>}
+                              </div>
+                              <div className="space-y-2 relative z-20">
+                                <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest ml-1">Gender</label>
+                                <select value={p.gender} onChange={(e) => updatePassenger(idx, 'gender', e.target.value)} className="w-full bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-sm font-bold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors text-zinc-900 dark:text-white appearance-none cursor-pointer">
+                                  <option value="m" className="text-zinc-900 dark:text-white bg-white dark:bg-zinc-900">Male</option>
+                                  <option value="f" className="text-zinc-900 dark:text-white bg-white dark:bg-zinc-900">Female</option>
+                                </select>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                      
+                      <div className="space-y-2 pt-4 relative z-20">
+                        <label className="text-[10px] font-bold uppercase text-zinc-500 tracking-widest ml-1">Contact Email for E-Tickets</label>
+                        <input type="email" value={contactEmail} onChange={(e) => setContactEmail(e.target.value)} className="w-full bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-800 rounded-2xl p-4 text-sm font-bold outline-none focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 transition-colors text-zinc-900 dark:text-white placeholder-zinc-400" required />
                       </div>
-                      <button type="submit" className="w-full md:w-auto bg-emerald-500 text-zinc-950 px-10 py-5 rounded-full font-bold text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:bg-emerald-400 transition-all active:scale-95 flex items-center justify-center">
-                        Secure Checkout &rarr;
-                      </button>
-                    </div>
-                  </form>
+
+                      <div className="bg-zinc-50 dark:bg-zinc-950 rounded-[2rem] p-8 md:p-10 mt-12 flex flex-col md:flex-row justify-between items-center border border-zinc-200 dark:border-zinc-800 shadow-inner relative z-20">
+                        <div className="mb-8 md:mb-0 text-center md:text-left">
+                          <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-2 flex items-center justify-center md:justify-start">
+                             <Users className="h-3.5 w-3.5 mr-1.5"/> Total Amount ({passengers} {passengers > 1 ? 'Travelers' : 'Traveler'})
+                          </p>
+                          <p className="text-4xl md:text-5xl font-black text-zinc-900 dark:text-white tracking-tighter">
+                            {symbol} {convertUSDToINR(selectedOffer.total_amount).toLocaleString()}
+                          </p>
+                        </div>
+                        <button type="submit" className="w-full md:w-auto bg-emerald-500 text-zinc-950 px-10 py-5 rounded-full font-bold text-xs uppercase tracking-widest shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:bg-emerald-400 transition-all active:scale-95 flex items-center justify-center">
+                          Secure Checkout &rarr;
+                        </button>
+                      </div>
+                    </form>
+                  </div>
                 </div>
               </div>
             )}

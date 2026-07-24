@@ -662,15 +662,23 @@ export default function HotelsPage() {
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 md:gap-8">
                   {displayedHotels.map(hotel => (
-                    <div key={hotel.id} className={`bg-white dark:bg-zinc-900/40 rounded-[2rem] border ${hotel.isExclusive ? 'border-emerald-500/50 shadow-emerald-500/10' : 'border-zinc-200 dark:border-zinc-800/50'} shadow-sm hover:shadow-2xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-300 overflow-hidden flex flex-col group relative hover:-translate-y-2`}>
+                    <div key={hotel.id} 
+                      onMouseMove={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        e.currentTarget.style.setProperty('--x', `${e.clientX - rect.left}px`);
+                        e.currentTarget.style.setProperty('--y', `${e.clientY - rect.top}px`);
+                      }}
+                      className={`bg-white dark:bg-zinc-900/40 rounded-[2rem] border ${hotel.isExclusive ? 'border-emerald-500/50 shadow-emerald-500/10' : 'border-zinc-200 dark:border-zinc-800/50'} shadow-sm hover:shadow-2xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all duration-300 overflow-hidden flex flex-col group relative hover:-translate-y-2`}
+                    >
+                      <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 z-10" style={{ background: `radial-gradient(400px circle at var(--x, 0) var(--y, 0), rgba(16, 185, 129, 0.08), transparent 40%)` }} />
                       
                       {hotel.isExclusive && (
-                        <div className="absolute top-4 right-4 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center shadow-lg z-10 border border-emerald-500/30">
+                        <div className="absolute top-4 right-4 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center shadow-lg z-20 border border-emerald-500/30">
                           <Sparkles className="h-3 w-3 mr-1.5 text-emerald-500" /> WanderHub Partner
                         </div>
                       )}
 
-                      <div className="h-64 bg-zinc-200 dark:bg-zinc-800 relative overflow-hidden">
+                      <div className="h-64 bg-zinc-200 dark:bg-zinc-800 relative overflow-hidden z-20">
                         <img 
                           src={hotel.imageUrl} 
                           alt={hotel.name} 
@@ -683,7 +691,7 @@ export default function HotelsPage() {
                         </div>
                       </div>
 
-                      <div className="p-6 flex-1 flex flex-col">
+                      <div className="p-6 flex-1 flex flex-col relative z-20">
                         <h4 className="font-bold text-xl text-zinc-900 dark:text-white line-clamp-1 mb-2 tracking-tight" title={hotel.name}>{hotel.name}</h4>
                         
                         <div className="flex items-center gap-2 mb-4">

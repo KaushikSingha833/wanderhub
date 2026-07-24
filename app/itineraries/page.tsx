@@ -8,7 +8,6 @@ import { onAuthStateChanged, User as FirebaseUser, signOut } from "firebase/auth
 import { auth, db } from "../lib/firebase"; 
 import { Map, Calendar, CreditCard, Settings, PlaneTakeoff, Printer, Clock, MapPin, Plane, Hotel, Utensils, Trash2, Map as MapIcon, CalendarPlus, ChevronDown, ChevronUp, AlignLeft, Navigation, BedDouble, Sparkles, Loader2, Menu, X, Sun, CloudRain, Hash, Info, ArrowRight, Radio, Users, MessageSquare, History, LogOut, AlertTriangle } from "lucide-react";
 
-// ✨ Dynamically load the map component (Bypasses the "window is not defined" SSR error)
 const DynamicRadarMap = dynamic(() => import('../components/RadarMap'), { 
   ssr: false,
   loading: () => (
@@ -44,31 +43,25 @@ export default function ItinerariesPage() {
   
   const [expandedIds, setExpandedIds] = useState<string[]>([]);
   
-  // LIVE TRACKER STATE (Air/Train Radar)
   const [isTrackerOpen, setIsTrackerOpen] = useState(false);
   const [isTrackingLoading, setIsTrackingLoading] = useState(false);
   const [trackingData, setTrackingData] = useState<any>(null);
 
-  // AI GENERATOR STATE
   const [showAiModal, setShowAiModal] = useState(false);
   const [aiPrompt, setAiPrompt] = useState("");
   const [isAiLoading, setIsAiLoading] = useState(false);
 
-  // MOBILE MENU STATE
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
-  // WEATHER FORECAST STATE
   const [weatherData, setWeatherData] = useState<any[]>([]);
   const [isWeatherLoading, setIsWeatherLoading] = useState(false);
   const [weatherError, setWeatherError] = useState("");
 
-  // LIVE SAFE RADAR MAP STATE
   const [activeTab, setActiveTab] = useState<'itinerary' | 'live_map'>('itinerary');
   const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [liveMembers, setLiveMembers] = useState<any[]>([]);
   const [myLatestCoords, setMyLatestCoords] = useState<[number, number] | null>(null);
 
-  // ✨ CUSTOM DIALOG STATE
   const [dialog, setDialog] = useState<{
     isOpen: boolean;
     title: string;
@@ -90,23 +83,19 @@ export default function ItinerariesPage() {
 
   const closeDialog = () => setDialog(prev => ({ ...prev, isOpen: false }));
 
-  // 🛡️ SECURITY GUARD: Travelers Only
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (!currentUser) {
-        router.push("/"); // Kick to landing page if not logged in
+        router.push("/");
       } else {
         try {
-          // Fetch user profile to check their role
           const userDoc = await getDoc(doc(db, "users", currentUser.uid));
           
           if (userDoc.exists() && userDoc.data().role === "hotel_partner") {
-            // Bouncer: Kick Hotel Partners OUT of the customer site!
             router.push("/partner/dashboard");
             return;
           }
 
-          // If they pass, let them in
           setUser(currentUser);
           setIsAuthLoading(false);
           
@@ -118,7 +107,6 @@ export default function ItinerariesPage() {
     return () => unsubscribe();
   }, [router]);
 
-  // FETCH TRIPS (Only runs once user is verified)
   useEffect(() => {
     if (!user) return;
     const q = query(
@@ -136,7 +124,6 @@ export default function ItinerariesPage() {
     return () => unsubscribe();
   }, [user, selectedTripId]);
 
-  // BROADCAST ENGINE (Watch Position)
   useEffect(() => {
     let watchId: number;
 
@@ -152,7 +139,6 @@ export default function ItinerariesPage() {
           const { latitude, longitude } = position.coords;
           setMyLatestCoords([latitude, longitude]);
           
-          // Push to Firebase instantly
           const trackRef = doc(db, "liveTracking", `${selectedTripId}_${user.uid}`);
           setDoc(trackRef, {
             tripId: selectedTripId,
@@ -171,7 +157,6 @@ export default function ItinerariesPage() {
         { enableHighAccuracy: true, maximumAge: 5000, timeout: 5000 }
       );
     } else if (!isBroadcasting && user && selectedTripId) {
-      // Remove ping from map when turned off
       const trackRef = doc(db, "liveTracking", `${selectedTripId}_${user.uid}`);
       deleteDoc(trackRef).catch(console.error);
       setMyLatestCoords(null);
@@ -182,14 +167,12 @@ export default function ItinerariesPage() {
     };
   }, [isBroadcasting, selectedTripId, user]);
 
-  // MULTI-PLAYER RADAR LISTENER
   useEffect(() => {
     if (!selectedTripId || activeTab !== 'live_map') return;
     
     const q = query(collection(db, "liveTracking"), where("tripId", "==", selectedTripId));
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const activeMembers = snapshot.docs.map(doc => doc.data());
-      // Filter out people who haven't updated in the last 30 minutes (fallback safety)
       const recentMembers = activeMembers.filter(m => {
         if (!m.lastUpdated) return true; 
         const diffMs = Date.now() - m.lastUpdated.toMillis();
@@ -234,7 +217,6 @@ export default function ItinerariesPage() {
             progress: liveFlight.flight_status === "active" ? 50 : (liveFlight.flight_status === "landed" ? 100 : 0)
           });
         } else {
-          console.warn(`Flight ${cleanFlightNum} not currently active in AviationStack free tier.`);
           setTrackingData({
             type: 'Flight', number: finalTrackingNumber, status: "Status Unavailable",
             departure: { city: "N/A", time: "--", gate: "--" },
@@ -243,7 +225,6 @@ export default function ItinerariesPage() {
           });
         }
       } catch (error) {
-        console.warn("Network Error:", error);
         setTrackingData({
           type: 'Flight', number: finalTrackingNumber, status: "Network Error",
           departure: { city: "N/A", time: "--", gate: "--" },
@@ -303,7 +284,6 @@ export default function ItinerariesPage() {
         showDialog("Generation Failed", "The AI couldn't generate a trip for that prompt. Try being more specific!", "warning");
       }
     } catch (error) {
-      console.error("AI Error:", error);
       showDialog("Connection Error", "Failed to connect to the AI engine.", "danger");
     } finally {
       setIsAiLoading(false);
@@ -352,7 +332,6 @@ export default function ItinerariesPage() {
           setWeatherError(`Weather unavailable for "${presumedCity}"`);
         }
       } catch (err) {
-        console.error(err);
         setWeatherError("Weather service disconnected.");
       } finally {
         setIsWeatherLoading(false);
@@ -372,7 +351,6 @@ export default function ItinerariesPage() {
         try {
           await deleteDoc(doc(db, "activities", activityId));
         } catch (error) {
-          console.error("Error deleting activity:", error);
           showDialog("Error", "Failed to delete. Please try again.", "danger");
         }
       },
@@ -432,7 +410,6 @@ export default function ItinerariesPage() {
     }
   };
 
-  // 🛡️ LOADING SCREEN: Hide page until verified
   if (isAuthLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-zinc-950">
@@ -443,14 +420,12 @@ export default function ItinerariesPage() {
 
   if (!user) return null;
 
-  // ✨ DYNAMIC AVATAR GENERATION
   let rawName = user.displayName || "";
   let avatarName = (rawName.trim() === "" || rawName.trim().toLowerCase() === "traveler") 
     ? (user.email?.charAt(0).toUpperCase() || "U") 
     : rawName;
   const fallbackAvatar = `https://ui-avatars.com/api/?name=${encodeURIComponent(avatarName)}&background=10b981&color=fff&length=1`;
 
-  // Fallback state if user somehow bypasses but is still not loaded
   if (isLoading && trips.length === 0 && !selectedTripId) {
       return <div className="h-screen flex items-center justify-center bg-[#FDFDFD] dark:bg-zinc-950 transition-colors"><div className="animate-spin h-10 w-10 border-4 border-emerald-500 border-t-transparent rounded-full"></div></div>;
   }
@@ -458,7 +433,6 @@ export default function ItinerariesPage() {
   return (
     <div className="flex h-screen bg-[#FDFDFD] dark:bg-zinc-950 font-sans text-zinc-900 dark:text-zinc-100 overflow-hidden transition-colors duration-300 selection:bg-emerald-500/20">
       
-      {/* MOBILE MENU BLUR */}
       {isMobileMenuOpen && (
         <div 
           className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-md z-40 md:hidden transition-opacity duration-300"
@@ -466,7 +440,6 @@ export default function ItinerariesPage() {
         />
       )}
 
-      {/* FLOATING SIDEBAR (EDITORIAL STYLE) */}
       <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white dark:bg-zinc-950 border-r border-zinc-200 dark:border-zinc-800 flex flex-col transform transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] print:hidden ${isMobileMenuOpen ? "translate-x-0 shadow-2xl" : "-translate-x-full"} md:relative md:translate-x-0`}>
         <div className="h-20 flex items-center px-8 border-b border-zinc-200 dark:border-zinc-800 shrink-0">
           <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-3 shadow-sm">
@@ -496,10 +469,8 @@ export default function ItinerariesPage() {
         </nav>
       </aside>
 
-      {/* MAIN CONTENT AREA */}
       <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
         
-        {/* MOBILE TOP BAR */}
         <div className="md:hidden h-20 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between px-6 shrink-0 z-30 sticky top-0 transition-colors">
           <div className="flex items-center">
             <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-2 shadow-sm">
@@ -508,7 +479,6 @@ export default function ItinerariesPage() {
             <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
           </div>
           <div className="flex items-center gap-2">
-            {/* ✨ UPDATED MOBILE DP */}
             <img 
               src={user.photoURL || fallbackAvatar} 
               alt="Profile" 
@@ -523,7 +493,6 @@ export default function ItinerariesPage() {
           </div>
         </div>
 
-        {/* DESKTOP/TABLET HEADER */}
         <header className="h-auto md:h-24 py-4 md:py-0 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 flex flex-col md:flex-row md:items-center justify-between px-6 md:px-12 z-20 print:hidden shrink-0 gap-4 sticky top-0 transition-all">
           <div>
             <h2 className="text-2xl font-black text-zinc-900 dark:text-white hidden md:block tracking-tighter">Master Schedule</h2>
@@ -559,7 +528,6 @@ export default function ItinerariesPage() {
                 <Printer className="h-4 w-4 group-hover:text-emerald-500 dark:group-hover:text-emerald-400 transition-colors md:mr-2" /> <span className="hidden lg:inline">Print</span>
               </button>
 
-              {/* ✨ UPDATED DESKTOP DP */}
               <div className="hidden md:flex ml-2 border-l border-zinc-200 dark:border-zinc-800 pl-4 items-center gap-3">
                 <img 
                   src={user.photoURL || fallbackAvatar} 
@@ -583,7 +551,6 @@ export default function ItinerariesPage() {
         <main className="flex-1 overflow-y-auto p-4 md:p-12 print:p-0 print:bg-white bg-[#FDFDFD] dark:bg-transparent custom-scrollbar relative z-10">
           <div className="max-w-[1000px] mx-auto pb-24">
             
-            {/* ✨ TAB TOGGLE (ITINERARY vs LIVE MAP) */}
             {selectedTripId && (
               <div className="flex justify-start mb-10 print:hidden animate-in fade-in slide-in-from-bottom-4 duration-500 border-b border-zinc-200 dark:border-zinc-800 w-full overflow-x-auto custom-scrollbar pb-1">
                 <div className="flex gap-8">
@@ -603,18 +570,13 @@ export default function ItinerariesPage() {
               </div>
             )}
 
-            {/* ======================================================= */}
-            {/* TAB 1: MASTER ITINERARY VIEW                            */}
-            {/* ======================================================= */}
             {activeTab === 'itinerary' && (
               <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-                {/* --- PRO WEATHER WIDGET --- */}
                 {selectedTripId && !isWeatherLoading && weatherData.length > 0 && (
                   <div className="mb-14 relative overflow-hidden rounded-[2rem] p-8 md:p-10 print:hidden border border-zinc-200 dark:border-zinc-800 bg-zinc-950 shadow-2xl">
                     <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay pointer-events-none"></div>
                     <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-emerald-500/10 rounded-full blur-[80px] pointer-events-none"></div>
                     
-                    {/* Content */}
                     <div className="relative z-10">
                       <div className="flex items-center justify-between mb-8 pb-6 border-b border-zinc-800">
                         <h3 className="text-xl font-bold text-white flex items-center tracking-tight">
@@ -632,17 +594,27 @@ export default function ItinerariesPage() {
                           const iconUrl = `https://openweathermap.org/img/wn/${day.weather[0].icon}@4x.png`;
                           
                           return (
-                            <div key={idx} className="bg-zinc-900 rounded-2xl p-5 flex flex-col items-center text-center border border-zinc-800 hover:border-zinc-700 hover:-translate-y-1 transition-all duration-300 group">
-                              <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 mb-1">{weekday}</p>
-                              <p className="text-xs font-medium text-zinc-400 mb-3">{dateNum}</p>
+                            <div key={idx} 
+                              onMouseMove={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                e.currentTarget.style.setProperty('--x', `${e.clientX - rect.left}px`);
+                                e.currentTarget.style.setProperty('--y', `${e.clientY - rect.top}px`);
+                              }}
+                              className="bg-zinc-900 rounded-2xl p-5 flex flex-col items-center text-center border border-zinc-800 hover:border-zinc-700 hover:-translate-y-1 transition-all duration-300 group relative overflow-hidden"
+                            >
+                              <div className="pointer-events-none absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `radial-gradient(200px circle at var(--x, 0) var(--y, 0), rgba(16, 185, 129, 0.15), transparent 80%)` }} />
                               
-                              <div className="relative h-14 w-14 mb-2 group-hover:scale-110 transition-transform duration-500">
-                                {/* eslint-disable-next-line @next/next/no-img-element */}
-                                <img src={iconUrl} alt="weather icon" className="absolute inset-0 w-full h-full object-contain filter brightness-110 grayscale-[0.2]" />
+                              <div className="relative z-10 flex flex-col items-center">
+                                <p className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 mb-1">{weekday}</p>
+                                <p className="text-xs font-medium text-zinc-400 mb-3">{dateNum}</p>
+                                
+                                <div className="relative h-14 w-14 mb-2 group-hover:scale-110 transition-transform duration-500">
+                                  <img src={iconUrl} alt="weather icon" className="absolute inset-0 w-full h-full object-contain filter brightness-110 grayscale-[0.2]" />
+                                </div>
+                                
+                                <p className="text-3xl font-black text-white tracking-tighter">{temp}°</p>
+                                <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-3 w-full truncate">{day.weather[0].description}</p>
                               </div>
-                              
-                              <p className="text-3xl font-black text-white tracking-tighter">{temp}°</p>
-                              <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mt-3 w-full truncate">{day.weather[0].description}</p>
                             </div>
                           );
                         })}
@@ -651,7 +623,6 @@ export default function ItinerariesPage() {
                   </div>
                 )}
                 
-                {/* Loading/Error States for Weather */}
                 {selectedTripId && isWeatherLoading && (
                   <div className="mb-14 bg-zinc-50 dark:bg-zinc-950 rounded-[2rem] p-8 border border-zinc-200 dark:border-zinc-800 shadow-sm flex flex-col items-center justify-center h-48 animate-pulse print:hidden">
                     <Loader2 className="h-8 w-8 mb-4 animate-spin text-emerald-500" /> 
@@ -664,7 +635,6 @@ export default function ItinerariesPage() {
                   </div>
                 )}
 
-                {/* Content States */}
                 {trips.length === 0 ? (
                   <div className="text-center py-24 md:py-32">
                     <div className="h-20 w-20 bg-zinc-100 dark:bg-zinc-900 rounded-full flex items-center justify-center mx-auto mb-6">
@@ -713,12 +683,22 @@ export default function ItinerariesPage() {
                               const isExpanded = expandedIds.includes(act.id);
                               
                               return (
-                                <div key={act.id} className="group relative bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/50 rounded-[1.5rem] md:rounded-[2rem] shadow-sm hover:border-zinc-400 dark:hover:border-zinc-600 transition-all duration-300 print:border-zinc-300 print:shadow-none">
+                                <div key={act.id} 
+                                  onMouseMove={(e) => {
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    e.currentTarget.style.setProperty('--x', `${e.clientX - rect.left}px`);
+                                    e.currentTarget.style.setProperty('--y', `${e.clientY - rect.top}px`);
+                                  }}
+                                  className="group relative bg-white dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800/50 rounded-[1.5rem] md:rounded-[2rem] shadow-sm hover:border-zinc-400 dark:hover:border-zinc-600 transition-all duration-300 print:border-zinc-300 print:shadow-none"
+                                >
                                   
-                                  {/* Timeline Node */}
-                                  <div className="absolute top-1/2 -translate-y-1/2 -left-[4.3rem] w-4 h-4 rounded-full bg-white dark:bg-zinc-950 border-4 border-zinc-300 dark:border-zinc-700 hidden md:block group-hover:border-emerald-500 group-hover:scale-125 transition-all z-10"></div>
+                                  <div className="absolute top-1/2 -translate-y-1/2 -left-[4.3rem] w-4 h-4 rounded-full bg-white dark:bg-zinc-950 border-4 border-zinc-300 dark:border-zinc-700 hidden md:block group-hover:border-emerald-500 group-hover:scale-125 transition-all z-20"></div>
 
-                                  <div className="p-5 md:p-8 cursor-pointer" onClick={() => toggleExpand(act.id)}>
+                                  <div className="pointer-events-none absolute inset-0 rounded-[1.5rem] md:rounded-[2rem] overflow-hidden hidden dark:block z-0">
+                                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-500" style={{ background: `radial-gradient(800px circle at var(--x, 0) var(--y, 0), rgba(16, 185, 129, 0.08), transparent 40%)` }} />
+                                  </div>
+
+                                  <div className="relative z-10 p-5 md:p-8 cursor-pointer" onClick={() => toggleExpand(act.id)}>
                                     <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-8">
                                       <div className="flex items-center md:flex-col md:justify-center md:w-24 shrink-0 bg-transparent p-0 rounded-none border-none md:border-r md:border-zinc-200 dark:md:border-zinc-800 md:pr-6">
                                         <div className="h-10 w-10 md:h-12 md:w-12 rounded-full bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mr-3 md:mr-0 md:mb-3 group-hover:scale-110 transition-transform">
@@ -750,7 +730,7 @@ export default function ItinerariesPage() {
                                   </div>
                                   
                                   {isExpanded && (
-                                    <div className="bg-zinc-50 dark:bg-zinc-900/30 border-t border-zinc-200 dark:border-zinc-800/50 p-6 md:p-8 md:pl-[8.5rem] animate-in slide-in-from-top-2 fade-in duration-300 print:pl-4 print:bg-white rounded-b-[1.5rem] md:rounded-b-[2rem]">
+                                    <div className="relative z-10 bg-zinc-50 dark:bg-zinc-900/30 border-t border-zinc-200 dark:border-zinc-800/50 p-6 md:p-8 md:pl-[8.5rem] animate-in slide-in-from-top-2 fade-in duration-300 print:pl-4 print:bg-white rounded-b-[1.5rem] md:rounded-b-[2rem]">
                                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                         <div className="space-y-4">
                                           <div className="flex items-start gap-4">
@@ -795,13 +775,9 @@ export default function ItinerariesPage() {
               </div>
             )}
 
-            {/* ======================================================= */}
-            {/* TAB 2: LIVE MAP (New Broadcast Feature)                   */}
-            {/* ======================================================= */}
             {activeTab === 'live_map' && (
               <div className="h-[70vh] rounded-[2rem] overflow-hidden relative shadow-lg border border-zinc-200 dark:border-zinc-800 animate-in fade-in slide-in-from-bottom-4 duration-500 bg-zinc-950">
                 
-                {/* Live Controls Overlay */}
                 <div className="absolute top-6 left-6 z-[1000] bg-white/90 dark:bg-zinc-950/90 backdrop-blur-xl p-6 rounded-3xl shadow-2xl border border-zinc-200 dark:border-zinc-800 w-64">
                    <h3 className="font-bold text-zinc-900 dark:text-white flex items-center mb-2 tracking-tight">
                      <span className="relative flex h-3 w-3 mr-3">
@@ -820,13 +796,11 @@ export default function ItinerariesPage() {
                    </button>
                 </div>
 
-                {/* Info Overlay */}
                 <div className="absolute bottom-6 right-6 z-[1000] bg-zinc-900/80 backdrop-blur-md px-5 py-2.5 rounded-full border border-zinc-800 text-white text-[10px] font-bold uppercase tracking-widest flex items-center shadow-lg">
                    <Users className="h-4 w-4 mr-2 text-emerald-500" />
                    {liveMembers.length} {liveMembers.length === 1 ? 'member' : 'members'} live
                 </div>
 
-                {/* ✨ DYNAMICALLY LOADED RADAR MAP */}
                 <DynamicRadarMap myLatestCoords={myLatestCoords} liveMembers={liveMembers} />
 
               </div>
@@ -835,7 +809,6 @@ export default function ItinerariesPage() {
         </main>
       </div>
 
-      {/* --- AI GENERATOR MODAL (EDITORIAL) --- */}
       {showAiModal && (
         <div className="fixed inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[60]">
           <div className="bg-white dark:bg-zinc-950 rounded-[2rem] p-8 md:p-12 w-full max-w-xl shadow-2xl relative animate-in zoom-in-95 duration-200 border border-zinc-200 dark:border-zinc-800">
@@ -887,13 +860,11 @@ export default function ItinerariesPage() {
         </div>
       )}
 
-      {/* --- LIVE TRACKER MODAL (Aviation/Train API) --- */}
       {isTrackerOpen && (
         <div className="fixed inset-0 bg-zinc-900/60 dark:bg-black/80 backdrop-blur-md flex items-center justify-center p-4 z-[60]">
           <div className="bg-zinc-950 rounded-[2.5rem] p-8 md:p-10 w-full max-w-md shadow-2xl relative overflow-hidden border border-zinc-800 animate-in zoom-in-95 duration-200">
             <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-10 mix-blend-overlay pointer-events-none"></div>
             
-            {/* Minimalist Radar Rings */}
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[300px] h-[300px] border border-emerald-500/10 rounded-full animate-[ping_3s_linear_infinite]"></div>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] border border-emerald-500/5 rounded-full animate-[ping_3s_linear_infinite_1s]"></div>
 
@@ -956,7 +927,6 @@ export default function ItinerariesPage() {
         </div>
       )}
 
-      {/* ✨ CUSTOM ALERT DIALOG MODAL */}
       {dialog.isOpen && (
         <div className="fixed inset-0 z-[150] flex items-center justify-center p-4 bg-zinc-900/60 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
           <div className="bg-white dark:bg-zinc-950 rounded-[2.5rem] p-8 md:p-10 max-w-md w-full shadow-2xl border border-zinc-200 dark:border-zinc-800 animate-in zoom-in-95 duration-200 relative">

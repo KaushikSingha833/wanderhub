@@ -2,7 +2,7 @@
 import React, { useRef, useState, useEffect } from "react";
 import { motion, useScroll, useTransform, useSpring, AnimatePresence } from "framer-motion";
 import Link from "next/link";
-import { PlaneTakeoff, Map as MapIcon, Receipt, BedDouble, ArrowRight, ShieldCheck, Zap, Users, Plus, Compass, Wallet, CreditCard, Loader2, Sparkles } from "lucide-react";
+import { PlaneTakeoff, Map as MapIcon, Receipt, BedDouble, ArrowRight, ShieldCheck, Zap, Users, Plus, Compass, Wallet, CreditCard, Loader2, Sparkles, Plane, MessageSquare, X } from "lucide-react";
 import { useMotionValue } from "framer-motion";
 
 const TRAVEL_DATA = [
@@ -19,6 +19,57 @@ const FAQS = [
   { q: "Is the Live Split feature truly real-time?", a: "Yes. Our architecture utilizes WebSockets to ensure that any expense logged by a group member is instantly reflected across all connected devices within 500 milliseconds." },
   { q: "How do you achieve 0% commission on hotels?", a: "We integrate directly with B2B hospitality providers, bypassing consumer-facing Online Travel Agencies (OTAs) to pass the wholesale rates directly to your workspace." },
   { q: "Can I export my itinerary?", a: "Absolutely. Workspaces can be exported to standard calendar formats, PDF dossiers, or shared via a live read-only web link." }
+];
+
+const CAROUSEL_FEATURES = [
+  {
+    id: "ai-routing",
+    title: "AI Itinerary Routing",
+    brief: "Algorithmic pathfinding for your daily travel plans.",
+    detail: "Our proprietary AI processes millions of geospatial data points to sequence your daily landmarks. It minimizes transit time, accounts for local traffic patterns, and automatically reorganizes your day if delays occur.",
+    icon: <Compass className="h-6 w-6 md:h-8 md:w-8 text-emerald-400" />,
+    image: "https://images.unsplash.com/photo-1524661135-423995f22d0b?w=1200&q=80"
+  },
+  {
+    id: "live-split",
+    title: "Live Ledger Sync",
+    brief: "Real-time expense splitting via WebSockets.",
+    detail: "Eliminate the friction of group finances. Any expense logged by a member is instantly synced across all devices globally within 500ms. Complex debt matrices are mathematically simplified into single, easily settled balances.",
+    icon: <Wallet className="h-6 w-6 md:h-8 md:w-8 text-emerald-400" />,
+    image: "https://images.unsplash.com/photo-1554224155-6726b3ff858f?w=1200&q=80"
+  },
+  {
+    id: "b2b-hotels",
+    title: "Zero-Commission Hotels",
+    brief: "Direct B2B integration bypassing OTA markups.",
+    detail: "We connect directly to global hospitality aggregators. By eliminating consumer-facing Online Travel Agency (OTA) commissions, we pass wholesale rates directly to your workspace, saving you up to 30% per booking.",
+    icon: <BedDouble className="h-6 w-6 md:h-8 md:w-8 text-emerald-400" />,
+    image: "https://images.unsplash.com/photo-1566073771259-6a8506099945?w=1200&q=80"
+  },
+  {
+    id: "ndc-flights",
+    title: "Global Flight Engine",
+    brief: "Live NDC feeds for unmanipulated airline pricing.",
+    detail: "Search and book flights using New Distribution Capability (NDC) feeds. This guarantees you are seeing real-time, unmanipulated airline inventory and pricing without artificial scarcity or tracking cookies.",
+    icon: <Plane className="h-6 w-6 md:h-8 md:w-8 text-emerald-400" />,
+    image: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=1200&q=80"
+  },
+  {
+    id: "group-chat",
+    title: "Encrypted Comms",
+    brief: "Dedicated workspace chat for trip coordination.",
+    detail: "Keep your group aligned with integrated, end-to-end encrypted chat channels tied directly to your active expedition. Share polls, vote on hotels, and finalize decisions without leaving the environment.",
+    icon: <MessageSquare className="h-6 w-6 md:h-8 md:w-8 text-emerald-400" />,
+    image: "https://images.unsplash.com/photo-1511632765486-a01980e01a18?w=1200&q=80"
+  },
+  {
+    id: "expense-analytics",
+    title: "Expense Analytics",
+    brief: "Visualize spending patterns with dynamic graphs.",
+    detail: "Gain deep insights into your group's financial behavior. Our analytics engine categorizes expenses, tracks daily burn rates against budgets, and projects future costs based on historical data.",
+    icon: <Receipt className="h-6 w-6 md:h-8 md:w-8 text-emerald-400" />,
+    image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=1200&q=80"
+  }
 ];
 
 const CustomCursor = () => {
@@ -109,6 +160,200 @@ const TextReveal = ({ text }: { text: string }) => {
   );
 };
 
+const TypewriterText = ({ text, className = "" }: { text: string; className?: string }) => {
+  return (
+    <motion.p 
+      className={className} 
+      initial="hidden" 
+      animate="visible" 
+      variants={{
+        hidden: { opacity: 0 },
+        visible: { opacity: 1, transition: { staggerChildren: 0.015 } }
+      }}
+    >
+      {text.split("").map((char, index) => (
+        <motion.span 
+          key={index} 
+          variants={{ hidden: { opacity: 0 }, visible: { opacity: 1 } }}
+        >
+          {char}
+        </motion.span>
+      ))}
+    </motion.p>
+  );
+};
+
+const FeatureCarousel = () => {
+  const [current, setCurrent] = useState(0);
+  const [isPaused, setIsPaused] = useState(false);
+  const [selectedFeature, setSelectedFeature] = useState<any>(null);
+  const total = CAROUSEL_FEATURES.length;
+
+  useEffect(() => {
+    if (selectedFeature) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => { document.body.style.overflow = ''; };
+  }, [selectedFeature]);
+
+  useEffect(() => {
+    if (isPaused || selectedFeature) return;
+    const timer = setTimeout(() => {
+      setCurrent((prev) => (prev + 1) % total);
+    }, 5000);
+    return () => clearTimeout(timer);
+  }, [current, isPaused, selectedFeature, total]);
+
+  const getCardState = (idx: number) => {
+    const diff = (idx - current + total) % total;
+    if (diff === 0) return "center";
+    if (diff === 1) return "right";
+    if (diff === total - 1) return "left";
+    return "hidden";
+  };
+
+  const cardVariants = {
+    center: { x: "0%", scale: 1, opacity: 1, zIndex: 30, filter: "brightness(1) blur(0px)" },
+    left: { x: "-55%", scale: 0.8, opacity: 0.5, zIndex: 20, filter: "brightness(0.4) blur(3px)" },
+    right: { x: "55%", scale: 0.8, opacity: 0.5, zIndex: 20, filter: "brightness(0.4) blur(3px)" },
+    hidden: { x: "0%", scale: 0.5, opacity: 0, zIndex: 10, filter: "brightness(0) blur(10px)" }
+  };
+
+  return (
+    <>
+      <section className="w-full bg-[#050505] relative z-20 border-y border-white/5">
+        <div className="relative w-full max-w-7xl mx-auto px-6 py-20 md:py-32 overflow-hidden">
+          <div className="mb-16 text-center">
+            <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-white">Core Modules.</h2>
+            <p className="text-zinc-400 font-medium mt-3 text-lg md:text-xl">The structural pillars of the WanderHub ecosystem.</p>
+          </div>
+          
+          <div 
+            className="relative h-[450px] md:h-[550px] w-full flex items-center justify-center perspective-[1000px]"
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+          >
+            {CAROUSEL_FEATURES.map((feature, idx) => {
+              const state = getCardState(idx);
+              const isCenter = state === "center";
+
+              return (
+                <motion.div
+                  key={feature.id}
+                  initial={false}
+                  animate={state}
+                  variants={cardVariants}
+                  transition={{ type: "spring", stiffness: 200, damping: 25 }}
+                  className="absolute w-[80%] md:w-[60%] h-full rounded-[2.5rem] md:rounded-[3rem] overflow-hidden border border-white/10 bg-zinc-950 shadow-2xl flex flex-col cursor-pointer"
+                  onClick={() => {
+                    if (!isCenter) setCurrent(idx);
+                  }}
+                >
+                  <div className="absolute inset-0 z-0">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 to-transparent z-10"></div>
+                    <img src={feature.image} alt={feature.title} className="w-full h-full object-cover filter grayscale opacity-60" />
+                  </div>
+
+                  {isCenter && (
+                    <div className="relative z-20 flex flex-col h-full justify-end p-8 md:p-12">
+                      <div className="flex items-center gap-4 mb-6">
+                         <div className="h-12 w-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center border border-white/20">
+                           {feature.icon}
+                         </div>
+                         <span className="text-5xl font-black text-white/10 tracking-tighter">0{idx + 1}</span>
+                      </div>
+                      <h3 className="text-3xl md:text-5xl font-black text-white tracking-tighter mb-4">
+                        {feature.title}
+                      </h3>
+                      
+                      <div className="h-16 md:h-12">
+                        <TypewriterText key={`brief-${current}`} text={feature.brief} className="font-mono text-emerald-400 text-sm md:text-base tracking-tight" />
+                      </div>
+
+                      <div className="mt-8">
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setSelectedFeature(feature); }}
+                          className="bg-white text-black px-8 py-3.5 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-emerald-400 transition-colors shadow-[0_0_20px_rgba(255,255,255,0.15)] flex items-center group/btn active:scale-95 border border-white/10"
+                        >
+                          Learn More <ArrowRight className="ml-2 h-4 w-4 group-hover/btn:translate-x-1 transition-transform" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })}
+          </div>
+
+          <div className="flex gap-3 justify-center mt-12">
+            {CAROUSEL_FEATURES.map((_, i) => (
+              <div key={i} onClick={() => setCurrent(i)} className="h-1.5 md:h-2 w-12 md:w-16 bg-white/10 rounded-full overflow-hidden cursor-pointer">
+                 <motion.div
+                   className="h-full bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.8)]"
+                   initial={{ width: "0%" }}
+                   animate={{ width: i === current && !isPaused && !selectedFeature ? "100%" : i < current ? "100%" : "0%" }}
+                   transition={{ duration: i === current && !isPaused && !selectedFeature ? 5 : 0.3, ease: "linear" }}
+                 />
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <AnimatePresence>
+        {selectedFeature && (
+          <div className="fixed inset-0 z-[99999] flex items-center justify-center px-4">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedFeature(null)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-xl"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="relative w-full max-w-3xl bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] md:rounded-[3rem] overflow-hidden shadow-2xl z-10"
+            >
+              <div className="h-48 md:h-64 relative w-full overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a0a] to-transparent z-10"></div>
+                <img src={selectedFeature.image} alt={selectedFeature.title} className="w-full h-full object-cover opacity-50" />
+                <button 
+                  onClick={() => setSelectedFeature(null)}
+                  className="absolute top-6 right-6 z-20 h-10 w-10 bg-white/10 hover:bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-colors border border-white/10 active:scale-95"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              
+              <div className="p-8 md:p-12 -mt-16 md:-mt-20 relative z-20">
+                <div className="h-16 w-16 md:h-20 md:w-20 bg-[#0a0a0a] border border-emerald-500/30 rounded-2xl flex items-center justify-center mb-6 shadow-2xl">
+                  {selectedFeature.icon}
+                </div>
+                <h3 className="text-3xl md:text-5xl font-black text-white tracking-tighter mb-6">{selectedFeature.title}</h3>
+                
+                <div className="bg-emerald-950/20 border border-emerald-500/10 p-6 md:p-8 rounded-2xl min-h-[150px]">
+                  <TypewriterText key={`detail-${selectedFeature.id}`} text={selectedFeature.detail} className="font-mono text-emerald-400 text-sm md:text-base leading-relaxed tracking-tight" />
+                </div>
+                
+                <div className="mt-8 pt-8 border-t border-white/10">
+                  <button onClick={() => setSelectedFeature(null)} className="w-full md:w-auto bg-white text-black px-10 py-4 rounded-full font-black text-xs uppercase tracking-widest hover:bg-emerald-400 transition-colors active:scale-95">
+                    Close Briefing
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
+  )
+}
+
 const Accordion = ({ q, a }: { q: string, a: string }) => {
   const [isOpen, setIsOpen] = useState(false);
   return (
@@ -155,7 +400,7 @@ const WalletGroup = () => (
 );
 
 const DualCard = ({ num, title, desc, img, component }: any) => (
-  <div className="w-[85vw] md:w-[45vw] h-[35vh] md:h-[40vh] shrink-0 bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] md:rounded-[3rem] overflow-hidden relative flex flex-col md:flex-row shadow-2xl group hover:border-emerald-500/30 transition-colors duration-700">
+  <div className="w-full md:w-[45vw] min-h-[40vh] md:min-h-0 md:h-[40vh] shrink-0 bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] md:rounded-[3rem] overflow-hidden relative flex flex-col md:flex-row shadow-2xl group hover:border-emerald-500/30 transition-colors duration-700">
     <div className="w-full md:w-[50%] p-8 md:p-12 flex flex-col justify-center relative z-20">
       <h2 className="text-4xl md:text-6xl font-black text-white/10 mb-2 md:mb-4 tracking-tighter">{num}</h2>
       <h3 className="text-3xl md:text-5xl font-black mb-3 tracking-tighter">{title}</h3>
@@ -206,10 +451,22 @@ export default function ProLanding() {
   const y3 = useTransform(galleryProgress, [0, 1], ["-100px", "-250px"]);
 
   return (
-    <div ref={mainRef} className="bg-[#050505] text-white min-h-screen font-sans selection:bg-emerald-500/30 overflow-x-hidden relative">
+    <div ref={mainRef} className="text-white min-h-screen font-sans selection:bg-emerald-500/30 overflow-x-hidden relative">
       <CustomCursor />
       
       <div className="fixed inset-0 z-0 pointer-events-none opacity-[0.03] mix-blend-screen bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+
+      <div className="fixed inset-0 z-[-1] pointer-events-none overflow-hidden bg-black">
+        <motion.div
+          animate={{ rotate: 360 }}
+          transition={{ duration: 240, repeat: Infinity, ease: "linear" }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[200vmax] h-[200vmax]"
+        >
+          <img src="https://images.unsplash.com/photo-1451187580459-43490279c0fa?q=80&w=2072" alt="Earth" className="w-full h-full object-cover opacity-80" />
+        </motion.div>
+        <div className="absolute inset-0 bg-[#050505]/80 z-10 pointer-events-none"></div>
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.15)_0%,transparent_60%)] z-10 pointer-events-none"></div>
+      </div>
 
       <AnimatePresence>
         {!isLoaded && (
@@ -237,9 +494,7 @@ export default function ProLanding() {
         </MagneticElement>
       </nav>
 
-      <section className="h-screen w-full relative flex flex-col items-center justify-center overflow-hidden bg-[#050505] pt-10">
-        <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.1)_0%,transparent_50%)] pointer-events-none"></div>
-
+      <section className="h-screen w-full relative flex flex-col items-center justify-center overflow-hidden bg-transparent pt-10">
         <div className="relative z-10 w-full px-6 flex flex-col items-center text-center">
           
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 1.2, ease: "easeOut" }} className="mb-8">
@@ -260,7 +515,7 @@ export default function ProLanding() {
                   className="h-[10vw] md:h-[6.5vw] rounded-full overflow-hidden border border-white/20 shadow-2xl shrink-0 relative"
                 >
                   <div className="absolute inset-0 bg-emerald-500/20 mix-blend-overlay z-10"></div>
-                  <img src={TRAVEL_DATA[0]} className="w-full h-full object-cover filter grayscale hover:grayscale-0 transition-all duration-700" alt="Travel Element" />
+                  <img src="https://images.unsplash.com/photo-1519501025264-65ba15a82390?w=1200&q=80" className="w-full h-full object-cover filter grayscale hover:grayscale-0 transition-all duration-700" alt="Travel Element" />
                 </motion.div>
                 YOUR
               </span>
@@ -274,11 +529,15 @@ export default function ProLanding() {
         </div>
       </section>
 
-      <section className="py-40 px-6 max-w-7xl mx-auto min-h-screen flex items-center">
-        <TextReveal text="We engineered WanderHub to replace the fractured ecosystem of legacy travel tools. A singular, hyper-optimized environment where itineraries, finances, and bookings converge seamlessly." />
+      <section className="w-full relative z-20 bg-[#050505]">
+        <div className="py-40 px-6 max-w-7xl mx-auto min-h-screen flex items-center">
+          <TextReveal text="We engineered WanderHub to replace the fractured ecosystem of legacy travel tools. A singular, hyper-optimized environment where itineraries, finances, and bookings converge seamlessly." />
+        </div>
       </section>
 
-      <section ref={svgRef} className="py-32 relative overflow-hidden bg-black border-y border-white/5">
+      <FeatureCarousel />
+
+      <section ref={svgRef} className="py-32 w-full relative overflow-hidden bg-black border-y border-white/5 z-20">
          <div className="max-w-7xl mx-auto px-6 relative z-10 grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 items-center">
             <div>
                <div className="h-20 w-20 bg-zinc-900 border border-white/10 rounded-3xl flex items-center justify-center text-emerald-400 mb-10 shadow-inner">
@@ -299,9 +558,9 @@ export default function ProLanding() {
          </div>
       </section>
 
-      <section ref={dualRef} className="h-[300vh] relative">
-        <div className="sticky top-0 h-screen flex flex-col justify-center overflow-hidden bg-[#020202] gap-8 md:gap-12">
-          
+      <section ref={dualRef} className="h-auto md:h-[300vh] w-full relative z-20 py-20 md:py-0">
+        
+        <div className="hidden md:flex sticky top-0 h-screen w-full flex-col justify-center overflow-hidden bg-[#020202] gap-8 md:gap-12">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[80%] h-[80%] bg-emerald-900/10 blur-[150px] pointer-events-none z-0"></div>
 
           <motion.div style={{ x: xTop }} className="flex gap-6 md:gap-10 w-max relative z-10 px-[5vw]">
@@ -339,11 +598,31 @@ export default function ProLanding() {
                img="https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1200&q=80" 
              />
           </motion.div>
+        </div>
 
+        <div className="flex md:hidden flex-col gap-6 px-6 relative z-10 w-full max-w-md mx-auto">
+           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full h-full bg-emerald-900/10 blur-[100px] pointer-events-none z-0"></div>
+           
+           {[
+             { num: "01.", title: "Initiate.", desc: "Define parameters. Establish temporal boundaries and invite actors via secure cryptographic links.", img: TRAVEL_DATA[0] },
+             { num: "02.", title: "Synthesize.", desc: "Aggregated data converges. WebSockets reflect structural changes globally across all viewports instantly.", img: TRAVEL_DATA[1] },
+             { num: "03.", title: "Calculate.", desc: "Distributed ledger algorithms process micro-expenses, rendering live debt matrices automatically.", component: <WalletGroup /> },
+             { num: "04.", title: "Execute.", desc: "Secure B2B infrastructure bridges digital planning with physical reality. Seamless transaction architecture.", img: "https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=1200&q=80" },
+           ].map((card, idx) => (
+             <motion.div
+               key={idx}
+               initial={{ opacity: 0, y: 80, scale: 0.9 }}
+               whileInView={{ opacity: 1, y: 0, scale: 1 }}
+               viewport={{ once: true, margin: "-100px" }}
+               transition={{ duration: 0.6, delay: 0.1, ease: "easeOut" }}
+             >
+               <DualCard {...card} />
+             </motion.div>
+           ))}
         </div>
       </section>
 
-      <section ref={galleryRef} className="py-40 relative z-10 bg-[#050505] border-y border-white/5">
+      <section ref={galleryRef} className="py-40 w-full relative z-20 bg-[#050505] border-y border-white/5">
         <div className="max-w-7xl mx-auto px-6 mb-20 text-center relative z-20">
            <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-white">Global Render.</h2>
            <p className="text-zinc-500 font-medium mt-4 text-xl">The world's destinations, integrated directly into your workspace.</p>
@@ -361,14 +640,16 @@ export default function ProLanding() {
         </div>
       </section>
 
-      <section className="py-40 px-6 max-w-4xl mx-auto">
-         <h2 className="text-5xl md:text-7xl font-black tracking-tighter mb-20 text-center">Architecture FAQs.</h2>
-         <div className="border-t border-white/10">
-            {FAQS.map((faq, i) => <Accordion key={i} q={faq.q} a={faq.a} />)}
-         </div>
+      <section className="w-full relative z-20 bg-[#050505]">
+        <div className="py-40 px-6 max-w-4xl mx-auto">
+           <h2 className="text-5xl md:text-7xl font-black tracking-tighter mb-20 text-center">Architecture FAQs.</h2>
+           <div className="border-t border-white/10">
+              {FAQS.map((faq, i) => <Accordion key={i} q={faq.q} a={faq.a} />)}
+           </div>
+        </div>
       </section>
 
-      <section className="relative h-screen flex flex-col items-center justify-center overflow-hidden bg-black border-t border-white/5">
+      <section className="relative w-full h-screen flex flex-col items-center justify-center overflow-hidden bg-black border-t border-white/5 z-20">
          
          <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.1, 0.2, 0.1] }} transition={{ duration: 10, repeat: Infinity, ease: "easeInOut" }} className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none">
             <div className="w-[120vw] h-[120vw] md:w-[80vw] md:h-[80vw] bg-emerald-500/30 rounded-full blur-[150px]"></div>
@@ -391,7 +672,7 @@ export default function ProLanding() {
          </div>
       </section>
 
-      <footer className="bg-[#020202] py-20 border-t border-white/5 relative z-20 overflow-hidden">
+      <footer className="bg-[#020202] w-full py-20 border-t border-white/5 relative z-20 overflow-hidden">
         <div className="max-w-7xl mx-auto px-6 relative z-10">
           <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-12 mb-32">
              <div>
