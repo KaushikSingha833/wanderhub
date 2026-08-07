@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Minimalist dark background -->
+  <rect width="64" height="64" rx="14" fill="#09090b" />
+  
+  <!-- Sleek, geometric neon 'W' for WanderHub -->
+  <path 
+    d="M 16 22 L 25 44 L 32 28 L 39 44 L 48 22" 
+    fill="none" 
+    stroke="#00FFA3" 
+    stroke-width="7" 
+    stroke-linecap="round" 
+    stroke-linejoin="round" 
+  />
+</svg>
