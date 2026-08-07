@@ -16,7 +16,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "WanderHub | Group Travel Planner",
+  title: "AERO | Group Travel Planner",
   description: "Collaborative itineraries, hotel bookings, and expense splitting.",
 };
 

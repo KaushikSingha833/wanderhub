@@ -2,9 +2,9 @@
   <!-- Minimalist dark background -->
   <rect width="64" height="64" rx="14" fill="#09090b" />
   
-  <!-- Sleek, geometric neon 'W' for WanderHub -->
+  <!-- Sleek, geometric neon 'A' for AERO -->
   <path 
-    d="M 16 22 L 25 44 L 32 28 L 39 44 L 48 22" 
+    d="M 18 44 L 32 18 L 46 44 M 23 35 L 41 35" 
     fill="none" 
     stroke="#00FFA3" 
     stroke-width="7" 

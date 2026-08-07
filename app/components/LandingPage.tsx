@@ -80,7 +80,7 @@ function HeroSection({ onLogin }: { onLogin: () => void }) {
       <nav className="relative z-20 px-6 py-6 w-full max-w-5xl mx-auto flex justify-between items-center liquid-glass rounded-full mt-6">
         <div className="flex items-center gap-2">
           <PlaneTakeoff className="w-6 h-6 text-indigo-400" />
-          <span className="text-white font-semibold text-lg">WanderHub</span>
+          <span className="text-white font-semibold text-lg">AERO</span>
           <div className="hidden md:flex gap-8 ml-8">
             <Link href="#" className="text-white/80 hover:text-white text-sm font-medium">Features</Link>
             <Link href="/partner/join" className="text-white/80 hover:text-white text-sm font-medium">Partners</Link>
@@ -160,7 +160,7 @@ function AboutSection() {
           transition={{ duration: 0.6 }}
           className="text-white/40 text-sm tracking-widest uppercase mb-6"
         >
-          About WanderHub
+          About AERO
         </motion.p>
 
         <motion.h2
@@ -276,7 +276,7 @@ function PhilosophySection() {
             <div>
                <p className="text-white/40 text-xs tracking-widest uppercase mb-4 flex items-center gap-2"><BedDouble className="w-4 h-4"/> Hybrid Aggregator</p>
               <p className="text-white/70 text-base md:text-lg leading-relaxed">
-                Compare millions of standard listings directly alongside verified, exclusive WanderHub Hotel Partners. We ensure you get the absolute best value on stays worldwide.
+                Compare millions of standard listings directly alongside verified, exclusive AERO Hotel Partners. We ensure you get the absolute best value on stays worldwide.
               </p>
             </div>
           </motion.div>

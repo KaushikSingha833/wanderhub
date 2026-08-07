@@ -316,7 +316,7 @@ export default function FlightsPage() {
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_SZpnRvlSEBfADP",
         amount: amountInPaise.toString(), currency: "INR",
-        name: "WanderHub Flights", description: `${selectedOffer.owner.name} Flight Reservation`,
+        name: "AERO Flights", description: `${selectedOffer.owner.name} Flight Reservation`,
         image: "https://cdn-icons-png.flaticon.com/512/3125/3125713.png", 
         order_id: orderData.id, 
         handler: async function (response: any) {
@@ -397,7 +397,7 @@ export default function FlightsPage() {
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (ticketElement.offsetHeight * pdfWidth) / ticketElement.offsetWidth;
       pdf.addImage(dataUrl, "PNG", 0, 15, pdfWidth, pdfHeight);
-      pdf.save(`WanderHub_Ticket_${filename}.pdf`);
+      pdf.save(`AERO_Ticket_${filename}.pdf`);
     } catch (error) {
       console.error("PDF Generation Failed:", error);
       showAlert("Failed to generate PDF.", "error");
@@ -503,7 +503,7 @@ export default function FlightsPage() {
           <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-3 shadow-sm">
             <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
           </div>
-          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">AERO</span>
           <button onClick={() => setIsMobileMenuOpen(false)} className="ml-auto md:hidden p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full transition-colors"><X className="h-5 w-5" /></button>
         </div>
         
@@ -535,7 +535,7 @@ export default function FlightsPage() {
             <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-2 shadow-sm">
               <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
             </div>
-            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">AERO</span>
           </div>
           <div className="flex items-center gap-3">
             <div className="h-8 w-8 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-900 dark:text-white font-bold flex items-center justify-center text-xs shadow-inner border border-zinc-200 dark:border-zinc-700 overflow-hidden shrink-0">
@@ -602,7 +602,7 @@ export default function FlightsPage() {
                   <div className="text-center py-32 bg-transparent rounded-[2rem] border border-dashed border-zinc-300 dark:border-zinc-800 shadow-sm">
                     <Plane className="h-16 w-16 text-zinc-300 dark:text-zinc-700 mx-auto mb-6" />
                     <h3 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tight">No Flights Booked</h3>
-                    <p className="text-zinc-500 dark:text-zinc-400 font-medium mt-2 text-sm">You have not booked any flights through WanderHub yet.</p>
+                    <p className="text-zinc-500 dark:text-zinc-400 font-medium mt-2 text-sm">You have not booked any flights through AERO yet.</p>
                     <button onClick={() => setActiveTab("book")} className="mt-8 bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-8 py-3.5 rounded-full font-bold text-xs uppercase tracking-widest hover:opacity-90 transition-opacity active:scale-95 shadow-md">Book a Flight Now</button>
                   </div>
                 ) : (
@@ -612,7 +612,7 @@ export default function FlightsPage() {
                       const pnrMatch = details.match(/PNR:\s*([A-Z0-9]+)/);
                       const airlineMatch = details.match(/Airline:\s*([^,]+)/);
                       const pnr = flight.pnr || (pnrMatch ? pnrMatch[1] : "N/A");
-                      const airline = flight.airline || (airlineMatch ? airlineMatch[1] : "WanderHub Partner");
+                      const airline = flight.airline || (airlineMatch ? airlineMatch[1] : "AERO Partner");
                       const status = checkFlightStatus(flight);
 
                       return (

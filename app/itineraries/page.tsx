@@ -364,7 +364,7 @@ export default function ItinerariesPage() {
     const currentTrip = trips.find(t => t.id === selectedTripId);
     if (!currentTrip) return;
 
-    let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//WanderHub//EN\n";
+    let icsContent = "BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//AERO//EN\n";
 
     activities.forEach(act => {
       const startDateTime = new Date(`${act.date}T${act.time}`);
@@ -372,12 +372,12 @@ export default function ItinerariesPage() {
       const formatIcalDate = (date: Date) => date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
 
       icsContent += "BEGIN:VEVENT\n";
-      icsContent += `UID:${act.id}@wanderhub.com\n`;
+      icsContent += `UID:${act.id}@aero.com\n`;
       icsContent += `DTSTAMP:${formatIcalDate(new Date())}\n`;
       icsContent += `DTSTART:${formatIcalDate(startDateTime)}\n`;
       icsContent += `DTEND:${formatIcalDate(endDateTime)}\n`;
       icsContent += `SUMMARY:${act.title}\n`;
-      icsContent += `DESCRIPTION:WanderHub Activity Type: ${act.type}\n`;
+      icsContent += `DESCRIPTION:AERO Activity Type: ${act.type}\n`;
       icsContent += "END:VEVENT\n";
     });
 
@@ -445,7 +445,7 @@ export default function ItinerariesPage() {
           <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-3 shadow-sm">
             <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
           </div>
-          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">AERO</span>
           <button onClick={() => setIsMobileMenuOpen(false)} className="ml-auto md:hidden p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full transition-colors"><X className="h-5 w-5" /></button>
         </div>
         
@@ -476,7 +476,7 @@ export default function ItinerariesPage() {
             <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-2 shadow-sm">
               <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
             </div>
-            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">AERO</span>
           </div>
           <div className="flex items-center gap-2">
             <img 
@@ -663,7 +663,7 @@ export default function ItinerariesPage() {
 
                     <div className="hidden print:block mb-10 pb-6 border-b border-zinc-900 dark:border-white/20">
                       <h1 className="text-4xl font-black text-zinc-900 dark:text-white tracking-tighter">{trips.find(t => t.id === selectedTripId)?.title} - Master Itinerary</h1>
-                      <p className="text-zinc-500 dark:text-zinc-400 font-bold mt-2 text-xs uppercase tracking-widest">Generated securely by WanderHub</p>
+                      <p className="text-zinc-500 dark:text-zinc-400 font-bold mt-2 text-xs uppercase tracking-widest">Generated securely by AERO</p>
                     </div>
 
                     {sortedDates.map((date, index) => {

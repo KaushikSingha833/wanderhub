@@ -91,7 +91,7 @@ export default function ChatHubPage() {
           <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-3 shadow-sm">
             <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
           </div>
-          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">AERO</span>
           <button onClick={() => setIsMobileMenuOpen(false)} className="ml-auto md:hidden p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full transition-colors"><X className="h-5 w-5" /></button>
         </div>
         
@@ -121,7 +121,7 @@ export default function ChatHubPage() {
             <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-2 shadow-sm">
               <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
             </div>
-            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">AERO</span>
           </div>
           
           <div className="flex items-center gap-3">

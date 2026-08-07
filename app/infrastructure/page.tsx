@@ -130,7 +130,7 @@ export default function InfrastructurePage() {
       <nav className="fixed top-0 w-full z-50 px-6 md:px-12 py-8 flex justify-between items-center mix-blend-difference pointer-events-none">
         <Link href="/landing" className="flex items-center gap-3 pointer-events-auto">
           <PlaneTakeoff className="h-8 w-8 text-emerald-400" />
-          <span className="text-2xl font-black tracking-tighter text-white">WanderHub</span>
+          <span className="text-2xl font-black tracking-tighter text-white">AERO</span>
         </Link>
         <MagneticElement className="pointer-events-auto">
           <Link href="/" className="whitespace-nowrap px-5 py-3 md:px-8 md:py-4 bg-white text-black font-black text-[10px] md:text-xs uppercase tracking-widest rounded-full hover:bg-emerald-400 transition-colors shadow-2xl">
@@ -165,13 +165,13 @@ export default function InfrastructurePage() {
           </motion.h1>
 
           <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1, duration: 1.5 }} className="mt-12 text-lg md:text-2xl font-medium text-zinc-400 max-w-2xl tracking-tight">
-            WanderHub operates on a distributed edge network, ensuring sub-500ms latency for real-time synchronization, anywhere on Earth.
+            AERO operates on a distributed edge network, ensuring sub-500ms latency for real-time synchronization, anywhere on Earth.
           </motion.p>
         </div>
       </section>
 
       <section className="py-40 px-6 max-w-7xl mx-auto min-h-screen flex items-center">
-        <TextReveal text="Legacy systems rely on centralized monolithic servers. We shattered that architecture. WanderHub deploys code and data to the absolute edge, running compute cycles physically closer to your devices." />
+        <TextReveal text="Legacy systems rely on centralized monolithic servers. We shattered that architecture. AERO deploys code and data to the absolute edge, running compute cycles physically closer to your devices." />
       </section>
 
       <section ref={svgRef} className="py-32 relative z-10 border-y border-white/5 bg-black overflow-hidden">
@@ -297,7 +297,7 @@ export default function InfrastructurePage() {
              <div>
                 <div className="flex items-center gap-4 mb-8">
                    <PlaneTakeoff className="h-10 w-10 text-white" />
-                   <span className="text-4xl font-black tracking-tighter">WanderHub</span>
+                   <span className="text-4xl font-black tracking-tighter">AERO</span>
                 </div>
                 <p className="text-xl text-zinc-500 font-medium max-w-sm">The unified standard for geospatial planning and asynchronous ledger synchronization.</p>
              </div>
@@ -314,7 +314,7 @@ export default function InfrastructurePage() {
           </div>
           
           <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/10 text-xs font-bold uppercase tracking-widest text-zinc-600">
-             <p>© {new Date().getFullYear()} WANDERHUB TECHNOLOGIES.</p>
+             <p>© {new Date().getFullYear()} AERO TECHNOLOGIES.</p>
              <div className="flex items-center gap-4 mt-4 md:mt-0">
                 <span>All Systems Nominal</span>
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -332,7 +332,7 @@ export default function InfrastructurePage() {
            transition={{ type: "spring", stiffness: 100, damping: 10 }}
            className="absolute bottom-[-5vw] md:bottom-[-10vw] left-0 right-0 text-[20vw] font-black text-white/[0.02] text-center select-none tracking-tighter leading-none cursor-pointer"
         >
-           WANDERHUB
+           AERO
         </motion.div>
       </footer>
 

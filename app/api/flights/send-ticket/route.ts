@@ -46,21 +46,21 @@ export async function POST(req: Request) {
     });
 
     const mailOptions = {
-      from: `"WanderHub Concierge" <${process.env.EMAIL_USER}>`,
+      from: `"AERO Concierge" <${process.env.EMAIL_USER}>`,
       to: email,
       subject: `Your Flight Itinerary & E-Ticket [PNR: ${pnr}]`,
       html: `
         <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; color: #3f3f46; line-height: 1.6;">
           
           <div style="text-align: center; margin-bottom: 32px; padding-bottom: 24px; border-bottom: 2px solid #f4f4f5;">
-            <h1 style="color: #18181b; margin: 0; font-size: 24px; font-weight: 900; letter-spacing: -0.5px;">WanderHub</h1>
+            <h1 style="color: #18181b; margin: 0; font-size: 24px; font-weight: 900; letter-spacing: -0.5px;">AERO</h1>
             <p style="font-size: 12px; color: #a1a1aa; text-transform: uppercase; letter-spacing: 2px; margin-top: 4px;">Global Flight Engine</p>
           </div>
 
           <h2 style="color: #18181b; margin-bottom: 24px; font-size: 20px;">Your Journey is Confirmed.</h2>
           
           <p>Dear Traveler,</p>
-          <p>Thank you for booking with WanderHub. Your upcoming flight from <strong>${origin}</strong> to <strong>${destination}</strong> is fully confirmed. Your official e-ticket is attached to this email as a PDF document.</p>
+          <p>Thank you for booking with AERO. Your upcoming flight from <strong>${origin}</strong> to <strong>${destination}</strong> is fully confirmed. Your official e-ticket is attached to this email as a PDF document.</p>
           
           <div style="background-color: #fafafa; border: 1px solid #e4e4e7; padding: 24px; border-radius: 12px; margin: 32px 0;">
             <h3 style="margin-top: 0; margin-bottom: 20px; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #71717a; border-bottom: 1px solid #e4e4e7; padding-bottom: 12px;">Booking Summary</h3>
@@ -104,13 +104,13 @@ export async function POST(req: Request) {
           
           <div style="margin-top: 48px; padding-top: 24px; border-top: 1px solid #f4f4f5; font-size: 14px;">
             <p style="margin: 0;">Safe travels,</p>
-            <p style="margin: 4px 0 0 0; font-weight: bold; color: #18181b;">The WanderHub Team</p>
+            <p style="margin: 4px 0 0 0; font-weight: bold; color: #18181b;">The AERO Team</p>
           </div>
         </div>
       `,
       attachments: [
         {
-          filename: `WanderHub_Ticket_${pnr}.pdf`,
+          filename: `AERO_Ticket_${pnr}.pdf`,
           content: pdfBase64.split("base64,")[1],
           encoding: 'base64'
         }

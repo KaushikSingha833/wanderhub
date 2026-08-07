@@ -295,7 +295,7 @@ function PartnerHotelContent() {
     setIsSubmittingReview(true);
     try {
       const reviewData = {
-        hotelName: decodedHotelName, userId: user.uid, userName: user.displayName || "WanderHub Traveler",
+        hotelName: decodedHotelName, userId: user.uid, userName: user.displayName || "AERO Traveler",
         rating: newRating, comment: newComment.trim(), createdAt: serverTimestamp(),
         upvotedBy: [], downvotedBy: [], replies: []
       };
@@ -317,7 +317,7 @@ function PartnerHotelContent() {
     setIsSubmittingReply(true);
     const newReply: ReviewReply = {
       id: Date.now().toString() + Math.random().toString(36).substring(2, 7),
-      userId: user.uid, userName: user.displayName || "WanderHub Traveler",
+      userId: user.uid, userName: user.displayName || "AERO Traveler",
       text: replyText.trim(), createdAt: Date.now()
     };
 
@@ -406,7 +406,7 @@ function PartnerHotelContent() {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || "rzp_test_SZpnRvlSEBfADP",
         amount: amountInPaise.toString(),
         currency: "INR",
-        name: "WanderHub Hotels",
+        name: "AERO Hotels",
         description: `${selectedRoom.hotelName} - ${nights} Night(s)`,
         image: "https://cdn-icons-png.flaticon.com/512/3125/3125713.png", 
         order_id: orderData.id, 
@@ -545,7 +545,7 @@ function PartnerHotelContent() {
           <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-3 shadow-sm">
             <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
           </div>
-          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">AERO</span>
           <button onClick={() => setIsMobileMenuOpen(false)} className="ml-auto md:hidden p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full transition-colors"><X className="h-5 w-5" /></button>
         </div>
         
@@ -575,7 +575,7 @@ function PartnerHotelContent() {
             <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-2 shadow-sm">
               <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
             </div>
-            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">AERO</span>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/hotels" className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-colors"><Search className="h-5 w-5" /></Link>

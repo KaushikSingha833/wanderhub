@@ -332,7 +332,7 @@ export default function SettingsPage() {
           <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-3 shadow-sm">
             <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
           </div>
-          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">AERO</span>
           <button onClick={() => setIsMobileMenuOpen(false)} className="ml-auto md:hidden p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full transition-colors"><X className="h-5 w-5" /></button>
         </div>
         
@@ -363,7 +363,7 @@ export default function SettingsPage() {
             <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-2 shadow-sm">
               <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
             </div>
-            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">AERO</span>
           </div>
           <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-zinc-600 dark:text-zinc-400 rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
         </div>
@@ -478,7 +478,7 @@ export default function SettingsPage() {
                   <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     <div className="border-b border-zinc-100 dark:border-zinc-800 pb-6">
                       <h3 className="text-3xl font-black text-zinc-900 dark:text-white tracking-tighter">App Preferences</h3>
-                      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mt-1">Customize your WanderHub experience.</p>
+                      <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 mt-1">Customize your AERO experience.</p>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
@@ -604,7 +604,7 @@ export default function SettingsPage() {
                             </div>
                             <div>
                               <p className="font-bold text-zinc-900 dark:text-white text-lg tracking-tight mb-1">Update Password</p>
-                              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 max-w-md leading-relaxed">Securely change your WanderHub account password.</p>
+                              <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400 max-w-md leading-relaxed">Securely change your AERO account password.</p>
                             </div>
                           </div>
 

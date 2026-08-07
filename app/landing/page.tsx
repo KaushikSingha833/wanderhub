@@ -15,7 +15,7 @@ const TRAVEL_DATA = [
 ];
 
 const FAQS = [
-  { q: "How does the AI Routing engine work?", a: "WanderHub utilizes a custom geospatial algorithm that ingests your desired landmarks and outputs a chronologically and geographically optimized sequence, minimizing transit times." },
+  { q: "How does the AI Routing engine work?", a: "AERO utilizes a custom geospatial algorithm that ingests your desired landmarks and outputs a chronologically and geographically optimized sequence, minimizing transit times." },
   { q: "Is the Live Split feature truly real-time?", a: "Yes. Our architecture utilizes WebSockets to ensure that any expense logged by a group member is instantly reflected across all connected devices within 500 milliseconds." },
   { q: "How do you achieve 0% commission on hotels?", a: "We integrate directly with B2B hospitality providers, bypassing consumer-facing Online Travel Agencies (OTAs) to pass the wholesale rates directly to your workspace." },
   { q: "Can I export my itinerary?", a: "Absolutely. Workspaces can be exported to standard calendar formats, PDF dossiers, or shared via a live read-only web link." }
@@ -227,7 +227,7 @@ const FeatureCarousel = () => {
         <div className="relative w-full max-w-7xl mx-auto px-6 py-20 md:py-32 overflow-hidden">
           <div className="mb-16 text-center">
             <h2 className="text-4xl md:text-6xl font-black tracking-tighter text-white">Core Modules.</h2>
-            <p className="text-zinc-400 font-medium mt-3 text-lg md:text-xl">The structural pillars of the WanderHub ecosystem.</p>
+            <p className="text-zinc-400 font-medium mt-3 text-lg md:text-xl">The structural pillars of the AERO ecosystem.</p>
           </div>
           
           <div 
@@ -485,7 +485,7 @@ export default function ProLanding() {
       <nav className="fixed top-0 w-full z-50 px-6 md:px-12 py-8 flex justify-between items-center mix-blend-difference pointer-events-none">
         <div className="flex items-center gap-3">
           <PlaneTakeoff className="h-8 w-8 text-emerald-400" />
-          <span className="text-2xl font-black tracking-tighter text-white">WanderHub</span>
+          <span className="text-2xl font-black tracking-tighter text-white">AERO</span>
         </div>
         <MagneticElement className="pointer-events-auto">
           <Link href="/" className="whitespace-nowrap px-5 py-3 md:px-8 md:py-4 bg-white text-black font-black text-[10px] md:text-xs uppercase tracking-widest rounded-full hover:bg-emerald-400 transition-colors shadow-2xl">
@@ -500,7 +500,7 @@ export default function ProLanding() {
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 1, delay: 1.2, ease: "easeOut" }} className="mb-8">
             <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full border border-white/10 bg-white/5 backdrop-blur-md shadow-2xl">
               <span className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-xs font-bold uppercase tracking-widest text-zinc-300">WanderHub OS v2.0</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-zinc-300">AERO OS v2.0</span>
             </div>
           </motion.div>
 
@@ -531,7 +531,7 @@ export default function ProLanding() {
 
       <section className="w-full relative z-20 bg-[#050505]">
         <div className="py-40 px-6 max-w-7xl mx-auto min-h-screen flex items-center">
-          <TextReveal text="We engineered WanderHub to replace the fractured ecosystem of legacy travel tools. A singular, hyper-optimized environment where itineraries, finances, and bookings converge seamlessly." />
+          <TextReveal text="We engineered AERO to replace the fractured ecosystem of legacy travel tools. A singular, hyper-optimized environment where itineraries, finances, and bookings converge seamlessly." />
         </div>
       </section>
 
@@ -678,7 +678,7 @@ export default function ProLanding() {
              <div>
                 <div className="flex items-center gap-4 mb-8">
                    <PlaneTakeoff className="h-10 w-10 text-white" />
-                   <span className="text-4xl font-black tracking-tighter">WanderHub</span>
+                   <span className="text-4xl font-black tracking-tighter">AERO</span>
                 </div>
                 <p className="text-xl text-zinc-500 font-medium max-w-sm">The unified standard for geospatial planning and asynchronous ledger synchronization.</p>
              </div>
@@ -695,7 +695,7 @@ export default function ProLanding() {
           </div>
           
           <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/10 text-xs font-bold uppercase tracking-widest text-zinc-600">
-             <p>© {new Date().getFullYear()} WANDERHUB TECHNOLOGIES.</p>
+             <p>© {new Date().getFullYear()} AERO TECHNOLOGIES.</p>
              <div className="flex items-center gap-4 mt-4 md:mt-0">
                 <span>All Systems Nominal</span>
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -713,7 +713,7 @@ export default function ProLanding() {
            transition={{ type: "spring", stiffness: 100, damping: 10 }}
            className="absolute bottom-[-5vw] md:bottom-[-10vw] left-0 right-0 text-[20vw] font-black text-white/[0.02] text-center select-none tracking-tighter leading-none cursor-pointer"
         >
-           WANDERHUB
+           AERO
         </motion.div>
       </footer>
     </div>

@@ -129,7 +129,7 @@ export default function AdminDashboard() {
   const handleApprove = (uid: string, hotelName: string) => {
     showDialog(
       "Approve Partner?",
-      `Are you sure you want to officially verify and approve ${hotelName}? They will instantly gain access to the WanderHub partner ecosystem.`,
+      `Are you sure you want to officially verify and approve ${hotelName}? They will instantly gain access to the AERO partner ecosystem.`,
       "warning",
       async () => {
         closeDialog();

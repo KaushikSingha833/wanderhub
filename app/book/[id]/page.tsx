@@ -220,12 +220,12 @@ export default function BookingCheckoutPage() {
               <div className="bg-zinc-50 dark:bg-zinc-950 rounded-2xl p-6 border border-zinc-200 dark:border-zinc-800 mb-8">
                 <h3 className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-3">Room Selected</h3>
                 <p className="text-xl font-black text-zinc-900 dark:text-white tracking-tight mb-2">{room.name}</p>
-                <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400 leading-relaxed italic">"{room.description || "A beautiful room reserved exclusively for WanderHub travelers."}"</p>
+                <p className="text-sm font-medium text-zinc-600 dark:text-zinc-400 leading-relaxed italic">"{room.description || "A beautiful room reserved exclusively for AERO travelers."}"</p>
               </div>
 
               <div className="bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 p-5 rounded-2xl border border-emerald-200 dark:border-emerald-500/20 flex items-start text-sm font-bold">
                 <Sparkles className="h-5 w-5 mr-3 shrink-0" />
-                <p className="leading-relaxed">This is an exclusive WanderHub Partner property. Your booking request will be routed directly to the hotel management, bypassing third-party fees.</p>
+                <p className="leading-relaxed">This is an exclusive AERO Partner property. Your booking request will be routed directly to the hotel management, bypassing third-party fees.</p>
               </div>
             </div>
           </div>

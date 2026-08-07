@@ -74,7 +74,7 @@ export default function AboutPage() {
             <div className="h-8 w-8 bg-white rounded-full flex items-center justify-center mr-3 shadow-[0_0_15px_rgba(255,255,255,0.2)]">
               <PlaneTakeoff className="h-4 w-4 text-black" />
             </div>
-            <span className="text-xl font-black tracking-tighter text-white">WanderHub</span>
+            <span className="text-xl font-black tracking-tighter text-white">AERO</span>
           </div>
           <button onClick={() => setIsMobileMenuOpen(false)} className="ml-auto md:hidden p-2 text-zinc-400 hover:text-white rounded-full transition-colors"><X className="h-5 w-5" /></button>
         </div>
@@ -110,7 +110,7 @@ export default function AboutPage() {
             <div className="h-8 w-8 bg-white rounded-full flex items-center justify-center mr-2 shadow-[0_0_10px_rgba(255,255,255,0.2)]">
               <PlaneTakeoff className="h-4 w-4 text-black" />
             </div>
-            <span className="text-xl font-black tracking-tighter text-white">WanderHub</span>
+            <span className="text-xl font-black tracking-tighter text-white">AERO</span>
           </div>
           <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 text-zinc-400 hover:text-white rounded-full transition-colors"><Menu className="h-6 w-6" /></button>
         </div>
@@ -131,7 +131,7 @@ export default function AboutPage() {
               </h1>
               
               <p className="text-lg md:text-xl font-medium text-zinc-300 max-w-3xl mx-auto leading-relaxed drop-shadow-md">
-                WanderHub is the definitive ecosystem for group travel. We eliminate the friction of planning, budgeting, and booking, empowering you to focus entirely on the journey itself.
+                AERO is the definitive ecosystem for group travel. We eliminate the friction of planning, budgeting, and booking, empowering you to focus entirely on the journey itself.
               </p>
 
             </div>
@@ -171,7 +171,7 @@ export default function AboutPage() {
                     Historically, coordinating a trip with friends or colleagues meant juggling endless chaotic threads, fragmented spreadsheets, missing payment links, and scattered booking confirmations.
                   </p>
                   <p>
-                    WanderHub was engineered to solve this exact bottleneck. We have consolidated the entire travel lifecycle into one unified, secure platform. From the moment someone says "We should go to..." to the final split of the restaurant bill.
+                    AERO was engineered to solve this exact bottleneck. We have consolidated the entire travel lifecycle into one unified, secure platform. From the moment someone says "We should go to..." to the final split of the restaurant bill.
                   </p>
                 </div>
               </div>
@@ -237,7 +237,7 @@ export default function AboutPage() {
                   
                   <div className="space-y-6 text-zinc-300 font-medium leading-relaxed text-lg max-w-3xl">
                     <p className="text-white text-xl md:text-2xl font-bold tracking-tight italic drop-shadow-sm">
-                      "WanderHub wasn't built just to be another travel booking site. It was engineered from the ground up to solve a deeply human problem: connection."
+                      "AERO wasn't built just to be another travel booking site. It was engineered from the ground up to solve a deeply human problem: connection."
                     </p>
                     <p>
                       With a relentless focus on high-performance architecture and intuitive UI/UX design, our mission is to orchestrate complex data—from global geolocations to live peer-to-peer messaging—and present it in an interface that feels invisible to the user. We handle the heavy lifting, so you can focus on making memories.
@@ -258,7 +258,7 @@ export default function AboutPage() {
                 </div>
                 <h2 className="text-3xl md:text-5xl font-black text-white mb-6 tracking-tighter drop-shadow-md">Are you a property manager?</h2>
                 <p className="text-zinc-300 font-medium max-w-2xl mx-auto mb-12 text-lg leading-relaxed">
-                  Join the WanderHub B2B Partner Network. List your rooms directly to thousands of verified travelers, bypass heavy aggregator commissions, and take control of your bookings.
+                  Join the AERO B2B Partner Network. List your rooms directly to thousands of verified travelers, bypass heavy aggregator commissions, and take control of your bookings.
                 </p>
                 <Link href="/partner/join" className="inline-flex items-center justify-center bg-white text-black px-10 py-5 rounded-full font-black text-xs uppercase tracking-widest hover:bg-zinc-200 transition-all shadow-[0_0_30px_rgba(255,255,255,0.2)] active:scale-95 group">
                   Access Partner Portal <ArrowRight className="h-4 w-4 ml-3 group-hover:translate-x-1 transition-transform" />
@@ -269,7 +269,7 @@ export default function AboutPage() {
             {/* Footer */}
             <div className="text-center pb-8 pt-12 border-t border-white/10 relative z-20">
               <p className="text-zinc-500 font-bold text-[10px] uppercase tracking-widest flex items-center justify-center">
-                © {new Date().getFullYear()} WanderHub Technologies. Crafted for global explorers.
+                © {new Date().getFullYear()} AERO Technologies. Crafted for global explorers.
               </p>
             </div>
 

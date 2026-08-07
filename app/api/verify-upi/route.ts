@@ -32,7 +32,7 @@ export async function POST(request: Request) {
     // 4. Generate a realistic "Registered Name" based on the UPI ID for the demo
     const namePart = upiId.split('@')[0].replace(/[0-9]/g, '');
     const capitalizedName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-    const mockFullName = capitalizedName.length > 2 ? `${capitalizedName} Hotels Pvt Ltd` : "WanderHub Partner";
+    const mockFullName = capitalizedName.length > 2 ? `${capitalizedName} Hotels Pvt Ltd` : "AERO Partner";
 
     // 5. Return the successful verification payload
     return NextResponse.json({

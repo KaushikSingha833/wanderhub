@@ -68,19 +68,19 @@ export default function HotelsPage() {
   const [suggestSuccess, setSuggestSuccess] = useState(false);
 
   useEffect(() => {
-    const savedDest = sessionStorage.getItem("wanderhub_dest");
+    const savedDest = sessionStorage.getItem("aero_dest");
     if (savedDest) setDestination(savedDest);
     
-    const savedCheckIn = sessionStorage.getItem("wanderhub_checkIn");
+    const savedCheckIn = sessionStorage.getItem("aero_checkIn");
     if (savedCheckIn) setCheckIn(savedCheckIn);
     
-    const savedCheckOut = sessionStorage.getItem("wanderhub_checkOut");
+    const savedCheckOut = sessionStorage.getItem("aero_checkOut");
     if (savedCheckOut) setCheckOut(savedCheckOut);
     
-    const savedGuests = sessionStorage.getItem("wanderhub_guests");
+    const savedGuests = sessionStorage.getItem("aero_guests");
     if (savedGuests) setGuests(savedGuests);
     
-    const savedHotels = sessionStorage.getItem("wanderhub_hotels");
+    const savedHotels = sessionStorage.getItem("aero_hotels");
     if (savedHotels) {
       try {
         setHotels(JSON.parse(savedHotels));
@@ -91,13 +91,13 @@ export default function HotelsPage() {
     }
   }, []);
 
-  useEffect(() => { sessionStorage.setItem("wanderhub_dest", destination); }, [destination]);
-  useEffect(() => { sessionStorage.setItem("wanderhub_checkIn", checkIn); }, [checkIn]);
-  useEffect(() => { sessionStorage.setItem("wanderhub_checkOut", checkOut); }, [checkOut]);
-  useEffect(() => { sessionStorage.setItem("wanderhub_guests", guests); }, [guests]);
+  useEffect(() => { sessionStorage.setItem("aero_dest", destination); }, [destination]);
+  useEffect(() => { sessionStorage.setItem("aero_checkIn", checkIn); }, [checkIn]);
+  useEffect(() => { sessionStorage.setItem("aero_checkOut", checkOut); }, [checkOut]);
+  useEffect(() => { sessionStorage.setItem("aero_guests", guests); }, [guests]);
   useEffect(() => {
     if (hasSearched) {
-      sessionStorage.setItem("wanderhub_hotels", JSON.stringify(hotels));
+      sessionStorage.setItem("aero_hotels", JSON.stringify(hotels));
     }
   }, [hotels, hasSearched]);
 
@@ -277,7 +277,7 @@ export default function HotelsPage() {
 
         if (destination !== "Current Location" && (!roomData.city || !searchDestinationLower.includes(roomData.city.toLowerCase()))) return;
 
-        const hotelName = roomData.hotelName || "WanderHub Partner Hotel";
+        const hotelName = roomData.hotelName || "AERO Partner Hotel";
 
         const stats = hotelRatings[hotelName];
         const realRating = stats ? Number((stats.total / stats.count).toFixed(1)) : 5.0; 
@@ -305,7 +305,7 @@ export default function HotelsPage() {
             reviews: realReviewsCount, 
             pricePerNight: roomData.price || 5000,
             imageUrl: roomData.imageUrl || "https://images.unsplash.com/photo-1542314831-c6a4d1409a54?auto=format&fit=crop&w=800&q=80",
-            provider: "WanderHub Direct",
+            provider: "AERO Direct",
             bookingUrl: `/partner-hotel/${encodeURIComponent(hotelName)}?checkIn=${checkIn}&checkOut=${checkOut}&guests=${guests}`,
             isExclusive: true,
             distance: calculatedDistance 
@@ -420,11 +420,11 @@ export default function HotelsPage() {
 
   const handleLogout = async () => {
     try {
-      sessionStorage.removeItem("wanderhub_dest");
-      sessionStorage.removeItem("wanderhub_checkIn");
-      sessionStorage.removeItem("wanderhub_checkOut");
-      sessionStorage.removeItem("wanderhub_guests");
-      sessionStorage.removeItem("wanderhub_hotels");
+      sessionStorage.removeItem("aero_dest");
+      sessionStorage.removeItem("aero_checkIn");
+      sessionStorage.removeItem("aero_checkOut");
+      sessionStorage.removeItem("aero_guests");
+      sessionStorage.removeItem("aero_hotels");
       
       await signOut(auth);
       router.push("/");
@@ -460,7 +460,7 @@ export default function HotelsPage() {
           <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-3 shadow-sm">
             <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
           </div>
-          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">AERO</span>
           <button onClick={() => setIsMobileMenuOpen(false)} className="ml-auto md:hidden p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full transition-colors"><X className="h-5 w-5" /></button>
         </div>
         
@@ -490,7 +490,7 @@ export default function HotelsPage() {
             <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-2 shadow-sm">
               <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
             </div>
-            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">AERO</span>
           </div>
           <div className="flex items-center gap-3">
             <Link href="/my-bookings" className="p-2 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 rounded-full transition-colors"><Calendar className="h-5 w-5 text-emerald-500" /></Link>
@@ -561,7 +561,7 @@ export default function HotelsPage() {
                   <Sparkles className="h-3 w-3" /> Best Price Guarantee
                 </div>
                 <h1 className="text-4xl md:text-6xl font-black text-white mb-4 tracking-tighter drop-shadow-md leading-tight">Where are you heading?</h1>
-                <p className="text-zinc-400 mb-12 text-sm md:text-base font-medium max-w-2xl">Compare millions of properties globally, including verified exclusive WanderHub Partners.</p>
+                <p className="text-zinc-400 mb-12 text-sm md:text-base font-medium max-w-2xl">Compare millions of properties globally, including verified exclusive AERO Partners.</p>
 
                 <form onSubmit={handleSearchHotels} className="bg-white/10 backdrop-blur-xl p-3 rounded-[2rem] shadow-2xl flex flex-col lg:flex-row gap-3 border border-white/10">
                   <div className="flex-1 flex items-center px-5 py-4 border-b lg:border-b-0 lg:border-r border-white/10 bg-black/20 rounded-2xl lg:rounded-none lg:rounded-l-2xl hover:bg-black/30 transition-colors group relative z-50">
@@ -674,7 +674,7 @@ export default function HotelsPage() {
                       
                       {hotel.isExclusive && (
                         <div className="absolute top-4 right-4 bg-white/90 dark:bg-zinc-950/90 backdrop-blur-md text-emerald-600 dark:text-emerald-400 px-3 py-1.5 rounded-full text-[9px] font-bold uppercase tracking-widest flex items-center shadow-lg z-20 border border-emerald-500/30">
-                          <Sparkles className="h-3 w-3 mr-1.5 text-emerald-500" /> WanderHub Partner
+                          <Sparkles className="h-3 w-3 mr-1.5 text-emerald-500" /> AERO Partner
                         </div>
                       )}
 

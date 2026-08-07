@@ -99,7 +99,7 @@ export default function SecurityPage() {
       <nav className="fixed top-0 w-full z-50 px-6 md:px-12 py-8 flex justify-between items-center mix-blend-difference pointer-events-none">
         <Link href="/landing" className="flex items-center gap-3 pointer-events-auto">
           <PlaneTakeoff className="h-8 w-8 text-emerald-400" />
-          <span className="text-2xl font-black tracking-tighter text-white">WanderHub</span>
+          <span className="text-2xl font-black tracking-tighter text-white">AERO</span>
         </Link>
         <MagneticElement className="pointer-events-auto">
           <Link href="/" className="whitespace-nowrap px-5 py-3 md:px-8 md:py-4 bg-white text-black font-black text-[10px] md:text-xs uppercase tracking-widest rounded-full hover:bg-emerald-400 transition-colors shadow-2xl">
@@ -174,7 +174,7 @@ export default function SecurityPage() {
                <div className="flex-1 relative z-10">
                  <Key className="h-12 w-12 text-emerald-400 mb-8" />
                  <h3 className="text-3xl font-black tracking-tighter mb-4">PCI-DSS Payments</h3>
-                 <p className="text-zinc-400 text-lg leading-relaxed">Direct integration with Razorpay ensures WanderHub never touches raw credit card data. All ledger settlements and B2B bookings are fully tokenized.</p>
+                 <p className="text-zinc-400 text-lg leading-relaxed">Direct integration with Razorpay ensures AERO never touches raw credit card data. All ledger settlements and B2B bookings are fully tokenized.</p>
                </div>
             </SpotlightCard>
 
@@ -193,7 +193,7 @@ export default function SecurityPage() {
                </div>
                <h2 className="text-5xl md:text-7xl font-black tracking-tighter mb-8 leading-none">Granular<br/>Isolation.</h2>
                <p className="text-xl text-zinc-400 font-medium leading-relaxed">
-                 WanderHub's database utilizes a Zero-Trust architecture. Even if an actor is authenticated, strict algorithmic rules verify their membership in a workspace before a single byte of data is returned.
+                 AERO's database utilizes a Zero-Trust architecture. Even if an actor is authenticated, strict algorithmic rules verify their membership in a workspace before a single byte of data is returned.
                </p>
             </div>
 
@@ -230,7 +230,7 @@ export default function SecurityPage() {
              <div>
                 <div className="flex items-center gap-4 mb-8">
                    <PlaneTakeoff className="h-10 w-10 text-white" />
-                   <span className="text-4xl font-black tracking-tighter">WanderHub</span>
+                   <span className="text-4xl font-black tracking-tighter">AERO</span>
                 </div>
                 <p className="text-xl text-zinc-500 font-medium max-w-sm">The unified standard for geospatial planning and asynchronous ledger synchronization.</p>
              </div>
@@ -247,7 +247,7 @@ export default function SecurityPage() {
           </div>
           
           <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/10 text-xs font-bold uppercase tracking-widest text-zinc-600">
-             <p>© {new Date().getFullYear()} WANDERHUB TECHNOLOGIES.</p>
+             <p>© {new Date().getFullYear()} AERO TECHNOLOGIES.</p>
              <div className="flex items-center gap-4 mt-4 md:mt-0">
                 <span>All Systems Nominal</span>
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -265,7 +265,7 @@ export default function SecurityPage() {
            transition={{ type: "spring", stiffness: 100, damping: 10 }}
            className="absolute bottom-[-5vw] md:bottom-[-10vw] left-0 right-0 text-[20vw] font-black text-white/[0.02] text-center select-none tracking-tighter leading-none cursor-pointer"
         >
-           WANDERHUB
+           AERO
         </motion.div>
       </footer>
 

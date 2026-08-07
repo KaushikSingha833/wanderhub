@@ -110,7 +110,7 @@ export default function PlatformPage() {
       <nav className="fixed top-0 w-full z-50 px-6 md:px-12 py-8 flex justify-between items-center mix-blend-difference pointer-events-none">
         <Link href="/landing" className="flex items-center gap-3 pointer-events-auto">
           <PlaneTakeoff className="h-8 w-8 text-emerald-400" />
-          <span className="text-2xl font-black tracking-tighter text-white">WanderHub</span>
+          <span className="text-2xl font-black tracking-tighter text-white">AERO</span>
         </Link>
         <MagneticElement className="pointer-events-auto">
           <Link href="/" className="px-8 py-4 bg-white text-black font-black text-xs uppercase tracking-widest rounded-full hover:bg-emerald-400 transition-colors shadow-2xl">
@@ -162,7 +162,7 @@ export default function PlatformPage() {
           SCROLL REVEAL TEXT
       ========================================== */}
       <section className="py-40 px-6 max-w-7xl mx-auto min-h-screen flex items-center">
-        <TextReveal text="A journey is a complex, dynamic system with multiple moving parts. WanderHub orchestrates the logistics, finances, and communications into a single, beautiful interface." />
+        <TextReveal text="A journey is a complex, dynamic system with multiple moving parts. AERO orchestrates the logistics, finances, and communications into a single, beautiful interface." />
       </section>
 
       {/* ==========================================
@@ -314,7 +314,7 @@ export default function PlatformPage() {
              <div>
                 <div className="flex items-center gap-4 mb-8">
                    <PlaneTakeoff className="h-10 w-10 text-white" />
-                   <span className="text-4xl font-black tracking-tighter">WanderHub</span>
+                   <span className="text-4xl font-black tracking-tighter">AERO</span>
                 </div>
                 <p className="text-xl text-zinc-500 font-medium max-w-sm">The unified standard for geospatial planning and asynchronous ledger synchronization.</p>
              </div>
@@ -331,7 +331,7 @@ export default function PlatformPage() {
           </div>
           
           <div className="flex flex-col md:flex-row justify-between items-center pt-8 border-t border-white/10 text-xs font-bold uppercase tracking-widest text-zinc-600">
-             <p>© {new Date().getFullYear()} WANDERHUB TECHNOLOGIES.</p>
+             <p>© {new Date().getFullYear()} AERO TECHNOLOGIES.</p>
              <div className="flex items-center gap-4 mt-4 md:mt-0">
                 <span>All Systems Nominal</span>
                 <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
@@ -340,7 +340,7 @@ export default function PlatformPage() {
         </div>
         
         <div className="absolute bottom-[-5vw] md:bottom-[-10vw] left-0 right-0 text-[20vw] font-black text-white/[0.02] text-center pointer-events-none select-none tracking-tighter leading-none">
-           WANDERHUB
+           AERO
         </div>
       </footer>
 

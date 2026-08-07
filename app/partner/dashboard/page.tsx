@@ -292,7 +292,7 @@ export default function PartnerDashboard() {
   };
 
   const handleCancelConfirmedBooking = async (bookingId: string) => {
-    if (confirm("WARNING: Are you sure you want to cancel this confirmed reservation? \n\nNote: If this is done unfairly or without valid reason, the customer can report your property to WanderHub Trust & Safety.")) {
+    if (confirm("WARNING: Are you sure you want to cancel this confirmed reservation? \n\nNote: If this is done unfairly or without valid reason, the customer can report your property to AERO Trust & Safety.")) {
       try {
         await updateDoc(doc(db, "bookings", bookingId), {
           status: "Cancelled",
@@ -431,7 +431,7 @@ export default function PartnerDashboard() {
           <h2 className="text-3xl font-black text-white mb-3 tracking-tighter">Account Pending</h2>
           <div className="bg-zinc-900/50 rounded-2xl p-6 mb-8 border border-zinc-800 text-left">
             <p className="text-zinc-300 font-medium mb-4 leading-relaxed text-sm">
-              Your application for <strong className="text-white">{userProfile.hotelName}</strong> is currently being reviewed by the WanderHub verification team.
+              Your application for <strong className="text-white">{userProfile.hotelName}</strong> is currently being reviewed by the AERO verification team.
             </p>
             <p className="text-zinc-500 text-xs font-medium leading-relaxed">
               We are cross-referencing your Trade License and GSTIN to ensure the safety of our travelers. You will be granted dashboard access once approved.
@@ -459,7 +459,7 @@ export default function PartnerDashboard() {
           <div className="h-14 w-14 bg-zinc-900 rounded-[1.25rem] flex items-center justify-center mb-5 shadow-inner border border-zinc-800">
             <Building2 className="h-6 w-6 text-white" />
           </div>
-          <h2 className="text-xl font-black truncate tracking-tighter mb-1" title={userProfile?.hotelName}>{userProfile?.hotelName || "WanderHub Partner"}</h2>
+          <h2 className="text-xl font-black truncate tracking-tighter mb-1" title={userProfile?.hotelName}>{userProfile?.hotelName || "AERO Partner"}</h2>
           
           <div className="flex items-center gap-2 mt-3">
             <span className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest flex items-center">
@@ -549,7 +549,7 @@ export default function PartnerDashboard() {
                 {activeTab === "settings" && "Config & Settings"}
               </h1>
               <p className="text-zinc-400 font-medium mt-2 text-base md:text-lg">
-                {activeTab === "inventory" && "Add and update rooms to push live to WanderHub."}
+                {activeTab === "inventory" && "Add and update rooms to push live to AERO."}
                 {activeTab === "inbox" && "Review all incoming reservations and requests globally."}
                 {activeTab === "requests" && "Manage active stays and handle extension requests by room."}
                 {activeTab === "status" && "Monitor live room availability, upcoming stays, and past records."}
@@ -586,7 +586,7 @@ export default function PartnerDashboard() {
                 <div className="bg-zinc-950 p-8 rounded-[2rem] shadow-2xl flex flex-col justify-center relative overflow-hidden group border border-zinc-800">
                   <div className="absolute top-0 right-0 w-40 h-40 bg-emerald-500/10 rounded-full blur-[40px] pointer-events-none"></div>
                   <div className="relative z-10">
-                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">WanderHub Platform Fee</p>
+                    <p className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">AERO Platform Fee</p>
                     <h3 className="text-5xl font-black tracking-tighter text-white">0%</h3>
                     <p className="text-xs font-bold text-emerald-500 mt-2 uppercase tracking-widest">You keep 100% of revenue.</p>
                   </div>
@@ -1342,7 +1342,7 @@ export default function PartnerDashboard() {
                     <ShieldCheck className="h-4 w-4 mr-2 text-emerald-500" /> Zero Transaction Fees
                   </h4>
                   <p className="text-xs font-medium text-zinc-400 leading-relaxed relative z-10 max-w-xl">
-                    By saving your Business UPI ID here, WanderHub will automatically generate deep-links for your customers during checkout. Payments will route directly to your bank account with 0% commission.
+                    By saving your Business UPI ID here, AERO will automatically generate deep-links for your customers during checkout. Payments will route directly to your bank account with 0% commission.
                   </p>
                 </div>
 

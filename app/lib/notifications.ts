@@ -23,7 +23,7 @@ export async function sendGroupNotification(
     // 3. Fire notifications to everyone else simultaneously
     await Promise.all(recipients.map((uid: string) =>
       addDoc(collection(db, "users", uid, "notifications"), {
-        title: tripData.title || "WanderHub Trip",
+        title: tripData.title || "AERO Trip",
         message: `${senderName}: ${message}`,
         type: type,
         isRead: false,

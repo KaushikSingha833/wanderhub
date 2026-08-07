@@ -43,7 +43,7 @@ export default function Template({ children }: { children: React.ReactNode }) {
         {/* Editorial Typography */}
         <div className="relative z-10 text-center">
           <h2 className="text-white font-black tracking-[0.2em] uppercase text-xl mb-3 drop-shadow-md">
-            WanderHub
+            AERO
           </h2>
           <p className="text-emerald-500/80 font-bold tracking-[0.4em] uppercase text-[9px] animate-pulse">
             Initializing Workspace

@@ -215,7 +215,7 @@ export default function TripWrappedModal({ isOpen, onClose, tripData }: TripWrap
                 
                 <div className="relative z-10">
                   <div className="inline-flex items-center gap-2 px-3 py-1 bg-zinc-950 border border-zinc-800 rounded-full text-[10px] font-bold text-zinc-400 uppercase tracking-widest mb-6">
-                    WanderHub Verified
+                    AERO Verified
                   </div>
                   
                   <h2 className="text-4xl md:text-5xl font-black text-white uppercase tracking-tighter mb-10 leading-none">

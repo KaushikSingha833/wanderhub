@@ -314,7 +314,7 @@ export default function PartnerJoinPage() {
             <div className="h-10 w-10 bg-white rounded-full flex items-center justify-center mr-3 shadow-lg">
               <PlaneTakeoff className="h-5 w-5 text-zinc-950 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 transition-transform" />
             </div>
-            <span className="text-2xl font-black tracking-tighter">WanderHub</span>
+            <span className="text-2xl font-black tracking-tighter">AERO</span>
           </Link>
         </div>
 
@@ -358,7 +358,7 @@ export default function PartnerJoinPage() {
         <header className="lg:hidden w-full px-6 py-5 flex justify-between items-center border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-50">
           <Link href="/" className="flex items-center text-white">
             <PlaneTakeoff className="h-6 w-6 mr-2 text-emerald-500" />
-            <span className="text-xl font-black tracking-tighter">WanderHub</span>
+            <span className="text-xl font-black tracking-tighter">AERO</span>
           </Link>
           <span className="bg-emerald-500/10 border border-emerald-500/20 text-emerald-500 px-3 py-1 rounded-full text-[9px] font-bold uppercase tracking-widest">Partner</span>
         </header>

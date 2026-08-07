@@ -27,12 +27,12 @@ export async function POST(request: Request) {
     });
 
     const mailOptions = {
-      from: `"WanderHub Security" <${gmailUser}>`,
+      from: `"AERO Security" <${gmailUser}>`,
       to: email,
-      subject: `${otp} is your WanderHub verification code`,
+      subject: `${otp} is your AERO verification code`,
       html: `
         <div style="font-family: sans-serif; max-width: 400px; margin: 0 auto; padding: 20px; border: 1px solid #e5e5e5; border-radius: 10px;">
-          <h2 style="color: #18181b;">WanderHub Security</h2>
+          <h2 style="color: #18181b;">AERO Security</h2>
           <p style="color: #52525b; font-size: 14px;">Please use the following 6-digit code to verify your identity and access your workspace.</p>
           <div style="background-color: #f4f4f5; padding: 15px; border-radius: 8px; text-align: center; margin: 20px 0;">
             <span style="font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #10b981;">${otp}</span>

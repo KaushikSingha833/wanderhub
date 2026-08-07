@@ -162,7 +162,7 @@ export default function MyBookingsPage() {
           <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-3 shadow-sm">
             <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
           </div>
-          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+          <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">AERO</span>
           <button onClick={() => setIsMobileMenuOpen(false)} className="ml-auto md:hidden p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full transition-colors"><X className="h-5 w-5" /></button>
         </div>
         
@@ -192,7 +192,7 @@ export default function MyBookingsPage() {
             <div className="h-8 w-8 bg-zinc-900 dark:bg-white rounded-full flex items-center justify-center mr-2 shadow-sm">
               <PlaneTakeoff className="h-4 w-4 text-white dark:text-zinc-900" />
             </div>
-            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">WanderHub</span>
+            <span className="text-xl font-black tracking-tighter text-zinc-900 dark:text-white">AERO</span>
           </div>
           
           <div className="flex items-center gap-3">
@@ -214,7 +214,7 @@ export default function MyBookingsPage() {
         <header className="hidden md:flex h-24 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-xl border-b border-zinc-200 dark:border-zinc-800 items-center justify-between px-12 z-20 shrink-0 sticky top-0 transition-all">
           <div>
             <h2 className="text-2xl font-black text-zinc-900 dark:text-white tracking-tighter">My Bookings</h2>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mt-1">Manage your WanderHub Partner reservations.</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-500 dark:text-zinc-400 mt-1">Manage your AERO Partner reservations.</p>
           </div>
           
           <div className="flex items-center gap-6">
@@ -253,7 +253,7 @@ export default function MyBookingsPage() {
                   <Calendar className="h-8 w-8 text-zinc-400 dark:text-zinc-500" />
                 </div>
                 <h3 className="text-2xl font-bold text-zinc-900 dark:text-white tracking-tight mb-2">No bookings yet</h3>
-                <p className="text-zinc-500 dark:text-zinc-400 font-medium mb-8 text-sm">You haven't made any reservations with WanderHub Partners.</p>
+                <p className="text-zinc-500 dark:text-zinc-400 font-medium mb-8 text-sm">You haven't made any reservations with AERO Partners.</p>
                 <Link href="/hotels" className="inline-flex items-center bg-zinc-900 dark:bg-white text-white dark:text-zinc-900 px-8 py-3.5 rounded-full font-bold shadow-md hover:opacity-90 transition-opacity active:scale-95 text-xs uppercase tracking-widest">
                   <Search className="h-4 w-4 mr-2" /> Find a Hotel
                 </Link>
